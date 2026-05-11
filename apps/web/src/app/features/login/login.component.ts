@@ -19,13 +19,7 @@ import { AuthService } from '../../core/auth/auth.service';
           <div class="error-msg">{{ error() }}</div>
         }
 
-        <form (ngSubmit)="isRegistering() ? register() : login()" class="form">
-          @if (isRegistering()) {
-            <div class="field">
-              <label for="username">Nombre de usuario</label>
-              <input id="username" type="text" [(ngModel)]="username" name="username" placeholder="Tu nombre" required />
-            </div>
-          }
+        <form (ngSubmit)="login()" class="form">
           <div class="field">
             <label for="email">Email</label>
             <input id="email" type="email" [(ngModel)]="email" name="email" placeholder="tu@email.com" required />
@@ -39,17 +33,10 @@ import { AuthService } from '../../core/auth/auth.service';
             @if (loading()) {
               <span class="spinner-small"></span>
             } @else {
-              {{ isRegistering() ? 'Crear cuenta' : 'Iniciar sesión' }}
+              Iniciar sesión
             }
           </button>
         </form>
-
-        <p class="toggle-text">
-          {{ isRegistering() ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?' }}
-          <button class="toggle-link" (click)="isRegistering.set(!isRegistering())">
-            {{ isRegistering() ? 'Inicia sesión' : 'Regístrate' }}
-          </button>
-        </p>
       </div>
     </div>
   `,
@@ -127,18 +114,7 @@ import { AuthService } from '../../core/auth/auth.service';
     }
     .btn-primary:hover { background: var(--accent-gradient-hover); transform: translateY(-1px); }
     .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-    .toggle-text {
-      text-align: center;
-      margin-top: var(--space-lg);
-      color: var(--text-muted);
-      font-size: var(--font-sm);
-    }
-    .toggle-link {
-      color: var(--accent);
-      font-weight: 600;
-      padding: var(--space-xs);
-    }
-    .toggle-link:hover { text-decoration: underline; }
+
     .spinner-small {
       width: 20px; height: 20px;
       border: 2px solid rgba(0,0,0,0.2);
@@ -151,10 +127,8 @@ import { AuthService } from '../../core/auth/auth.service';
 export class LoginComponent {
   email = '';
   password = '';
-  username = '';
   error = signal('');
   loading = signal(false);
-  isRegistering = signal(false);
 
   constructor(private auth: AuthService, private router: Router) {}
 
@@ -171,16 +145,4 @@ export class LoginComponent {
     }
   }
 
-  async register() {
-    this.error.set('');
-    this.loading.set(true);
-    try {
-      await this.auth.register(this.email, this.username, this.password);
-      this.router.navigate(['/library']);
-    } catch (e: any) {
-      this.error.set(e?.error?.message || 'Error al registrarse');
-    } finally {
-      this.loading.set(false);
-    }
-  }
 }
