@@ -1,0 +1,245 @@
+import { Injectable, signal, computed } from '@angular/core';
+import { ApiService } from './api.service';
+import { AuthService } from '../auth/auth.service';
+
+export interface DownloadedEpisode {
+  _id: string;
+  title: string;
+  audioUrl: string;
+  imageUrl?: string;
+  duration?: string;
+  podcastId: string;
+  podcastTitle?: string;
+  podcastImageUrl?: string;
+  downloadedAt: number;
+  sizeBytes: number;
+}
+
+export type DownloadState = 'none' | 'downloading' | 'downloaded';
+
+const AUDIO_CACHE_NAME = 'mypodcast-audio-v1';
+const DB_NAME = 'mypodcast-offline';
+const DB_VERSION = 1;
+const STORE_NAME = 'downloaded-episodes';
+
+@Injectable({ providedIn: 'root' })
+export class OfflineStorageService {
+  /** Map of episodeId → download progress (0–100) */
+  readonly downloadProgress = signal<Record<string, number>>({});
+
+  /** Set of currently downloading episode IDs */
+  readonly activeDownloads = signal<Set<string>>(new Set());
+
+  /** Map of episodeId → downloaded metadata */
+  readonly downloadedMap = signal<Record<string, DownloadedEpisode>>({});
+
+  /** List of all downloaded episodes */
+  readonly downloads = computed(() =>
+    Object.values(this.downloadedMap()).sort((a, b) => b.downloadedAt - a.downloadedAt)
+  );
+
+  /** Total size of all downloaded episodes */
+  readonly totalSize = computed(() =>
+    this.downloads().reduce((sum, d) => sum + d.sizeBytes, 0)
+  );
+
+  constructor(private api: ApiService, private auth: AuthService) {
+    this.loadDownloadedMetadata();
+  }
+
+  /** Check the download state of an episode */
+  getState(episodeId: string): DownloadState {
+    if (this.activeDownloads().has(episodeId)) return 'downloading';
+    if (this.downloadedMap()[episodeId]) return 'downloaded';
+    return 'none';
+  }
+
+  /** Download an episode's audio to browser cache + save metadata in IndexedDB */
+  async download(episode: {
+    _id: string;
+    title: string;
+    audioUrl: string;
+    imageUrl?: string;
+    duration?: string;
+    podcastId: string;
+    podcastTitle?: string;
+    podcastImageUrl?: string;
+  }): Promise<void> {
+    if (this.getState(episode._id) !== 'none') return;
+
+    // Mark as downloading
+    this.activeDownloads.update(s => { const n = new Set(s); n.add(episode._id); return n; });
+    this.downloadProgress.update(p => ({ ...p, [episode._id]: 0 }));
+
+    try {
+      const audioUrl = this.api.getAudioProxyUrl(episode._id);
+
+      // Fetch with progress tracking — include auth token
+      const headers: Record<string, string> = {};
+      const token = this.auth.token();
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const response = await fetch(audioUrl, { headers });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+      const contentLength = Number(response.headers.get('content-length') || 0);
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('ReadableStream not supported');
+
+      // Read stream with progress
+      const chunks: Uint8Array[] = [];
+      let received = 0;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.length;
+
+        if (contentLength > 0) {
+          const pct = Math.round((received / contentLength) * 100);
+          this.downloadProgress.update(p => ({ ...p, [episode._id]: pct }));
+        }
+      }
+
+      // Reassemble into a Response and cache it
+      const blob = new Blob(chunks as BlobPart[], {
+        type: response.headers.get('content-type') || 'audio/mpeg',
+      });
+      const cachedResponse = new Response(blob, {
+        status: 200,
+        headers: {
+          'Content-Type': response.headers.get('content-type') || 'audio/mpeg',
+          'Content-Length': String(blob.size),
+        },
+      });
+
+      // Put into the same cache the Service Worker uses
+      const cache = await caches.open(AUDIO_CACHE_NAME);
+      await cache.put(new Request(audioUrl), cachedResponse);
+
+      // Save metadata to IndexedDB
+      const meta: DownloadedEpisode = {
+        _id: episode._id,
+        title: episode.title,
+        audioUrl: episode.audioUrl,
+        imageUrl: episode.imageUrl,
+        duration: episode.duration,
+        podcastId: episode.podcastId,
+        podcastTitle: episode.podcastTitle,
+        podcastImageUrl: episode.podcastImageUrl,
+        downloadedAt: Date.now(),
+        sizeBytes: blob.size,
+      };
+      await this.saveMetadata(meta);
+
+      // Update signals
+      this.downloadedMap.update(m => ({ ...m, [episode._id]: meta }));
+    } catch (err) {
+      console.error('Download failed:', err);
+    } finally {
+      this.activeDownloads.update(s => { const n = new Set(s); n.delete(episode._id); return n; });
+      this.downloadProgress.update(p => { const n = { ...p }; delete n[episode._id]; return n; });
+    }
+  }
+
+  /** Remove a downloaded episode from cache and IndexedDB */
+  async remove(episodeId: string): Promise<void> {
+    // Remove from Cache API
+    try {
+      const audioUrl = this.api.getAudioProxyUrl(episodeId);
+      const cache = await caches.open(AUDIO_CACHE_NAME);
+      await cache.delete(new Request(audioUrl));
+    } catch {}
+
+    // Remove from IndexedDB
+    await this.deleteMetadata(episodeId);
+
+    // Update signal
+    this.downloadedMap.update(m => {
+      const n = { ...m };
+      delete n[episodeId];
+      return n;
+    });
+  }
+
+  /** Clear all downloaded episodes */
+  async clearAll(): Promise<void> {
+    try {
+      await caches.delete(AUDIO_CACHE_NAME);
+    } catch {}
+    await this.clearAllMetadata();
+    this.downloadedMap.set({});
+  }
+
+  /** Format bytes to human-readable string */
+  formatSize(bytes: number): string {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+  }
+
+  // ===== IndexedDB helpers =====
+  private openDb(): Promise<IDBDatabase> {
+    return new Promise((resolve, reject) => {
+      const req = indexedDB.open(DB_NAME, DB_VERSION);
+      req.onupgradeneeded = () => {
+        const db = req.result;
+        if (!db.objectStoreNames.contains(STORE_NAME)) {
+          db.createObjectStore(STORE_NAME, { keyPath: '_id' });
+        }
+      };
+      req.onsuccess = () => resolve(req.result);
+      req.onerror = () => reject(req.error);
+    });
+  }
+
+  private async saveMetadata(meta: DownloadedEpisode): Promise<void> {
+    const db = await this.openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).put(meta);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  private async deleteMetadata(id: string): Promise<void> {
+    const db = await this.openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  private async clearAllMetadata(): Promise<void> {
+    const db = await this.openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(STORE_NAME, 'readwrite');
+      tx.objectStore(STORE_NAME).clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  private async loadDownloadedMetadata(): Promise<void> {
+    try {
+      const db = await this.openDb();
+      const tx = db.transaction(STORE_NAME, 'readonly');
+      const store = tx.objectStore(STORE_NAME);
+      const req = store.getAll();
+      req.onsuccess = () => {
+        const map: Record<string, DownloadedEpisode> = {};
+        for (const item of req.result) {
+          map[item._id] = item;
+        }
+        this.downloadedMap.set(map);
+      };
+    } catch (err) {
+      console.error('Failed to load download metadata:', err);
+    }
+  }
+}

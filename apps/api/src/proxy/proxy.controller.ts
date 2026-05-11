@@ -1,0 +1,73 @@
+import { Controller, Get, Param, Req, Res, UseGuards, Logger } from '@nestjs/common';
+import { Request, Response } from 'express';
+import axios from 'axios';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { EpisodesService } from '../episodes/episodes.service';
+
+@UseGuards(JwtAuthGuard)
+@Controller('proxy')
+export class ProxyController {
+  private readonly logger = new Logger(ProxyController.name);
+
+  constructor(private episodesService: EpisodesService) {}
+
+  /**
+   * Proxy audio streams from iVoox.
+   * Supports byte-range requests for seeking in the player.
+   * This avoids CORS issues and allows the Service Worker to cache audio.
+   */
+  @Get('audio/:episodeId')
+  async streamAudio(
+    @Param('episodeId') episodeId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    try {
+      const episode = await this.episodesService.findById(episodeId);
+      if (!episode || !episode.audioUrl) {
+        return res.status(404).json({ error: 'Audio no encontrado' });
+      }
+
+      const headers: Record<string, string> = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+      };
+
+      // Forward Range header for seeking support
+      if (req.headers.range) {
+        headers['Range'] = req.headers.range;
+      }
+
+      const response = await axios.get(episode.audioUrl, {
+        headers,
+        responseType: 'stream',
+        timeout: 30000,
+      });
+
+      // Forward relevant headers
+      res.status(response.status);
+
+      if (response.headers['content-type']) {
+        res.setHeader('Content-Type', String(response.headers['content-type']));
+      }
+      if (response.headers['content-length']) {
+        res.setHeader('Content-Length', String(response.headers['content-length']));
+      }
+      if (response.headers['content-range']) {
+        res.setHeader('Content-Range', String(response.headers['content-range']));
+      }
+      if (response.headers['accept-ranges']) {
+        res.setHeader('Accept-Ranges', String(response.headers['accept-ranges']));
+      }
+
+      // Allow caching by the Service Worker
+      res.setHeader('Cache-Control', 'public, max-age=86400');
+
+      response.data.pipe(res);
+    } catch (error) {
+      this.logger.error(`Proxy error for episode ${episodeId}: ${error.message}`);
+      if (!res.headersSent) {
+        res.status(502).json({ error: 'Error al obtener el audio' });
+      }
+    }
+  }
+}
