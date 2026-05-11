@@ -1,49 +1,53 @@
 services:
   # === MongoDB ===
-  mongodb-prod:
+  mongodb:
     image: mongo:7
-    container_name: mypodcast-mongodb-prod
+    container_name: mypodcast-mongodb
     restart: unless-stopped
     volumes:
-      - mongodb_prod_data:/data/db
+      - mongodb_data:/data/db
     environment:
       MONGO_INITDB_DATABASE: mypodcast
     networks:
-      - mypodcast-prod
+      - mypodcast-net
 
   # === NestJS API ===
   api:
-    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-user}/mypodcast-api:${TAG:-latest}
-    container_name: mypodcast-api-prod
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: mypodcast-api
     restart: unless-stopped
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - MONGODB_URI=mongodb://mongodb-prod:27017/mypodcast
-      - JWT_SECRET=${JWT_SECRET}
-      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
-      - FRONTEND_URL=${FRONTEND_URL:-https://podcast.example.com}
+      - MONGODB_URI=mongodb://mongodb:27017/mypodcast
+      - JWT_SECRET=mypodcast-super-secret-key-2026
+      - JWT_REFRESH_SECRET=mypodcast-refresh-secret-2026
+      - FRONTEND_URL=http://192.168.1.107:84
     depends_on:
-      - mongodb-prod
+      - mongodb
     networks:
-      - mypodcast-prod
+      - mypodcast-net
 
   # === Angular PWA (nginx) ===
   web:
-    image: ${REGISTRY:-ghcr.io}/${IMAGE_PREFIX:-user}/mypodcast-web:${TAG:-latest}
-    container_name: mypodcast-web-prod
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: mypodcast-web
     restart: unless-stopped
     ports:
-      - "80:80"
+      - "84:80"
     depends_on:
       - api
     networks:
-      - mypodcast-prod
+      - mypodcast-net
 
 volumes:
-  mongodb_prod_data:
+  mongodb_data:
     driver: local
 
 networks:
-  mypodcast-prod:
+  mypodcast-net:
     driver: bridge
