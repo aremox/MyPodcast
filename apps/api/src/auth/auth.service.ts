@@ -73,7 +73,7 @@ export class AuthService {
       this.jwtService.signAsync(payload),
       this.jwtService.signAsync(payload, {
         secret: this.configService.get<string>('JWT_REFRESH_SECRET', 'mypodcast-refresh-secret-dev'),
-        expiresIn: '7d',
+        expiresIn: '30d',
       }),
     ]);
 
