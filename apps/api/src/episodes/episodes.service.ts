@@ -26,6 +26,14 @@ export class EpisodesService {
     return { episodes, total };
   }
 
+  async findAllIdsByPodcast(podcastId: string): Promise<string[]> {
+    const episodes = await this.episodeModel
+      .find({ podcastId })
+      .select('_id')
+      .exec();
+    return episodes.map(e => e._id.toString());
+  }
+
   async findById(id: string): Promise<EpisodeDocument> {
     const episode = await this.episodeModel.findById(id).exec();
     if (!episode) throw new NotFoundException('Episodio no encontrado');

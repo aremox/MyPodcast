@@ -1,10 +1,11 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
 import { PlayHistory, PlayHistorySchema } from './schemas/play-history.schema';
 import { Favorite, FavoriteSchema } from './schemas/favorite.schema';
 import { Subscription, SubscriptionSchema } from './schemas/subscription.schema';
 import { LibraryService } from './library.service';
 import { LibraryController } from './library.controller';
+import { EpisodesModule } from '../episodes/episodes.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { LibraryController } from './library.controller';
       { name: Favorite.name, schema: FavoriteSchema },
       { name: Subscription.name, schema: SubscriptionSchema },
     ]),
+    forwardRef(() => EpisodesModule),
   ],
   controllers: [LibraryController],
   providers: [LibraryService],

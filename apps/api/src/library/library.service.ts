@@ -129,16 +129,43 @@ export class LibraryService {
       .exec();
   }
 
-  async getUnplayedCount(userId: string, podcastId: string): Promise<number> {
-    const playedEpisodes = await this.playHistoryModel
+  async getPodcastProgress(userId: string, podcastId: string): Promise<string[]> {
+    const history = await this.playHistoryModel
       .find({ userId, podcastId, completed: true })
       .select('episodeId')
       .exec();
+    return history.map(h => h.episodeId.toString());
+  }
 
-    const playedIds = playedEpisodes.map(h => h.episodeId.toString());
+  async markAllAsCompleted(userId: string, podcastId: string, completed: boolean, allEpisodeIds: string[]): Promise<void> {
+    if (!completed) {
+      // Just set completed to false for all existing history for this podcast
+      await this.playHistoryModel.updateMany(
+        { userId, podcastId },
+        { $set: { completed: false, progress: 0 } }
+      ).exec();
+    } else {
+      // Need to create or update history for ALL episodes to be completed
+      const bulkOps: any[] = allEpisodeIds.map(episodeId => ({
+        updateOne: {
+          filter: { userId, episodeId },
+          update: {
+            $set: {
+              userId,
+              episodeId,
+              podcastId,
+              progress: 100, // Or whatever max is, but completed: true is the key
+              completed: true,
+              lastPlayedAt: new Date(),
+            }
+          },
+          upsert: true
+        }
+      }));
 
-    // This would need the Episode model; for now return 0
-    // In a full implementation, query episodes not in playedIds
-    return 0;
+      if (bulkOps.length > 0) {
+        await this.playHistoryModel.bulkWrite(bulkOps);
+      }
+    }
   }
 }

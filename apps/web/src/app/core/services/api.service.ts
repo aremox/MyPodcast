@@ -117,6 +117,18 @@ export class ApiService {
     );
   }
 
+  getPodcastProgress(podcastId: string) {
+    return firstValueFrom(
+      this.http.get<any>(`${this.BASE_URL}/library/podcast/${podcastId}/progress`),
+    );
+  }
+
+  markAllPodcastProgress(podcastId: string, completed: boolean) {
+    return firstValueFrom(
+      this.http.post<any>(`${this.BASE_URL}/library/podcast/${podcastId}/mark-all`, { completed }),
+    );
+  }
+
   // ===== AUDIO URL =====
   getAudioProxyUrl(episodeId: string): string {
     return `${this.BASE_URL}/proxy/audio/${episodeId}`;

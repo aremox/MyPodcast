@@ -1,11 +1,15 @@
-import { Controller, Get, Post, Delete, Param, Body, Query, Request, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, Query, Request, UseGuards, Inject, forwardRef } from '@nestjs/common';
 import { LibraryService } from './library.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { EpisodesService } from '../episodes/episodes.service';
 
 @UseGuards(JwtAuthGuard)
 @Controller('library')
 export class LibraryController {
-  constructor(private libraryService: LibraryService) {}
+  constructor(
+    private libraryService: LibraryService,
+    @Inject(forwardRef(() => EpisodesService)) private episodesService: EpisodesService,
+  ) {}
 
   // ===== SUBSCRIPTIONS =====
 
@@ -88,5 +92,27 @@ export class LibraryController {
   async getEpisodeProgress(@Request() req: any, @Param('episodeId') episodeId: string) {
     const progress = await this.libraryService.getEpisodeProgress(req.user.userId, episodeId);
     return { success: true, data: progress };
+  }
+
+  @Get('podcast/:podcastId/progress')
+  async getPodcastProgress(@Request() req: any, @Param('podcastId') podcastId: string) {
+    const completedEpisodes = await this.libraryService.getPodcastProgress(req.user.userId, podcastId);
+    return { success: true, data: completedEpisodes };
+  }
+
+  @Post('podcast/:podcastId/mark-all')
+  async markAllPodcastProgress(
+    @Request() req: any,
+    @Param('podcastId') podcastId: string,
+    @Body() body: { completed: boolean }
+  ) {
+    let episodeIds: string[] = [];
+    if (body.completed) {
+      // Import the episode service and call it
+      // Wait, LibraryController needs EpisodesService!
+      episodeIds = await this.episodesService.findAllIdsByPodcast(podcastId);
+    }
+    await this.libraryService.markAllAsCompleted(req.user.userId, podcastId, body.completed, episodeIds);
+    return { success: true, message: body.completed ? 'Marcados como escuchados' : 'Desmarcados' };
   }
 }

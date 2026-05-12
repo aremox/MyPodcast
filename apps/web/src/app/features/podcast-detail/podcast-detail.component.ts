@@ -32,6 +32,15 @@ import { PlaylistService } from '../../core/services/playlist.service';
               <button class="btn-refresh" (click)="refreshFeed()" [disabled]="refreshing()">
                 {{ refreshing() ? 'Actualizando...' : '↻ Actualizar feed' }}
               </button>
+              <div class="hero-dropdown">
+                <button class="btn-more" (click)="moreExpanded.set(!moreExpanded())" title="Más opciones">⋮</button>
+                @if (moreExpanded()) {
+                  <div class="dropdown-menu">
+                    <button (click)="markAllAsPlayed(true)">✓ Marcar todos escuchados</button>
+                    <button (click)="markAllAsPlayed(false)">✕ Marcar todos no escuchados</button>
+                  </div>
+                }
+              </div>
             </div>
           </div>
         </div>
@@ -75,7 +84,6 @@ import { PlaylistService } from '../../core/services/playlist.service';
                 [class.in-queue]="pl.isInQueue(episode._id)"
                 (click)="toggleQueue(episode); $event.stopPropagation()"
                 [title]="pl.isInQueue(episode._id) ? 'Quitar de la cola' : 'Añadir a la cola'"
-                [attr.aria-label]="pl.isInQueue(episode._id) ? 'Quitar de la cola' : 'Añadir a la cola'"
               >
                 @if (pl.isInQueue(episode._id)) {
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -92,6 +100,19 @@ import { PlaylistService } from '../../core/services/playlist.service';
                   </svg>
                   <span class="btn-queue-label">+ Cola</span>
                 }
+              </button>
+
+              <!-- Mark as played button -->
+              <button
+                class="btn-played"
+                [class.is-played]="completedEpisodes().has(episode._id)"
+                (click)="togglePlayed(episode); $event.stopPropagation()"
+                [title]="completedEpisodes().has(episode._id) ? 'Marcar como no escuchado' : 'Marcar como escuchado'"
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                  <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                </svg>
               </button>
 
               <!-- Download button -->
@@ -137,6 +158,13 @@ import { PlaylistService } from '../../core/services/playlist.service';
     .btn-refresh:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
     .btn-refresh:disabled { opacity: 0.5; }
 
+    .hero-dropdown { position: relative; }
+    .btn-more { width: 44px; height: 44px; border-radius: var(--radius-full); background: rgba(255,255,255,0.06); color: var(--text-secondary); display: flex; align-items: center; justify-content: center; transition: all var(--transition-fast); font-size: var(--font-lg); font-weight: bold; border: 1px solid rgba(255,255,255,0.1); }
+    .btn-more:hover { background: rgba(255,255,255,0.1); color: var(--text-primary); }
+    .dropdown-menu { position: absolute; top: 100%; right: 0; margin-top: 8px; background: #282828; border-radius: var(--radius-md); padding: 8px 0; min-width: 200px; box-shadow: var(--shadow-xl); z-index: 10; border: 1px solid rgba(255,255,255,0.05); }
+    .dropdown-menu button { display: block; width: 100%; text-align: left; padding: 12px 16px; font-size: var(--font-sm); color: var(--text-secondary); transition: all 0.2s; }
+    .dropdown-menu button:hover { background: rgba(255,255,255,0.05); color: var(--text-primary); }
+
     .description { color: var(--text-secondary); font-size: var(--font-sm); line-height: 1.7; max-height: 60px; overflow: hidden; transition: max-height var(--transition-slow); }
     .description.expanded { max-height: 1000px; }
     .show-more { color: var(--accent); font-size: var(--font-sm); font-weight: 500; padding: var(--space-xs) 0; }
@@ -149,6 +177,9 @@ import { PlaylistService } from '../../core/services/playlist.service';
     .episode-item.playing { background: var(--accent-dim); }
     .episode-item.playing .ep-title { color: var(--accent); }
 
+    .episode-item.played { opacity: 0.5; }
+    .episode-item.played .ep-title { color: var(--text-muted); }
+
     .ep-play { display: flex; align-items: center; gap: var(--space-md); flex: 1; min-width: 0; cursor: pointer; padding: var(--space-md); min-height: var(--touch-comfortable); }
     .ep-play-indicator { display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; color: var(--text-muted); flex-shrink: 0; }
     .episode-item:hover .ep-play-indicator { color: var(--accent); }
@@ -157,26 +188,23 @@ import { PlaylistService } from '../../core/services/playlist.service';
     .ep-title { font-size: var(--font-md); font-weight: 500; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
     .ep-meta { display: flex; gap: var(--space-sm); color: var(--text-muted); font-size: var(--font-xs); margin-top: 2px; }
 
-    /* Queue button */
-    .btn-queue {
+    /* Buttons */
+    .btn-queue, .btn-played, .btn-download {
       display: flex; align-items: center; justify-content: center; gap: 4px;
-      height: 44px; padding: 0 var(--space-sm); flex-shrink: 0;
+      height: 44px; flex-shrink: 0;
       border-radius: var(--radius-full); color: var(--text-muted);
-      font-size: var(--font-xs); font-weight: 600;
       transition: all var(--transition-fast);
-      white-space: nowrap;
     }
+    .btn-queue { padding: 0 var(--space-sm); white-space: nowrap; font-size: var(--font-xs); font-weight: 600; }
+    .btn-played, .btn-download { width: 44px; }
     .btn-queue:hover:not(:disabled) { color: var(--accent-secondary); background: var(--accent-secondary-dim); }
     .btn-queue.in-queue { color: var(--accent-secondary); background: var(--accent-secondary-dim); }
     .btn-queue-label { font-size: 10px; font-weight: 700; }
 
+    .btn-played:hover:not(:disabled) { color: var(--success); background: rgba(255,255,255,0.06); }
+    .btn-played.is-played { color: var(--success); }
+
     /* Download button */
-    .btn-download {
-      display: flex; align-items: center; justify-content: center; gap: 4px;
-      width: 44px; height: 44px; flex-shrink: 0;
-      border-radius: var(--radius-full); color: var(--text-muted);
-      transition: all var(--transition-fast);
-    }
     .btn-download:hover:not(:disabled) { color: var(--accent); background: rgba(255,255,255,0.06); }
     .btn-download.downloaded { color: var(--success); }
     .btn-download.downloading { color: var(--accent); }
@@ -202,9 +230,11 @@ export class PodcastDetailComponent implements OnInit {
 
   podcast = signal<any>(null);
   episodes = signal<any[]>([]);
+  completedEpisodes = signal<Set<string>>(new Set());
   loading = signal(true);
   refreshing = signal(false);
   descExpanded = signal(false);
+  moreExpanded = signal(false);
   hasMore = signal(false);
   loadingMore = signal(false);
   currentPage = 1;
@@ -223,12 +253,16 @@ export class PodcastDetailComponent implements OnInit {
   async loadPodcast() {
     this.loading.set(true);
     try {
-      const [podRes, epRes] = await Promise.all([
+      const [podRes, epRes, progRes] = await Promise.all([
         this.api.getPodcast(this.id()),
         this.api.getEpisodes(this.id(), 1, 50),
+        this.api.getPodcastProgress(this.id()),
       ]);
       this.podcast.set(podRes.data);
       this.episodes.set(epRes.data || []);
+      if (progRes.data) {
+        this.completedEpisodes.set(new Set(progRes.data));
+      }
       this.hasMore.set((epRes.data?.length || 0) < (epRes.total || 0));
     } catch (e) {
       console.error('Error loading podcast:', e);
@@ -300,5 +334,57 @@ export class PodcastDetailComponent implements OnInit {
   formatDate(dateStr: string): string {
     const d = new Date(dateStr);
     return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  async togglePlayed(episode: any) {
+    const isCompleted = this.completedEpisodes().has(episode._id);
+    const newCompletedState = !isCompleted;
+
+    // Update optimistic UI state
+    const currentSet = new Set(this.completedEpisodes());
+    if (newCompletedState) {
+      currentSet.add(episode._id);
+    } else {
+      currentSet.delete(episode._id);
+    }
+    this.completedEpisodes.set(currentSet);
+
+    try {
+      await this.api.updateProgress(episode._id, this.podcast()._id, newCompletedState ? 100 : 0, newCompletedState);
+    } catch (err) {
+      console.error('Failed to update progress', err);
+      // Revert optimistic update
+      const revertedSet = new Set(this.completedEpisodes());
+      if (isCompleted) {
+        revertedSet.add(episode._id);
+      } else {
+        revertedSet.delete(episode._id);
+      }
+      this.completedEpisodes.set(revertedSet);
+    }
+  }
+
+  async markAllAsPlayed(completed: boolean) {
+    this.moreExpanded.set(false);
+    
+    // Optistic UI update
+    if (completed) {
+      const currentSet = new Set(this.completedEpisodes());
+      this.episodes().forEach(ep => currentSet.add(ep._id));
+      this.completedEpisodes.set(currentSet);
+    } else {
+      this.completedEpisodes.set(new Set());
+    }
+
+    try {
+      await this.api.markAllPodcastProgress(this.id(), completed);
+    } catch (err) {
+      console.error('Failed to mark all as played', err);
+      // On error, reload full progress to restore state
+      const progRes = await this.api.getPodcastProgress(this.id());
+      if (progRes.data) {
+        this.completedEpisodes.set(new Set(progRes.data));
+      }
+    }
   }
 }
