@@ -96,9 +96,9 @@ import { PlaylistService } from '../../../core/services/playlist.service';
     .nav-content {
       display: flex;
       align-items: center;
-      justify-content: space-between;
+      justify-content: center;
       flex: 1;
-      margin-left: var(--space-xl);
+      margin-left: 0;
     }
 
     .nav-links {
@@ -146,6 +146,8 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       display: flex;
       align-items: center;
       gap: var(--space-md);
+      position: absolute;
+      right: var(--space-lg);
     }
     .username {
       color: var(--text-secondary);
@@ -184,6 +186,7 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       .nav-content {
         display: flex;
         flex-direction: column;
+        justify-content: flex-start;
         position: absolute;
         top: 64px;
         left: 0;
@@ -214,6 +217,7 @@ import { PlaylistService } from '../../../core/services/playlist.service';
         border-radius: var(--radius-md);
       }
       .nav-user {
+        position: static;
         width: 100%;
         justify-content: space-between;
         padding: var(--space-md);
