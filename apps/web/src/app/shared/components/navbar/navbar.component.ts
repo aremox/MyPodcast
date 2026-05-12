@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PlaylistService } from '../../../core/services/playlist.service';
@@ -9,49 +9,61 @@ import { PlaylistService } from '../../../core/services/playlist.service';
   template: `
     <nav class="navbar">
       <div class="nav-brand">
-        <a routerLink="/library" class="brand">
+        <a routerLink="/library" class="brand" (click)="mobileMenuOpen.set(false)">
           <span class="brand-icon">🎧</span>
           <span class="brand-text">MyPodcast</span>
         </a>
       </div>
-      <div class="nav-links">
-        <a routerLink="/library" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-link">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          <span>Inicio</span>
-        </a>
-        <a routerLink="/search" routerLinkActive="active" class="nav-link">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
-          <span>Buscar</span>
-        </a>
-        <a routerLink="/playlist" routerLinkActive="active" class="nav-link nav-link-playlist">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
-            <line x1="8" y1="18" x2="21" y2="18"/>
-            <polygon points="3 6 3 18 5.5 12" fill="currentColor" stroke="none"/>
-          </svg>
-          <span>Cola</span>
-          @if (pl.count() > 0) {
-            <span class="queue-badge">{{ pl.count() }}</span>
-          }
-        </a>
-        <a routerLink="/favorites" routerLinkActive="active" class="nav-link">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
-          <span>Favoritos</span>
-        </a>
-        <a routerLink="/downloads" routerLinkActive="active" class="nav-link">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span>Descargas</span>
-        </a>
-        <a routerLink="/history" routerLinkActive="active" class="nav-link">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-          <span>Historial</span>
-        </a>
-      </div>
-      <div class="nav-user">
-        <span class="username">{{ auth.user()?.username }}</span>
-        <button class="btn-logout" (click)="auth.logout()">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        </button>
+
+      <button class="menu-toggle" (click)="mobileMenuOpen.set(!mobileMenuOpen())" [attr.aria-expanded]="mobileMenuOpen()">
+        @if (mobileMenuOpen()) {
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        } @else {
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        }
+      </button>
+
+      <div class="nav-content" [class.is-open]="mobileMenuOpen()">
+        <div class="nav-links">
+          <a routerLink="/library" routerLinkActive="active" [routerLinkActiveOptions]="{exact: true}" class="nav-link" (click)="mobileMenuOpen.set(false)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+            <span>Inicio</span>
+          </a>
+          <a routerLink="/search" routerLinkActive="active" class="nav-link" (click)="mobileMenuOpen.set(false)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+            <span>Buscar</span>
+          </a>
+          <a routerLink="/playlist" routerLinkActive="active" class="nav-link nav-link-playlist" (click)="mobileMenuOpen.set(false)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+              <line x1="8" y1="18" x2="21" y2="18"/>
+              <polygon points="3 6 3 18 5.5 12" fill="currentColor" stroke="none"/>
+            </svg>
+            <span>Cola</span>
+            @if (pl.count() > 0) {
+              <span class="queue-badge">{{ pl.count() }}</span>
+            }
+          </a>
+          <a routerLink="/favorites" routerLinkActive="active" class="nav-link" (click)="mobileMenuOpen.set(false)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+            <span>Favoritos</span>
+          </a>
+          <a routerLink="/downloads" routerLinkActive="active" class="nav-link" (click)="mobileMenuOpen.set(false)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            <span>Descargas</span>
+          </a>
+          <a routerLink="/history" routerLinkActive="active" class="nav-link" (click)="mobileMenuOpen.set(false)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            <span>Historial</span>
+          </a>
+        </div>
+        <div class="nav-user">
+          <span class="username">{{ auth.user()?.username }}</span>
+          <button class="btn-logout" (click)="auth.logout()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            <span class="logout-text">Salir</span>
+          </button>
+        </div>
       </div>
     </nav>
   `,
@@ -80,6 +92,14 @@ import { PlaylistService } from '../../../core/services/playlist.service';
     }
     .brand-icon { font-size: 1.5rem; }
     .brand:hover { color: var(--accent); }
+
+    .nav-content {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex: 1;
+      margin-left: var(--space-xl);
+    }
 
     .nav-links {
       display: flex;
@@ -145,8 +165,72 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       color: var(--error);
       background: rgba(239,68,68,0.1);
     }
+    .logout-text { display: none; }
+
+    .menu-toggle {
+      display: none;
+      color: var(--text-primary);
+      background: none;
+      border: none;
+      padding: var(--space-sm);
+      cursor: pointer;
+    }
+
+    /* Mobile Responsive Styles */
+    @media (max-width: 768px) {
+      .menu-toggle {
+        display: block;
+      }
+      .nav-content {
+        display: flex;
+        flex-direction: column;
+        position: absolute;
+        top: 64px;
+        left: 0;
+        right: 0;
+        background: var(--bg-secondary);
+        border-bottom: 1px solid rgba(255,255,255,0.05);
+        padding: var(--space-md);
+        margin-left: 0;
+        gap: var(--space-md);
+        transform: translateY(-150%);
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: var(--shadow-xl);
+      }
+      .nav-content.is-open {
+        transform: translateY(0);
+        opacity: 1;
+        visibility: visible;
+      }
+      .nav-links {
+        flex-direction: column;
+        width: 100%;
+      }
+      .nav-link {
+        width: 100%;
+        padding: var(--space-md);
+        border-radius: var(--radius-md);
+      }
+      .nav-user {
+        width: 100%;
+        justify-content: space-between;
+        padding: var(--space-md);
+        border-top: 1px solid rgba(255,255,255,0.05);
+      }
+      .btn-logout {
+        width: auto;
+        padding: 0 var(--space-md);
+        gap: var(--space-sm);
+        background: rgba(255,255,255,0.05);
+      }
+      .logout-text { display: inline; }
+    }
   `,
 })
 export class NavbarComponent {
+  mobileMenuOpen = signal(false);
+
   constructor(public auth: AuthService, public pl: PlaylistService) {}
 }
