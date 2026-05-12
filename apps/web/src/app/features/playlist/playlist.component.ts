@@ -1,6 +1,7 @@
 import { Component, signal } from '@angular/core';
 import { PlaylistService } from '../../core/services/playlist.service';
 import { AudioPlayerService, PlayerEpisode } from '../../core/services/audio-player.service';
+import { ExportService } from '../../core/services/export.service';
 
 @Component({
   selector: 'app-playlist',
@@ -13,13 +14,19 @@ import { AudioPlayerService, PlayerEpisode } from '../../core/services/audio-pla
         </div>
         @if (!pl.isEmpty()) {
           <div class="header-actions">
+            @if (exportService.isSupported()) {
+              <button class="btn-action btn-export" (click)="exportService.exportQueueToUsb(pl.queue())" title="Exportar a USB">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                <span class="btn-text">Exportar USB</span>
+              </button>
+            }
             <button class="btn-action btn-play-all" (click)="playAll()" title="Reproducir todo">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21"/></svg>
-              Reproducir todo
+              <span class="btn-text">Reproducir todo</span>
             </button>
             <button class="btn-action btn-clear" (click)="clearConfirm()" title="Vaciar cola">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4h6v2"/></svg>
-              Vaciar
+              <span class="btn-text">Vaciar</span>
             </button>
           </div>
         }
@@ -149,6 +156,30 @@ import { AudioPlayerService, PlayerEpisode } from '../../core/services/audio-pla
             <button class="btn-cancel" (click)="showConfirm.set(false)">Cancelar</button>
             <button class="btn-confirm" (click)="clearQueue()">Vaciar</button>
           </div>
+      </div>
+    }
+
+    <!-- Export Progress Overlay -->
+    @if (exportService.isExporting() || exportService.exportError()) {
+      <div class="modal-backdrop">
+        <div class="modal" (click)="$event.stopPropagation()">
+          @if (exportService.exportError()) {
+            <h3 class="error-title">Error al exportar</h3>
+            <p>{{ exportService.exportError() }}</p>
+            <div class="modal-actions">
+              <button class="btn-cancel" (click)="exportService.exportError.set(null)">Cerrar</button>
+            </div>
+          } @else {
+            <h3>Exportando a USB...</h3>
+            <p class="export-status">Copiando episodio {{ exportService.currentExported() + 1 }} de {{ exportService.totalToExport() }}</p>
+            <p class="export-filename">{{ exportService.currentEpisodeName() }}</p>
+            
+            <div class="progress-container">
+              <div class="progress-bar" [style.width.%]="(exportService.currentExported() / exportService.totalToExport()) * 100"></div>
+            </div>
+            
+            <p class="export-warning">⚠️ Por favor no cierres esta pestaña ni desconectes el USB.</p>
+          }
         </div>
       </div>
     }
@@ -324,6 +355,25 @@ import { AudioPlayerService, PlayerEpisode } from '../../core/services/audio-pla
       min-height: var(--touch-min);
     }
     .btn-confirm:hover { background: #dc2626; transform: translateY(-1px); }
+
+    /* ── Export ── */
+    .btn-export {
+      background: rgba(255,255,255,0.06); color: var(--text-primary);
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .btn-export:hover { background: rgba(255,255,255,0.1); }
+    
+    .export-status { font-weight: 600; color: var(--accent); margin-bottom: 4px !important; }
+    .export-filename { font-size: var(--font-xs); color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: var(--space-md) !important; }
+    .progress-container { width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: var(--radius-full); overflow: hidden; margin-bottom: var(--space-md); }
+    .progress-bar { height: 100%; background: var(--accent); border-radius: var(--radius-full); transition: width 0.3s ease; }
+    .export-warning { font-size: var(--font-xs); color: var(--warning); margin-top: var(--space-md) !important; }
+    .error-title { color: var(--error); }
+    
+    @media (max-width: 600px) {
+      .btn-text { display: none; }
+      .btn-action { padding: var(--space-sm); }
+    }
   `,
 })
 export class PlaylistComponent {
@@ -334,6 +384,7 @@ export class PlaylistComponent {
   constructor(
     public pl: PlaylistService,
     public player: AudioPlayerService,
+    public exportService: ExportService,
   ) {}
 
   playEpisode(episode: PlayerEpisode): void {
