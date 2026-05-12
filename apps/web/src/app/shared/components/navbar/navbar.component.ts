@@ -1,6 +1,7 @@
 import { Component } from '@angular/core';
 import { RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
+import { PlaylistService } from '../../../core/services/playlist.service';
 
 @Component({
   selector: 'app-navbar',
@@ -21,6 +22,17 @@ import { AuthService } from '../../../core/auth/auth.service';
         <a routerLink="/search" routerLinkActive="active" class="nav-link">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
           <span>Buscar</span>
+        </a>
+        <a routerLink="/playlist" routerLinkActive="active" class="nav-link nav-link-playlist">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+            <line x1="8" y1="18" x2="21" y2="18"/>
+            <polygon points="3 6 3 18 5.5 12" fill="currentColor" stroke="none"/>
+          </svg>
+          <span>Cola</span>
+          @if (pl.count() > 0) {
+            <span class="queue-badge">{{ pl.count() }}</span>
+          }
         </a>
         <a routerLink="/favorites" routerLinkActive="active" class="nav-link">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
@@ -84,6 +96,7 @@ import { AuthService } from '../../../core/auth/auth.service';
       font-weight: 500;
       transition: all var(--transition-fast);
       min-height: var(--touch-min);
+      position: relative;
     }
     .nav-link:hover {
       color: var(--text-primary);
@@ -93,6 +106,22 @@ import { AuthService } from '../../../core/auth/auth.service';
       color: var(--accent);
       background: var(--accent-dim);
     }
+
+    /* Playlist link — subtle gradient pulse when queue not empty */
+    .nav-link-playlist.active { color: var(--accent); }
+    .queue-badge {
+      display: flex; align-items: center; justify-content: center;
+      min-width: 18px; height: 18px; padding: 0 4px;
+      background: var(--accent); color: var(--bg-primary);
+      border-radius: var(--radius-full);
+      font-size: 10px; font-weight: 700;
+      animation: badgePop 0.3s var(--transition-spring) both;
+    }
+    @keyframes badgePop {
+      from { transform: scale(0); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
     .nav-user {
       display: flex;
       align-items: center;
@@ -119,5 +148,5 @@ import { AuthService } from '../../../core/auth/auth.service';
   `,
 })
 export class NavbarComponent {
-  constructor(public auth: AuthService) {}
+  constructor(public auth: AuthService, public pl: PlaylistService) {}
 }

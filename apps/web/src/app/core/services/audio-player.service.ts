@@ -1,6 +1,7 @@
-import { Injectable, signal, computed, effect } from '@angular/core';
+import { Injectable, signal, computed, effect, inject } from '@angular/core';
 import { ApiService } from './api.service';
 import { AuthService } from '../auth/auth.service';
+import { PlaylistService } from './playlist.service';
 
 export interface PlayerEpisode {
   _id: string;
@@ -32,6 +33,9 @@ export class AudioPlayerService {
   readonly speed = signal<PlaybackSpeed>(1);
   readonly isLoading = signal(false);
 
+  /** Injected after construction to avoid circular dependency */
+  playlist!: PlaylistService;
+
   readonly progress = computed(() => {
     const d = this.duration();
     return d > 0 ? (this.currentTime() / d) * 100 : 0;
@@ -41,6 +45,8 @@ export class AudioPlayerService {
   readonly formattedDuration = computed(() => this.formatTime(this.duration()));
 
   constructor(private api: ApiService, private auth: AuthService) {
+    // Use inject to avoid circular DI; PlaylistService depends on nothing
+    this.playlist = inject(PlaylistService);
     this.setupAudioListeners();
     this.restoreState();
     this.setupMediaSession();
@@ -89,6 +95,16 @@ export class AudioPlayerService {
     } else if (this.currentEpisode()) {
       this.play(this.currentEpisode()!);
     }
+  }
+
+  playNext(): void {
+    const next = this.playlist?.next();
+    if (next) this.play(next);
+  }
+
+  playPrev(): void {
+    const prev = this.playlist?.prev();
+    if (prev) this.play(prev);
   }
 
   seek(seconds: number): void {
@@ -161,6 +177,11 @@ export class AudioPlayerService {
       this.isPlaying.set(false);
       this.stopProgressTracking();
       this.markCompleted();
+      // Auto-play next episode in playlist
+      const next = this.playlist?.next();
+      if (next) {
+        this.play(next);
+      }
     });
 
     this.audio.addEventListener('error', () => {
@@ -258,8 +279,8 @@ export class AudioPlayerService {
     navigator.mediaSession.setActionHandler('pause', () => this.pause());
     navigator.mediaSession.setActionHandler('seekbackward', () => this.seekRelative(-15));
     navigator.mediaSession.setActionHandler('seekforward', () => this.seekRelative(30));
-    navigator.mediaSession.setActionHandler('previoustrack', () => this.seekRelative(-15));
-    navigator.mediaSession.setActionHandler('nexttrack', () => this.seekRelative(30));
+    navigator.mediaSession.setActionHandler('previoustrack', () => this.playPrev());
+    navigator.mediaSession.setActionHandler('nexttrack', () => this.playNext());
   }
 
   formatTime(seconds: number): string {

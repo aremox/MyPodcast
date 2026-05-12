@@ -3,6 +3,7 @@ import { RouterLink } from '@angular/router';
 import { ApiService } from '../../core/services/api.service';
 import { AudioPlayerService, PlayerEpisode } from '../../core/services/audio-player.service';
 import { OfflineStorageService } from '../../core/services/offline-storage.service';
+import { PlaylistService } from '../../core/services/playlist.service';
 
 @Component({
   selector: 'app-podcast-detail',
@@ -68,6 +69,31 @@ import { OfflineStorageService } from '../../core/services/offline-storage.servi
                 </div>
               </div>
 
+              <!-- Add to queue button -->
+              <button
+                class="btn-queue"
+                [class.in-queue]="pl.isInQueue(episode._id)"
+                (click)="toggleQueue(episode); $event.stopPropagation()"
+                [title]="pl.isInQueue(episode._id) ? 'Quitar de la cola' : 'Añadir a la cola'"
+                [attr.aria-label]="pl.isInQueue(episode._id) ? 'Quitar de la cola' : 'Añadir a la cola'"
+              >
+                @if (pl.isInQueue(episode._id)) {
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+                    <line x1="18" y1="9" x2="24" y2="9" stroke="none"/>
+                    <polyline points="3 6 3 18 5.5 12" fill="currentColor" stroke="none"/>
+                    <line x1="19" y1="10" x2="24" y2="10" stroke="none"/>
+                  </svg>
+                  <span class="btn-queue-label">En cola</span>
+                } @else {
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+                    <polyline points="3 6 3 18 5.5 12" fill="currentColor" stroke="none"/>
+                  </svg>
+                  <span class="btn-queue-label">+ Cola</span>
+                }
+              </button>
+
               <!-- Download button -->
               <button
                 class="btn-download"
@@ -131,6 +157,19 @@ import { OfflineStorageService } from '../../core/services/offline-storage.servi
     .ep-title { font-size: var(--font-md); font-weight: 500; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
     .ep-meta { display: flex; gap: var(--space-sm); color: var(--text-muted); font-size: var(--font-xs); margin-top: 2px; }
 
+    /* Queue button */
+    .btn-queue {
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      height: 44px; padding: 0 var(--space-sm); flex-shrink: 0;
+      border-radius: var(--radius-full); color: var(--text-muted);
+      font-size: var(--font-xs); font-weight: 600;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+    }
+    .btn-queue:hover:not(:disabled) { color: var(--accent-secondary); background: var(--accent-secondary-dim); }
+    .btn-queue.in-queue { color: var(--accent-secondary); background: var(--accent-secondary-dim); }
+    .btn-queue-label { font-size: 10px; font-weight: 700; }
+
     /* Download button */
     .btn-download {
       display: flex; align-items: center; justify-content: center; gap: 4px;
@@ -174,6 +213,7 @@ export class PodcastDetailComponent implements OnInit {
     private api: ApiService,
     public player: AudioPlayerService,
     public offline: OfflineStorageService,
+    public pl: PlaylistService,
   ) {}
 
   async ngOnInit() {
@@ -227,6 +267,20 @@ export class PodcastDetailComponent implements OnInit {
       podcastTitle: this.podcast()?.title, podcastImageUrl: this.podcast()?.imageUrl,
     };
     this.player.play(ep);
+  }
+
+  toggleQueue(episode: any): void {
+    const ep: PlayerEpisode = {
+      _id: episode._id, title: episode.title, audioUrl: episode.audioUrl,
+      imageUrl: episode.imageUrl, duration: episode.duration,
+      durationSeconds: episode.durationSeconds, podcastId: this.podcast()?._id,
+      podcastTitle: this.podcast()?.title, podcastImageUrl: this.podcast()?.imageUrl,
+    };
+    if (this.pl.isInQueue(episode._id)) {
+      this.pl.remove(episode._id);
+    } else {
+      this.pl.addToQueue(ep);
+    }
   }
 
   toggleDownload(episode: any) {

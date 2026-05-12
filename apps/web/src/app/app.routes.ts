@@ -48,6 +48,11 @@ export const appRoutes: Route[] = [
         loadComponent: () =>
           import('./features/search/search.component').then(m => m.SearchComponent),
       },
+      {
+        path: 'playlist',
+        loadComponent: () =>
+          import('./features/playlist/playlist.component').then(m => m.PlaylistComponent),
+      },
     ],
   },
   { path: '**', redirectTo: 'library' },
