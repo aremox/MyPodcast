@@ -1,5 +1,6 @@
 import { Injectable, signal, computed, effect } from '@angular/core';
 import { ApiService } from './api.service';
+import { AuthService } from '../auth/auth.service';
 
 export interface PlayerEpisode {
   _id: string;
@@ -39,7 +40,7 @@ export class AudioPlayerService {
   readonly formattedCurrentTime = computed(() => this.formatTime(this.currentTime()));
   readonly formattedDuration = computed(() => this.formatTime(this.duration()));
 
-  constructor(private api: ApiService) {
+  constructor(private api: ApiService, private auth: AuthService) {
     this.setupAudioListeners();
     this.restoreState();
     this.setupMediaSession();
@@ -52,9 +53,9 @@ export class AudioPlayerService {
       this.currentEpisode.set(episode);
       this.isLoading.set(true);
 
-      // Use proxy URL for audio
-      const audioUrl = this.api.getAudioProxyUrl(episode._id);
-      this.audio.src = audioUrl;
+      // Build authenticated audio URL with JWT as query param
+      // (native <audio> cannot send Authorization headers)
+      this.loadAudioWithAuth(episode._id);
 
       // Try to restore progress
       try {
@@ -127,6 +128,15 @@ export class AudioPlayerService {
     this.currentTime.set(0);
     this.duration.set(0);
     this.stopProgressTracking();
+  }
+
+  private loadAudioWithAuth(episodeId: string): void {
+    // The proxy endpoint accepts JWT as a ?token= query param
+    // This allows the native <audio> element to stream audio with auth
+    const proxyUrl = this.api.getAudioProxyUrl(episodeId);
+    const token = this.auth.token();
+    const url = token ? `${proxyUrl}?token=${encodeURIComponent(token)}` : proxyUrl;
+    this.audio.src = url;
   }
 
   private setupAudioListeners(): void {

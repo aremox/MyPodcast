@@ -1,27 +1,46 @@
-import { Controller, Get, Param, Req, Res, UseGuards, Logger } from '@nestjs/common';
+import { Controller, Get, Param, Query, Req, Res, UnauthorizedException, Logger } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { EpisodesService } from '../episodes/episodes.service';
 
-@UseGuards(JwtAuthGuard)
 @Controller('proxy')
 export class ProxyController {
   private readonly logger = new Logger(ProxyController.name);
 
-  constructor(private episodesService: EpisodesService) {}
+  constructor(
+    private episodesService: EpisodesService,
+    private jwtService: JwtService,
+    private configService: ConfigService,
+  ) {}
 
   /**
    * Proxy audio streams from iVoox.
    * Supports byte-range requests for seeking in the player.
-   * This avoids CORS issues and allows the Service Worker to cache audio.
+   * Accepts JWT either as Authorization header OR as ?token= query param
+   * (the native <audio> element cannot set custom headers).
    */
   @Get('audio/:episodeId')
   async streamAudio(
     @Param('episodeId') episodeId: string,
+    @Query('token') tokenParam: string,
     @Req() req: Request,
     @Res() res: Response,
   ) {
+    // Verify JWT from header OR query param
+    const bearerToken = req.headers.authorization?.replace('Bearer ', '');
+    const token = bearerToken || tokenParam;
+    if (!token) {
+      return res.status(401).json({ error: 'No autorizado' });
+    }
+    try {
+      await this.jwtService.verifyAsync(token, {
+        secret: this.configService.get<string>('JWT_SECRET', 'mypodcast-super-secret-key-dev'),
+      });
+    } catch {
+      return res.status(401).json({ error: 'Token inválido o expirado' });
+    }
     try {
       const episode = await this.episodesService.findById(episodeId);
       if (!episode || !episode.audioUrl) {

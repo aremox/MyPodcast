@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mypodcast-v1';
+const CACHE_NAME = 'mypodcast-v2';
 const AUDIO_CACHE_NAME = 'mypodcast-audio-v1';
 const MAX_AUDIO_CACHE_ITEMS = 20;
 
@@ -34,16 +34,21 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // Audio proxy — Cache First (offline playback)
+  // Only handle http/https — ignore chrome-extension://, data:, etc.
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    return;
+  }
+
+  // Offline audio — served from Cache API (downloaded by OfflineStorageService)
   if (url.pathname.startsWith('/api/proxy/audio/')) {
     event.respondWith(handleAudioRequest(event.request));
     return;
   }
 
-  // API requests — Network First
+  // All other API requests — always go to network (Angular interceptor handles JWT)
+  // The SW must NOT intercept these or the Authorization header gets lost
   if (url.pathname.startsWith('/api/')) {
-    event.respondWith(handleApiRequest(event.request));
-    return;
+    return; // Let the browser handle it directly
   }
 
   // Static assets — Stale While Revalidate
@@ -55,6 +60,7 @@ async function handleAudioRequest(request) {
   const cached = await cache.match(request);
   if (cached) return cached;
 
+  // Not in cache — fetch from network (will carry the JWT from OfflineStorageService)
   try {
     const response = await fetch(request);
     if (response.ok) {
@@ -68,25 +74,10 @@ async function handleAudioRequest(request) {
   }
 }
 
-async function handleApiRequest(request) {
-  const cache = await caches.open(CACHE_NAME);
-  try {
-    const response = await fetch(request);
-    if (response.ok && request.method === 'GET') {
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch {
-    const cached = await cache.match(request);
-    if (cached) return cached;
-    return new Response(JSON.stringify({ error: 'Sin conexión' }), {
-      status: 503,
-      headers: { 'Content-Type': 'application/json' },
-    });
-  }
-}
-
 async function handleStaticRequest(request) {
+  // Skip non-cacheable requests (POST, etc.)
+  if (request.method !== 'GET') return fetch(request);
+
   const cache = await caches.open(CACHE_NAME);
   const cached = await cache.match(request);
 
