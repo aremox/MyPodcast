@@ -156,6 +156,7 @@ import { ExportService } from '../../core/services/export.service';
             <button class="btn-cancel" (click)="showConfirm.set(false)">Cancelar</button>
             <button class="btn-confirm" (click)="clearQueue()">Vaciar</button>
           </div>
+        </div>
       </div>
     }
 
