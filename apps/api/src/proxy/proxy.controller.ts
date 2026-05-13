@@ -82,6 +82,12 @@ export class ProxyController {
       res.setHeader('Cache-Control', 'public, max-age=86400');
 
       response.data.pipe(res);
+
+      req.on('close', () => {
+        if (!response.data.destroyed) {
+          response.data.destroy();
+        }
+      });
     } catch (error) {
       this.logger.error(`Proxy error for episode ${episodeId}: ${error.message}`);
       if (!res.headersSent) {
