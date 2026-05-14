@@ -1,5 +1,6 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { PlayerEpisode } from './audio-player.service';
+import { AuthService } from '../auth/auth.service';
 
 // Basic Type Definitions for File System Access API
 interface FileSystemHandle {
@@ -25,6 +26,8 @@ declare global {
 
 @Injectable({ providedIn: 'root' })
 export class ExportService {
+  constructor(private auth: AuthService) {}
+
   isExporting = signal(false);
   totalToExport = signal(0);
   currentExported = signal(0);
@@ -74,7 +77,14 @@ export class ExportService {
         this.currentEpisodeName.set(filename);
 
         // Fetch audio data
-        const response = await fetch(episode.audioUrl);
+        let downloadUrl = episode.audioUrl;
+        if (episode._id) {
+          const token = this.auth.token();
+          if (token) {
+            downloadUrl = `/api/proxy/audio/${episode._id}?token=${token}`;
+          }
+        }
+        const response = await fetch(downloadUrl);
         if (!response.ok) {
           throw new Error(`No se pudo descargar: ${episode.title}`);
         }
