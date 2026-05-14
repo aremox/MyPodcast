@@ -48,7 +48,11 @@ export class ProxyController {
       }
 
       const headers: Record<string, string> = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Referer': 'https://www.ivoox.com/',
+        'Accept': '*/*',
+        'Accept-Language': 'es-ES,es;q=0.9,en;q=0.8',
+        'Connection': 'keep-alive',
       };
 
       // Forward Range header for seeking support
@@ -60,7 +64,10 @@ export class ProxyController {
         headers,
         responseType: 'stream',
         timeout: 30000,
+        validateStatus: () => true, // Don't throw on 4xx/5xx to handle them manually
       });
+
+      this.logger.log(`Proxy response for ${episodeId}: ${response.status} ${response.statusText}`);
 
       // Forward relevant headers
       res.status(response.status);
@@ -89,9 +96,9 @@ export class ProxyController {
         }
       });
     } catch (error) {
-      this.logger.error(`Proxy error for episode ${episodeId}: ${error.message}`);
+      this.logger.error(`Proxy exception for episode ${episodeId}: ${error.message}`);
       if (!res.headersSent) {
-        res.status(502).json({ error: 'Error al obtener el audio' });
+        res.status(502).json({ error: 'Error al obtener el audio', details: error.message });
       }
     }
   }
