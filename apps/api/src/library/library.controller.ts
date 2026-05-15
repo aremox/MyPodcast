@@ -1,3 +1,4 @@
+import { Controller, Get, Post, Delete, Param, Body, Query, Request, UseGuards, Inject, forwardRef } from '@nestjs/common';
 import { LibraryService } from './library.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthService } from '../auth/auth.service';
@@ -13,6 +14,7 @@ export class LibraryController {
 
   // ===== SUBSCRIPTIONS =====
 
+  @UseGuards(JwtAuthGuard)
   @Get('subscriptions')
   async getSubscriptions(@Request() req: any) {
     const subs = await this.libraryService.getUserSubscriptions(req.user.userId);
@@ -35,6 +37,7 @@ export class LibraryController {
 
   // ===== FAVORITES =====
 
+  @UseGuards(JwtAuthGuard)
   @Get('favorites')
   async getFavorites(@Request() req: any) {
     const favs = await this.libraryService.getUserFavorites(req.user.userId);
@@ -57,6 +60,7 @@ export class LibraryController {
 
   // ===== HISTORY =====
 
+  @UseGuards(JwtAuthGuard)
   @Get('history')
   async getHistory(
     @Request() req: any,
@@ -117,8 +121,6 @@ export class LibraryController {
   ) {
     let episodeIds: string[] = [];
     if (body.completed) {
-      // Import the episode service and call it
-      // Wait, LibraryController needs EpisodesService!
       episodeIds = await this.episodesService.findAllIdsByPodcast(podcastId);
     }
     await this.libraryService.markAllAsCompleted(req.user.userId, podcastId, body.completed, episodeIds);
@@ -127,6 +129,7 @@ export class LibraryController {
 
   // ===== SYNC CONFIG =====
 
+  @UseGuards(JwtAuthGuard)
   @Get('sync-config')
   async getSyncConfig(@Request() req: any) {
     const config = await this.libraryService.getSyncConfig(req.user.userId);
