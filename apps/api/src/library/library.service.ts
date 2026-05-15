@@ -29,7 +29,7 @@ export class LibraryService {
     return this.subscriptionModel.findOneAndUpdate(
       { userId, podcastId },
       { userId, podcastId, notifications: true },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: 'after' },
     ).exec();
   }
 
@@ -59,7 +59,7 @@ export class LibraryService {
     return this.favoriteModel.findOneAndUpdate(
       { userId, episodeId },
       { userId, episodeId },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: 'after' },
     ).exec();
   }
 
@@ -109,7 +109,7 @@ export class LibraryService {
         completed,
         lastPlayedAt: new Date(),
       },
-      { upsert: true, new: true },
+      { upsert: true, returnDocument: 'after' },
     ).exec();
   }
 
