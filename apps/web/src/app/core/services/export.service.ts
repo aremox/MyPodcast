@@ -76,12 +76,11 @@ export class ExportService {
         
         this.currentEpisodeName.set(filename);
 
-        // Fetch audio data
         let downloadUrl = episode.audioUrl;
         if (episode._id) {
           const token = this.auth.token();
           if (token) {
-            downloadUrl = `/api/proxy/audio/${episode._id}?token=${token}`;
+            downloadUrl = `/api/proxy/audio/${episode._id}?token=${token}&export=true`;
           }
         }
         const response = await fetch(downloadUrl);

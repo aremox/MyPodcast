@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mypodcast-v3';
+const CACHE_NAME = 'mypodcast-v4';
 const AUDIO_CACHE_NAME = 'mypodcast-audio-v2';
 const MAX_AUDIO_CACHE_ITEMS = 20;
 
@@ -41,6 +41,10 @@ self.addEventListener('fetch', (event) => {
 
   // Offline audio — served from Cache API (downloaded by OfflineStorageService)
   if (url.pathname.startsWith('/api/proxy/audio/')) {
+    // Bypass service worker caching for direct USB exports to prevent memory exhaustion or channel closing
+    if (url.searchParams.has('export')) {
+      return;
+    }
     event.respondWith(handleAudioRequest(event.request));
     return;
   }
