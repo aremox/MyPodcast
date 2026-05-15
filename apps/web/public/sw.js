@@ -1,5 +1,5 @@
-const CACHE_NAME = 'mypodcast-v2';
-const AUDIO_CACHE_NAME = 'mypodcast-audio-v1';
+const CACHE_NAME = 'mypodcast-v3';
+const AUDIO_CACHE_NAME = 'mypodcast-audio-v2';
 const MAX_AUDIO_CACHE_ITEMS = 20;
 
 const STATIC_ASSETS = [
@@ -63,13 +63,15 @@ async function handleAudioRequest(request) {
   // Not in cache — fetch from network (will carry the JWT from OfflineStorageService)
   try {
     const response = await fetch(request);
-    if (response.ok) {
+    // Only cache full 200 responses. Caching 206 Partial Content throws an error.
+    if (response.status === 200) {
       const cloned = response.clone();
       await enforceAudioCacheLimit(cache);
       await cache.put(request, cloned);
     }
     return response;
-  } catch {
+  } catch (err) {
+    console.error('SW Audio Fetch error:', err);
     return new Response('Audio no disponible offline', { status: 503 });
   }
 }
