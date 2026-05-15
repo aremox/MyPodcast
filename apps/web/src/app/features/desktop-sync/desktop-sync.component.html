@@ -1,0 +1,57 @@
+<div class="container py-4">
+  <div class="header mb-4">
+    <h1>Sincronizador de Escritorio</h1>
+    <p class="text-muted">Configura la sincronización automática con tu USB</p>
+  </div>
+
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <div class="d-flex align-items-center mb-3">
+        <div class="status-indicator" [class.online]="isAgentOnline"></div>
+        <h5 class="mb-0 ms-2">Estado del Agente: {{ isAgentOnline ? 'Conectado' : 'Desconectado' }}</h5>
+      </div>
+
+      <div *ngIf="!isAgentOnline" class="alert alert-warning">
+        <p class="mb-0">No se ha detectado el agente de escritorio. Asegúrate de que la aplicación esté ejecutándose en segundo plano.</p>
+      </div>
+
+      <div *ngIf="isAgentOnline">
+        <div class="mb-4">
+          <label class="form-label">Seleccionar USB para Sincronizar</label>
+          <select class="form-select" [(ngModel)]="config.targetUsbSerial">
+            <option value="">Selecciona un dispositivo...</option>
+            <option *ngFor="let drive of connectedDrives" [value]="drive.serialNumber">
+              {{ drive.volumeName }} ({{ drive.deviceId }}) - {{ drive.serialNumber }}
+            </option>
+          </select>
+          <div class="form-text">Elige el USB que quieres que se sincronice automáticamente al conectarlo.</div>
+        </div>
+
+        <div class="mb-4">
+          <label class="form-label">Carpeta de Destino en el USB</label>
+          <input type="text" class="form-control" [(ngModel)]="config.targetFolder" placeholder="Ej: Podcasts">
+          <div class="form-text">Nombre de la carpeta dentro del USB donde se guardarán los MP3.</div>
+        </div>
+
+        <button class="btn btn-primary w-100" (click)="saveConfig()" [disabled]="!config.targetUsbSerial">
+          Guardar Configuración y Vincular
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm" *ngIf="isAgentOnline && config.targetUsbSerial">
+    <div class="card-header bg-transparent border-0">
+      <h5 class="mb-0">Información de Sincronización</h5>
+    </div>
+    <div class="card-body">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span>Estado de Sincronización:</span>
+        <span class="badge" [class.bg-success]="!isSyncing" [class.bg-info]="isSyncing">
+          {{ isSyncing ? 'Sincronizando...' : 'Listo' }}
+        </span>
+      </div>
+      <p class="small text-muted">La app de escritorio monitoriza tus puertos USB y empezará a descargar tu cola de reproducción en cuanto detecte el dispositivo seleccionado.</p>
+    </div>
+  </div>
+</div>

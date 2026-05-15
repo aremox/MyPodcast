@@ -53,6 +53,11 @@ export const appRoutes: Route[] = [
         loadComponent: () =>
           import('./features/playlist/playlist.component').then(m => m.PlaylistComponent),
       },
+      {
+        path: 'desktop-sync',
+        loadComponent: () =>
+          import('./features/desktop-sync/desktop-sync.component').then(m => m.DesktopSyncComponent),
+      },
     ],
   },
   { path: '**', redirectTo: 'library' },
