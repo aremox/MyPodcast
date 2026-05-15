@@ -38,6 +38,12 @@ export class AuthService {
     };
   }
 
+  async loginById(userId: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user) throw new UnauthorizedException('Usuario no encontrado');
+    return this.login(user);
+  }
+
   async register(email: string, username: string, password: string) {
     const user = await this.usersService.create(email, username, password);
     const tokens = await this.generateTokens(user);

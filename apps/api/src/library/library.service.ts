@@ -4,6 +4,7 @@ import { Model } from 'mongoose';
 import { PlayHistory, PlayHistoryDocument } from './schemas/play-history.schema';
 import { Favorite, FavoriteDocument } from './schemas/favorite.schema';
 import { Subscription, SubscriptionDocument } from './schemas/subscription.schema';
+import { SyncConfig, SyncConfigDocument } from './schemas/sync-config.schema';
 
 @Injectable()
 export class LibraryService {
@@ -13,6 +14,7 @@ export class LibraryService {
     @InjectModel(PlayHistory.name) private playHistoryModel: Model<PlayHistoryDocument>,
     @InjectModel(Favorite.name) private favoriteModel: Model<FavoriteDocument>,
     @InjectModel(Subscription.name) private subscriptionModel: Model<SubscriptionDocument>,
+    @InjectModel(SyncConfig.name) private syncConfigModel: Model<SyncConfigDocument>,
   ) {}
 
   // ===== SUBSCRIPTIONS =====
@@ -167,5 +169,53 @@ export class LibraryService {
         await this.playHistoryModel.bulkWrite(bulkOps);
       }
     }
+  }
+
+  // ===== SYNC CONFIG =====
+
+  async getSyncConfig(userId: string): Promise<SyncConfigDocument | null> {
+    return this.syncConfigModel.findOne({ userId }).exec();
+  }
+
+  async saveSyncConfig(userId: string, targetUsbSerial: string, targetFolder: string): Promise<SyncConfigDocument> {
+    return this.syncConfigModel.findOneAndUpdate(
+      { userId },
+      { userId, targetUsbSerial, targetFolder },
+      { upsert: true, returnDocument: 'after' }
+    ).exec();
+  }
+
+  async updateLastSyncAt(userId: string): Promise<void> {
+    await this.syncConfigModel.updateOne({ userId }, { lastSyncAt: new Date() }).exec();
+  }
+
+  async generatePairingCode(userId: string): Promise<string> {
+    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
+    const expires = new Date();
+    expires.setMinutes(expires.getMinutes() + 10); // 10 mins
+
+    await this.syncConfigModel.findOneAndUpdate(
+      { userId },
+      { userId, pairingCode: code, pairingCodeExpires: expires },
+      { upsert: true }
+    ).exec();
+
+    return code;
+  }
+
+  async validatePairingCode(code: string): Promise<string | null> {
+    const config = await this.syncConfigModel.findOne({
+      pairingCode: code,
+      pairingCodeExpires: { $gt: new Date() }
+    }).exec();
+
+    if (!config) return null;
+
+    // Clear code after use
+    config.pairingCode = undefined;
+    config.pairingCodeExpires = undefined;
+    await config.save();
+
+    return config.userId.toString();
   }
 }

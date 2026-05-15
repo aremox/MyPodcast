@@ -1,7 +1,7 @@
 import { Component, OnInit, OnDestroy, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../core/auth/auth.service';
 
 @Component({
@@ -9,27 +9,30 @@ import { AuthService } from '../../core/auth/auth.service';
   standalone: true,
   imports: [CommonModule, FormsModule],
   templateUrl: './desktop-sync.component.html',
-  styleUrls: ['./desktop-sync.component.scss']
+  styleUrl: './desktop-sync.component.scss'
 })
 export class DesktopSyncComponent implements OnInit, OnDestroy {
   private http = inject(HttpClient);
   private auth = inject(AuthService);
 
-  private readonly AGENT_URL = 'http://127.0.0.1:31415';
+  private readonly API_URL = '/api/library/sync-config';
+  private readonly AGENT_LOCAL_URL = 'http://localhost:31415';
   private pollInterval: any;
 
   isAgentOnline = false;
   isSyncing = false;
   connectedDrives: any[] = [];
+  pairingCode: string | null = null;
+  
   config: any = {
     targetUsbSerial: '',
     targetFolder: 'Podcasts',
-    jwtToken: ''
   };
 
   ngOnInit() {
-    this.checkAgentStatus();
-    this.pollInterval = setInterval(() => this.checkAgentStatus(), 5000);
+    this.loadConfigFromBackend();
+    this.checkAgentLocalStatus();
+    this.pollInterval = setInterval(() => this.checkAgentLocalStatus(), 5000);
   }
 
   ngOnDestroy() {
@@ -38,18 +41,23 @@ export class DesktopSyncComponent implements OnInit, OnDestroy {
     }
   }
 
-  checkAgentStatus() {
-    this.http.get(`${this.AGENT_URL}/status`).subscribe({
+  loadConfigFromBackend() {
+    this.http.get<any>(this.API_URL).subscribe({
+      next: (res) => {
+        if (res.data) {
+          this.config.targetUsbSerial = res.data.targetUsbSerial;
+          this.config.targetFolder = res.data.targetFolder || 'Podcasts';
+        }
+      }
+    });
+  }
+
+  checkAgentLocalStatus() {
+    this.http.get(`${this.AGENT_LOCAL_URL}/status`).subscribe({
       next: (res: any) => {
         this.isAgentOnline = true;
         this.isSyncing = res.isSyncing;
         this.connectedDrives = res.connectedDrives || [];
-        
-        // Only override local config if we haven't touched it or if it's empty
-        if (!this.config.targetUsbSerial && res.config?.targetUsbSerial) {
-          this.config.targetUsbSerial = res.config.targetUsbSerial;
-          this.config.targetFolder = res.config.targetFolder || 'Podcasts';
-        }
       },
       error: () => {
         this.isAgentOnline = false;
@@ -59,14 +67,20 @@ export class DesktopSyncComponent implements OnInit, OnDestroy {
   }
 
   saveConfig() {
-    this.config.jwtToken = this.auth.token();
-    this.http.post(`${this.AGENT_URL}/config`, this.config).subscribe({
+    this.http.post(this.API_URL, this.config).subscribe({
       next: () => {
-        alert('Configuración guardada en el agente de escritorio.');
-        this.checkAgentStatus();
+        alert('✅ Configuración guardada en tu perfil.');
       },
       error: () => {
-        alert('Error al conectar con el agente de escritorio.');
+        alert('❌ Error al guardar la configuración.');
+      }
+    });
+  }
+
+  generatePairingCode() {
+    this.http.post<any>('/api/library/pair/generate', {}).subscribe({
+      next: (res) => {
+        this.pairingCode = res.code;
       }
     });
   }
