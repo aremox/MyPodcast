@@ -1648,3 +1648,68 @@
 [2026-05-16T20:36:44.363Z] [SYNC] Found 4 items in web queue.
 [2026-05-16T20:36:44.363Z] [SYNC] Downloading (1/4): Los MCPs y Skills llegan a Gemini. Diferencias clave y casos de uso.
 [2026-05-16T20:37:44.480Z] [SYNC] Downloading (2/4): Experto nuclear responde las preguntas más buscadas sobre energía nuclear
+[2026-05-16T20:38:00.310Z] [SYNC] Downloading (3/4): 255- Spec Driven Design
+[2026-05-16T20:39:09.432Z] [SYNC] Downloading (4/4): Fallo de sistema - 865: 20 años Diabólicos - 16/05/26
+[2026-05-16T20:39:36.280Z] [INFO] Tray click: Sincronizar ahora
+[2026-05-16T20:39:36.281Z] [INFO] Manual sync requested
+[2026-05-16T20:39:36.363Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T20:40:09.745Z] [INFO] Tray click: Sincronizar ahora
+[2026-05-16T20:40:09.745Z] [INFO] Manual sync requested
+[2026-05-16T20:40:09.778Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T20:40:46.841Z] [INFO] Tray click: Sincronizar ahora
+[2026-05-16T20:40:46.841Z] [INFO] Manual sync requested
+[2026-05-16T20:40:46.869Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T20:41:07.385Z] [INFO] Tray click: Sincronizar ahora
+[2026-05-16T20:41:07.385Z] [INFO] Manual sync requested
+[2026-05-16T20:41:07.407Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T20:43:05.759Z] [SYNC] Sync complete!
+[2026-05-16T20:43:41.128Z] [INFO] Tray click: Sincronizar ahora
+[2026-05-16T20:43:41.128Z] [INFO] Manual sync requested
+[2026-05-16T20:43:41.145Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T20:43:41.439Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T20:43:41.448Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T20:43:41.448Z] [SYNC] Removing old or reindexed file: 1. Los MCPs y Skills llegan a Gemini. Diferencias clave y casos de uso..mp3
+[2026-05-16T20:43:41.491Z] [SYNC] Removing old or reindexed file: 2. Experto nuclear responde las preguntas más buscadas sobre energía nuclear.mp3
+[2026-05-16T20:43:41.517Z] [SYNC] Removing old or reindexed file: 3. 255- Spec Driven Design.mp3
+[2026-05-16T20:43:41.565Z] [SYNC] Removing old or reindexed file: 4. Fallo de sistema - 865_ 20 años Diabólicos - 16_05_26.mp3
+[2026-05-16T20:43:41.655Z] [SYNC] Sync complete!
+[2026-05-16T20:44:13.232Z] [INFO] Tray click: Sincronizar ahora
+[2026-05-16T20:44:13.232Z] [INFO] Manual sync requested
+[2026-05-16T20:44:13.260Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T20:44:13.545Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T20:44:13.566Z] [SYNC] Found 3 items in web queue.
+[2026-05-16T20:44:13.567Z] [SYNC] Downloading (1/3): Green QA: calidad, eficiencia y sostenibilidad.
+[2026-05-16T20:45:05.888Z] [SYNC] Downloading (2/3): Por qué NADIE habla de las Gafas Inteligentes
+[2026-05-16T20:45:52.454Z] [SYNC] Downloading (3/3): 254- Realidades de un Departamento de TI
+[2026-05-16T20:47:04.357Z] [SYNC] Sync complete!
+[2026-05-16T20:51:15.344Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T20:51:15.638Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T20:51:15.651Z] [SYNC] Found 3 items in web queue.
+[2026-05-16T20:51:15.653Z] [SYNC] Sync complete!
+[2026-05-16T21:06:15.361Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T21:06:15.642Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T21:06:15.664Z] [SYNC] Found 3 items in web queue.
+[2026-05-16T21:06:15.666Z] [SYNC] Sync complete!
+[2026-05-16T21:21:15.346Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T21:21:15.629Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T21:21:15.643Z] [SYNC] Found 3 items in web queue.
+[2026-05-16T21:21:15.645Z] [SYNC] Sync complete!
+[2026-05-16T21:36:15.353Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T21:36:15.635Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T21:36:15.648Z] [SYNC] Found 3 items in web queue.
+[2026-05-16T21:36:15.650Z] [SYNC] Sync complete!
+[2026-05-16T21:51:15.350Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T21:51:15.627Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T21:51:15.642Z] [SYNC] Found 3 items in web queue.
+[2026-05-16T21:51:15.644Z] [SYNC] Sync complete!
+[2026-05-16T22:06:15.375Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T22:06:15.664Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T22:06:15.678Z] [SYNC] Found 3 items in web queue.
+[2026-05-16T22:06:15.680Z] [SYNC] Sync complete!
+[2026-05-16T22:21:15.371Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T22:21:15.659Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T22:21:15.673Z] [SYNC] Found 2 items in web queue.
+[2026-05-16T22:21:15.674Z] [SYNC] Removing old or reindexed file: 2. Por qué NADIE habla de las Gafas Inteligentes.mp3
+[2026-05-16T22:21:15.723Z] [SYNC] Removing old or reindexed file: 3. 254- Realidades de un Departamento de TI.mp3
+[2026-05-16T22:21:15.770Z] [SYNC] Downloading (2/2): 254- Realidades de un Departamento de TI
+[2026-05-16T22:22:26.554Z] [SYNC] Sync complete!

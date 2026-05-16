@@ -223,4 +223,36 @@ export class LibraryService {
 
     return config.userId.toString();
   }
+
+  // ===== AUTO-QUEUE LOGIC =====
+  
+  /** Get all user IDs subscribed to a podcast */
+  async getSubscribedUserIds(podcastId: string): Promise<string[]> {
+    const subs = await this.subscriptionModel.find({ podcastId }).exec();
+    return subs.map(s => s.userId.toString());
+  }
+
+  /** Add multiple episodes to the queues of multiple users */
+  async addEpisodesToUserQueues(userIds: string[], episodeIds: string[]) {
+    if (userIds.length === 0 || episodeIds.length === 0) return;
+
+    this.logger.log(`[AutoQueue] Adding ${episodeIds.length} episodes to ${userIds.length} users`);
+    
+    const epObjectIds = episodeIds.map(id => new Types.ObjectId(id));
+
+    // Update each user's queue using $push with $each to add to the end
+    const ops = userIds.map(userId => ({
+      updateOne: {
+        filter: { userId: new Types.ObjectId(userId) },
+        update: { 
+          $push: { 
+            queue: { $each: epObjectIds } 
+          } 
+        },
+        upsert: true
+      }
+    }));
+
+    await this.syncConfigModel.bulkWrite(ops);
+  }
 }

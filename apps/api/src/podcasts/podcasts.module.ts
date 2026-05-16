@@ -7,11 +7,13 @@ import { RssParserService } from './rss-parser.service';
 import { ScraperService } from './scraper.service';
 import { CronService } from './cron.service';
 import { EpisodesModule } from '../episodes/episodes.module';
+import { LibraryModule } from '../library/library.module';
 
 @Module({
   imports: [
     MongooseModule.forFeature([{ name: Podcast.name, schema: PodcastSchema }]),
     forwardRef(() => EpisodesModule),
+    forwardRef(() => LibraryModule),
   ],
   controllers: [PodcastsController],
   providers: [PodcastsService, RssParserService, ScraperService, CronService],

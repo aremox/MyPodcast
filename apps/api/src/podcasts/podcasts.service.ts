@@ -1,10 +1,11 @@
-import { Injectable, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Podcast, PodcastDocument } from './schemas/podcast.schema';
 import { RssParserService } from './rss-parser.service';
 import { ScraperService } from './scraper.service';
 import { EpisodesService } from '../episodes/episodes.service';
+import { LibraryService } from '../library/library.service';
 
 @Injectable()
 export class PodcastsService {
@@ -15,6 +16,8 @@ export class PodcastsService {
     private rssParserService: RssParserService,
     private scraperService: ScraperService,
     private episodesService: EpisodesService,
+    @Inject(forwardRef(() => LibraryService))
+    private libraryService: LibraryService,
   ) {}
 
   async findAll(): Promise<PodcastDocument[]> {
@@ -110,14 +113,21 @@ export class PodcastsService {
       podcast.imageUrl = feed.imageUrl || podcast.imageUrl;
       podcast.lastFetchedAt = new Date();
 
-      // Upsert episodes (only new ones will be created)
-      const newCount = await this.episodesService.upsertMany(podcastId, feed.episodes);
+      // Upsert episodes (returns newly created IDs)
+      const newEpisodeIds = await this.episodesService.upsertMany(podcastId, feed.episodes);
       podcast.episodeCount = await this.episodesService.countByPodcast(podcastId);
 
       await podcast.save();
 
-      if (newCount > 0) {
-        this.logger.log(`Refreshed ${podcast.title}: ${newCount} new episodes`);
+      if (newEpisodeIds.length > 0) {
+        this.logger.log(`[QueueSync] Detected ${newEpisodeIds.length} new episodes for ${podcast.title}`);
+        
+        // ── Auto-add to queues ──────────────────────────────────────────────
+        const userIds = await this.libraryService.getSubscribedUserIds(podcastId);
+        if (userIds.length > 0) {
+          this.logger.log(`[QueueSync] Adding new episodes to queues of ${userIds.length} users`);
+          await this.libraryService.addEpisodesToUserQueues(userIds, newEpisodeIds);
+        }
       }
 
       return podcast;

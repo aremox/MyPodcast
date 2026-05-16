@@ -1,6 +1,6 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { Episode, EpisodeDocument } from './schemas/episode.schema';
 import { ParsedEpisode } from '../podcasts/rss-parser.service';
 
@@ -59,17 +59,19 @@ export class EpisodesService {
   /**
    * Upsert episodes from a parsed RSS feed.
    * Uses guid as unique identifier to avoid duplicates.
-   * Returns the number of new episodes created.
+   * Returns an array of newly created episode IDs.
    */
-  async upsertMany(podcastId: string, parsedEpisodes: ParsedEpisode[]): Promise<number> {
-    let newCount = 0;
+  async upsertMany(podcastId: string, parsedEpisodes: ParsedEpisode[]): Promise<string[]> {
+    const newEpisodeIds: string[] = [];
 
     for (const ep of parsedEpisodes) {
-      const result = await this.episodeModel.updateOne(
+      // Use findOneAndUpdate to get the document if it's new
+      // $setOnInsert only sets fields on creation
+      const result = await this.episodeModel.findOneAndUpdate(
         { guid: ep.guid },
         {
           $setOnInsert: {
-            podcastId,
+            podcastId: new Types.ObjectId(podcastId),
             title: ep.title,
             description: ep.description,
             audioUrl: ep.audioUrl,
@@ -82,15 +84,16 @@ export class EpisodesService {
             fileSize: ep.fileSize,
           },
         },
-        { upsert: true },
+        { upsert: true, new: true, rawResult: true },
       ).exec();
 
-      if (result.upsertedCount > 0) {
-        newCount++;
+      // In Mongoose findOneAndUpdate with rawResult, we check lastErrorObject.updatedExisting
+      if (result.lastErrorObject && !result.lastErrorObject.updatedExisting) {
+        newEpisodeIds.push(result.value._id.toString());
       }
     }
 
-    return newCount;
+    return newEpisodeIds;
   }
 
   async deleteByPodcast(podcastId: string): Promise<void> {
