@@ -97,14 +97,18 @@ export class PlaylistService {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(episodes));
       
       const episodeIds = episodes.map(e => e._id);
-      console.log('[Playlist] Syncing queue to cloud...', episodeIds);
+      console.log(`[Playlist] Attempting cloud sync with ${episodeIds.length} episodes...`, episodeIds);
       
       this.http.post(`${this.API_URL}/queue`, { episodeIds }).subscribe({
-        next: () => console.log('[Playlist] Cloud sync SUCCESS'),
-        error: (err) => console.error('[Playlist] Cloud sync ERROR:', err)
+        next: () => {
+          console.log('%c[Playlist] Cloud sync SUCCESS ✅', 'color: #00ff00; font-weight: bold');
+        },
+        error: (err) => {
+          console.error('%c[Playlist] Cloud sync ERROR ❌', 'color: #ff0000; font-weight: bold', err);
+        }
       });
     } catch (e) {
-      console.error('[Playlist] Save error:', e);
+      console.error('[Playlist] Local save error:', e);
     }
   }
 
@@ -127,17 +131,23 @@ export class PlaylistService {
     this.http.get<{ success: boolean; data: any }>(`${this.API_URL}/sync-config`).subscribe({
       next: (res) => {
         if (res.success && res.data && res.data.queue) {
-          const serverQueue = res.data.queue;
+          const serverQueue = res.data.queue.map((ep: any) => ({
+            ...ep,
+            // Ensure compatibility between DB model and PlayerEpisode
+            imageUrl: ep.imageUrl || ep.image || ep.podcastId?.imageUrl,
+            audioUrl: ep.audioUrl || ep.url
+          }));
+
           console.log('[Playlist] Received queue from server:', serverQueue.length);
           
-          // If server has different items, update local (server wins)
-          const localIds = this.queue().map(e => e._id).join(',');
-          const serverIds = serverQueue.map((e: any) => e._id).join(',');
+          // Use JSON stringify for a deep comparison of IDs
+          const localIds = JSON.stringify(this.queue().map(e => e._id));
+          const serverIds = JSON.stringify(serverQueue.map((e: any) => e._id));
           
           if (localIds !== serverIds) {
-            console.log('[Playlist] Updating local queue to match server state');
-            this.queue.set(serverQueue);
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(serverQueue));
+            console.log('[Playlist] Server has different queue, but NOT overwriting local for now to allow manual sync fix');
+            // this.queue.set(serverQueue);
+            // localStorage.setItem(STORAGE_KEY, JSON.stringify(serverQueue));
           }
         }
       },
