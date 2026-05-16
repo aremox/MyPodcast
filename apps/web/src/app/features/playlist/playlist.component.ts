@@ -9,8 +9,9 @@ import { ExportService } from '../../core/services/export.service';
     <div class="playlist-page container animate-fade-in">
       <div class="page-header">
         <div class="header-left">
-          <h1>🎶 Cola de reproducción</h1>
-          <span class="count-badge" *ngIf="pl.count() > 0">{{ pl.count() }} episodios</span>
+          @if (pl.count() > 0) {
+            <span class="count-badge">{{ pl.count() }} episodios</span>
+          }
         </div>
         @if (!pl.isEmpty()) {
           <div class="header-actions">

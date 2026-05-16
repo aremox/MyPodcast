@@ -1,7 +1,7 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { PlayerEpisode } from './audio-player.service';
 import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../../environments/environment';
+import { environment } from '../../../environments/environment';
 
 const STORAGE_KEY = 'playlist_queue';
 
