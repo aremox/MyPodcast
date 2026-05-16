@@ -7,7 +7,8 @@ services:
     volumes:
       - mongodb_data:/data/db
     environment:
-      MONGO_INITDB_DATABASE: mypodcast
+      - MONGO_INITDB_DATABASE=mypodcast
+      - TZ=Europe/Madrid
     networks:
       - mypodcast-net
 
@@ -25,6 +26,7 @@ services:
       - JWT_SECRET=mypodcast-super-secret-key-2026
       - JWT_REFRESH_SECRET=mypodcast-refresh-secret-2026
       - FRONTEND_URL=http://192.168.1.107:84
+      - TZ=Europe/Madrid
     depends_on:
       - mongodb
     networks:
@@ -37,6 +39,8 @@ services:
       dockerfile: apps/web/Dockerfile
     container_name: mypodcast-web
     restart: unless-stopped
+    environment:
+      - TZ=Europe/Madrid
     ports:
       - "84:80"
     depends_on:

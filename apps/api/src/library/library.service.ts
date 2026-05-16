@@ -165,7 +165,7 @@ export class LibraryService {
     await this.syncConfigModel.findOneAndUpdate(
       { userId: new Types.ObjectId(userId) },
       { pairingCode: code, pairingCodeExpires: expires },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: 'after' }
     ).exec();
 
     this.logger.log(`[Pairing] Code ${code} persisted successfully.`);
@@ -173,21 +173,29 @@ export class LibraryService {
   }
 
   async validatePairingCode(code: string): Promise<string | null> {
-    this.logger.log(`Validating code: ${code}`);
-    const config = await this.syncConfigModel.findOne({
-      pairingCode: code,
-      pairingCodeExpires: { $gt: new Date() }
-    }).exec();
+    this.logger.log(`[Pairing] Validating code: ${code}`);
+    
+    // Fetch only by code first to see if it exists at all
+    const config = await this.syncConfigModel.findOne({ pairingCode: code }).exec();
 
     if (!config) {
-      this.logger.warn(`Invalid or expired code: ${code}`);
+      this.logger.warn(`[Pairing] Code not found in database: ${code}`);
       return null;
     }
 
+    const now = new Date();
+    if (config.pairingCodeExpires && config.pairingCodeExpires < now) {
+      this.logger.warn(`[Pairing] Code ${code} has expired. Expired at: ${config.pairingCodeExpires}, Now: ${now}`);
+      return null;
+    }
+
+    this.logger.log(`[Pairing] Code ${code} is valid for user ${config.userId}. Clearing code...`);
+
     // Clear code after use
-    config.pairingCode = undefined;
-    config.pairingCodeExpires = undefined;
-    await config.save();
+    await this.syncConfigModel.updateOne(
+      { _id: config._id },
+      { $unset: { pairingCode: 1, pairingCodeExpires: 1 } }
+    ).exec();
 
     return config.userId.toString();
   }
