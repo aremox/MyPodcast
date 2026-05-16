@@ -4,71 +4,82 @@ import { Syncer } from './syncer';
 import * as path from 'path';
 import * as fs from 'fs';
 import { exec, spawn } from 'child_process';
-import notifier from 'node-notifier';
+const notifier = require('node-notifier');
 
-const ICON_PATH = path.join(__dirname, 'assets', 'icon.ico');
-const LOG_FILE = path.join(process.cwd(), 'agent.log');
+// --- Configuration & Constants ---
 const APP_NAME = "MyPodcastSync";
+const LOG_FILE = path.join(process.cwd(), 'agent.log');
+const ICON_PATH = path.join(process.cwd(), 'apps/desktop-sync/src/assets/icon.ico');
+const CONFIG_FILE = path.join(process.cwd(), 'config.json');
 
-// --- Logger System ---
+let isSyncing = false;
+let autoStart = false;
+
+// --- Logger ---
 function log(message: string, level: 'INFO' | 'ERROR' | 'SYNC' = 'INFO') {
-  const timestamp = new Date().toISOString();
-  const formatted = `[${timestamp}] [${level}] ${message}`;
-  console.log(formatted);
-  try {
-    fs.appendFileSync(LOG_FILE, formatted + '\n');
-  } catch (err) {
-    console.error('Failed to write to log file', err);
-  }
+  const entry = `[${newInterval().toISOString()}] [${level}] ${message}\n`;
+  console.log(entry.trim());
+  fs.appendFileSync(LOG_FILE, entry);
 }
 
-// --- Windows Autostart System ---
+// Fixed date helper for logging (shadowing new Date for internal logs if needed)
+function newInterval() { return new Date(); }
+
+// --- Persistence ---
+function getLocalConfig() {
+  if (fs.existsSync(CONFIG_FILE)) {
+    return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+  }
+  return {};
+}
+
+function saveLocalConfig(config: any) {
+  const current = getLocalConfig();
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify({ ...current, ...config }, null, 2));
+}
+
+// --- Autostart Management ---
 function isAutostartEnabled(): Promise<boolean> {
   return new Promise((resolve) => {
     const cmd = `reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "${APP_NAME}"`;
     exec(cmd, (err, stdout) => {
-      // If there's an error, the key likely doesn't exist
       const exists = !err;
-      log(`Autostart check: exists=${exists}, stdout=${stdout.trim()}`);
       resolve(exists);
     });
   });
 }
 
-async function toggleAutostart() {
-  const enabled = await isAutostartEnabled();
-  
-  // Use powershell to handle the registry add more reliably with quotes
-  const fullCommand = process.argv.join(' ');
-  const command = enabled 
-    ? `reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "${APP_NAME}" /f`
-    : `reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "${APP_NAME}" /t REG_SZ /d "\\"${process.argv[0]}\\" \\"${process.argv.slice(1).join('\\" \\"')}\\"" /f`;
-  
-  log(`Toggling autostart. Command: ${command}`);
-
-  exec(command, (err) => {
-    if (err) {
-      log(`Failed to toggle autostart: ${err.message}`, 'ERROR');
-      notifier.notify({ title: 'MyPodcast Sync', message: 'Error al configurar arranque automático.', icon: ICON_PATH });
+function toggleAutostart() {
+  isAutostartEnabled().then(enabled => {
+    const nodePath = process.execPath;
+    const scriptPath = process.argv[1];
+    const command = `"${nodePath}" "${scriptPath}"`;
+    
+    let cmd = '';
+    if (enabled) {
+      cmd = `reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "${APP_NAME}" /f`;
     } else {
-      const newState = !enabled;
-      log(`Autostart ${newState ? 'enabled' : 'disabled'}`);
-      notifier.notify({
-        title: 'MyPodcast Sync',
-        message: `Arranque automático ${newState ? 'activado' : 'desactivado'}`,
-        icon: ICON_PATH
-      });
-      // Force immediate menu update
-      autoStart = newState;
-      refreshMenu();
+      cmd = `reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "${APP_NAME}" /t REG_SZ /d "${command.replace(/"/g, '\\"')}" /f`;
     }
+
+    log(`Toggling autostart. Command: ${cmd}`);
+    exec(cmd, (err) => {
+      if (err) {
+        log(`Failed to toggle autostart: ${err}`, 'ERROR');
+      } else {
+        log(enabled ? 'Autostart disabled' : 'Autostart enabled');
+        notifier.notify({
+          title: 'MyPodcast Sync',
+          message: enabled ? 'Inicio automático desactivado' : 'Inicio automático activado',
+          icon: ICON_PATH
+        });
+        refreshMenu();
+      }
+    });
   });
 }
 
-// --- Menu Configuration ---
-let isSyncing = false;
-let autoStart = false;
-
+// --- Tray Menu ---
 const getMenuItems = () => [
   { title: "MyPodcast Sync v1.1", tooltip: "Estado del Agente", enabled: false },
   { title: isSyncing ? "🟡 Sincronizando..." : "🟢 Listo", tooltip: "", enabled: false },
@@ -200,6 +211,8 @@ async function fetchConfigAndSync() {
     });
     const remoteConfig = await response.json();
 
+    log(`Config Received: USB=${remoteConfig.targetUsbSerial}, Folder=${remoteConfig.targetFolder}, Interval=${remoteConfig.syncInterval}s`);
+
     if (remoteConfig.targetUsbSerial) {
       const drives = await UsbScanner.getRemovableDrives();
       const drive = drives.find(d => d.serialNumber === remoteConfig.targetUsbSerial);
@@ -214,46 +227,27 @@ async function fetchConfigAndSync() {
         
         log(`Starting sync to ${drive.deviceId} (${remoteConfig.targetFolder})`, 'SYNC');
         
-        // Setup progress callback for Syncer
         const progressCb = (msg: string) => {
           log(msg, 'SYNC');
-          // Optional: Update tooltip with current progress
         };
 
         try {
           await Syncer.startSync(drive.deviceId, remoteConfig.targetFolder, localConfig.jwtToken, progressCb);
-          notifier.notify({ 
-            title: 'MyPodcast Sync', 
-            message: 'Sincronización completada con éxito.', 
-            icon: ICON_PATH 
-          });
+          notifier.notify({ title: 'MyPodcast Sync', message: 'Sincronización completada.', icon: ICON_PATH });
         } catch (err) {
           log(`Sync failed: ${err}`, 'ERROR');
-          notifier.notify({ 
-            title: 'MyPodcast Sync', 
-            message: `Fallo en la sincronización: ${err}`, 
-            icon: ICON_PATH 
-          });
+          notifier.notify({ title: 'MyPodcast Sync', message: `Fallo: ${err}`, icon: ICON_PATH });
         } finally {
           isSyncing = false;
           refreshMenu();
         }
+      } else {
+        log(`Configured USB (${remoteConfig.targetUsbSerial}) not found.`);
       }
     }
   } catch (err) {
-    log(`Failed to fetch sync config: ${err}`, 'ERROR');
+    log(`Error fetching config: ${err}`, 'ERROR');
   }
-}
-
-// --- Config Utils ---
-const CONFIG_FILE = path.join(process.cwd(), 'config.json');
-function getLocalConfig() {
-  if (fs.existsSync(CONFIG_FILE)) return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
-  return {};
-}
-function saveLocalConfig(config: any) {
-  const current = getLocalConfig();
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify({ ...current, ...config }, null, 2));
 }
 
 // --- Lifecycle ---
@@ -263,7 +257,6 @@ let currentInterval = 60000;
 async function startSyncLoop() {
   await fetchConfigAndSync();
   
-  // Get current config to check interval
   const localConfig = getLocalConfig();
   if (localConfig.jwtToken) {
     try {
@@ -280,7 +273,6 @@ async function startSyncLoop() {
         syncTimer = setInterval(fetchConfigAndSync, currentInterval);
       }
     } catch (err) {
-      // Fallback to default if fetch fails
       if (!syncTimer) syncTimer = setInterval(fetchConfigAndSync, currentInterval);
     }
   } else {
@@ -288,7 +280,6 @@ async function startSyncLoop() {
   }
 }
 
-log('Agent Started');
 startTray();
 startSyncLoop();
 

@@ -12,12 +12,17 @@
   } @else {
     <div class="sync-grid">
       <!-- Card: Estado del Agente -->
-      <section class="sync-card">
+      <section class="sync-card" [class.editing]="isEditing()">
         <div class="card-header">
           <div class="icon-circle">
             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           </div>
           <h2>Estado del Agente</h2>
+          @if (syncConfig()) {
+            <button class="btn-icon" (click)="toggleEdit()" [title]="isEditing() ? 'Cancelar' : 'Editar'">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+          }
         </div>
         
         <div class="card-content">
@@ -26,20 +31,38 @@
               <span class="dot"></span>
               <span class="label">Agente Vinculado</span>
             </div>
+
             <div class="info-list">
               <div class="info-item">
                 <span class="key">USB Destino:</span>
-                <span class="value">{{ syncConfig().targetUsbSerial }}</span>
+                @if (isEditing()) {
+                  <input type="text" [(ngModel)]="editSerial" class="edit-input" placeholder="ID del USB">
+                } @else {
+                  <span class="value">{{ syncConfig().targetUsbSerial }}</span>
+                }
               </div>
               <div class="info-item">
                 <span class="key">Carpeta:</span>
-                <span class="value">/{{ syncConfig().targetFolder }}</span>
+                @if (isEditing()) {
+                  <input type="text" [(ngModel)]="editFolder" class="edit-input" placeholder="Carpeta destino">
+                } @else {
+                  <span class="value">/{{ syncConfig().targetFolder }}</span>
+                }
               </div>
               <div class="info-item">
                 <span class="key">Última sincronización:</span>
                 <span class="value">{{ syncConfig().lastSyncAt | date:'short' }}</span>
               </div>
             </div>
+
+            @if (isEditing()) {
+              <div class="edit-actions">
+                <button class="btn-save" (click)="saveConfig()" [disabled]="saving()">
+                  @if (saving()) { <div class="mini-spinner"></div> }
+                  Guardar Cambios
+                </button>
+              </div>
+            }
           } @else {
             <div class="status-indicator disconnected">
               <span class="dot"></span>
@@ -64,26 +87,19 @@
           </div>
           
           <div class="card-content">
-            <p class="description">¿Cada cuánto tiempo debe el agente comprobar si hay nuevos episodios en tu cola?</p>
+            <p class="description">¿Cada cuánto tiempo debe el agente comprobar si hay nuevos episodios? (Actual: <b>{{ getIntervalLabel(syncConfig().syncInterval) }}</b>)</p>
             
             <div class="interval-selector">
               @for (item of intervals; track item.value) {
                 <button 
                   class="interval-chip" 
                   [class.active]="syncConfig().syncInterval === item.value"
-                  [disabled]="saving()"
+                  [disabled]="saving() || isEditing()"
                   (click)="updateInterval(item.value)">
                   {{ item.label }}
                 </button>
               }
             </div>
-
-            @if (saving()) {
-              <div class="saving-indicator">
-                <div class="mini-spinner"></div>
-                <span>Guardando cambios...</span>
-              </div>
-            }
           </div>
         </section>
       }
@@ -96,7 +112,7 @@
           </div>
           <div class="card-content centered">
             <div class="code-display">{{ pairingCode() }}</div>
-            <p class="help-text">Introduce este código en el agente de escritorio (botón "Vincular con mi cuenta"). Válido por 10 minutos.</p>
+            <p class="help-text">Introduce este código en el agente de escritorio. Válido por 10 minutos.</p>
           </div>
         </section>
       }
