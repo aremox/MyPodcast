@@ -146,6 +146,7 @@ export class LibraryService {
     if (update.targetFolder !== undefined) cleanUpdate.targetFolder = update.targetFolder;
     if (update.syncInterval !== undefined) cleanUpdate.syncInterval = update.syncInterval;
     if (update.lastSyncAt !== undefined) cleanUpdate.lastSyncAt = update.lastSyncAt;
+    if (update.queue !== undefined) cleanUpdate.queue = update.queue;
 
     await this.syncConfigModel.findOneAndUpdate(
       { userId: new Types.ObjectId(userId) },

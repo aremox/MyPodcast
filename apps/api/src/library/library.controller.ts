@@ -150,9 +150,15 @@ export class LibraryController {
   @UseGuards(JwtAuthGuard)
   @Post('queue')
   async updateQueue(@Request() req: any, @Body() body: { episodeIds: string[] }) {
+    this.logger.log(`[QueueSync] DEBUG - User: ${JSON.stringify(req.user)}`);
+    this.logger.log(`[QueueSync] DEBUG - Body: ${JSON.stringify(body)}`);
+    
+    const userId = req.user.userId || req.user.sub || req.user.id;
     const ids = body.episodeIds || [];
-    this.logger.log(`[QueueSync] Received ${ids.length} IDs for user ${req.user.userId}: ${ids.join(', ')}`);
-    await this.libraryService.updateSyncConfig(req.user.userId, { queue: ids as any });
+    
+    this.logger.log(`[QueueSync] Updating queue for user ${userId} with ${ids.length} items`);
+    
+    await this.libraryService.updateSyncConfig(userId, { queue: ids as any });
     return { success: true };
   }
 
