@@ -56,18 +56,46 @@ export class DesktopSyncComponent implements OnInit {
     });
   }
 
+  private pairingCheckInterval?: any;
+
   generatePairingCode() {
-    this.pairingCode.set(null); // Clear previous
+    this.pairingCode.set(null);
     this.http.post<{code: string}>(`${this.API_URL}/pair/generate`, {}).subscribe({
       next: (res) => {
-        console.log('Pairing code generated and saved:', res.code);
         this.pairingCode.set(res.code);
+        this.startPairingCheck();
       },
-      error: (err) => {
-        console.error('Error generating code', err);
-        alert('Error al generar el código. Inténtalo de nuevo.');
-      }
+      error: (err) => alert('Error al generar el código')
     });
+  }
+
+  private startPairingCheck() {
+    if (this.pairingCheckInterval) clearInterval(this.pairingCheckInterval);
+    
+    // Check every 2 seconds if config has been updated (paired)
+    this.pairingCheckInterval = setInterval(() => {
+      this.http.get<{success: boolean, data: SyncConfig}>(`${this.API_URL}/sync-config`).subscribe({
+        next: (res) => {
+          // If we have a targetUsbSerial or the pairingCode is gone from server, consider it paired
+          if (res.data && res.data.userId) {
+            // We refresh config, and if it's no longer the "empty" one, we stop
+            this.syncConfig.set(res.data);
+            if (this.pairingCode()) {
+              // Only clear if we actually transitioned
+              this.pairingCode.set(null);
+              clearInterval(this.pairingCheckInterval);
+            }
+          }
+        }
+      });
+    }, 2000);
+
+    // Auto-stop after 10 mins
+    setTimeout(() => clearInterval(this.pairingCheckInterval), 10 * 60 * 1000);
+  }
+
+  ngOnDestroy() {
+    if (this.pairingCheckInterval) clearInterval(this.pairingCheckInterval);
   }
 
   toggleEdit() {

@@ -125,11 +125,19 @@ export class LibraryService {
   }
 
   async updateSyncConfig(userId: string, update: Partial<SyncConfig>) {
-    this.logger.log(`Updating sync config for user: ${userId}`);
+    this.logger.log(`[Config] Updating for user ${userId}. Data: ${JSON.stringify(update)}`);
+    
+    // Ensure we don't overwrite with nulls if fields are missing in update
+    const cleanUpdate: any = {};
+    if (update.targetUsbSerial !== undefined) cleanUpdate.targetUsbSerial = update.targetUsbSerial;
+    if (update.targetFolder !== undefined) cleanUpdate.targetFolder = update.targetFolder;
+    if (update.syncInterval !== undefined) cleanUpdate.syncInterval = update.syncInterval;
+    if (update.lastSyncAt !== undefined) cleanUpdate.lastSyncAt = update.lastSyncAt;
+
     return this.syncConfigModel.findOneAndUpdate(
       { userId: new Types.ObjectId(userId) },
-      { $set: update },
-      { new: true, upsert: true }
+      { $set: cleanUpdate },
+      { new: true, upsert: true, returnDocument: 'after' }
     ).exec();
   }
 

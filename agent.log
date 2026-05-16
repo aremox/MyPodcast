@@ -384,3 +384,37 @@
 [2026-05-16T16:12:49.444Z] [INFO] Not paired. Skipping sync.
 [2026-05-16T16:13:49.445Z] [INFO] Not paired. Skipping sync.
 [2026-05-16T16:14:49.449Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T16:15:49.464Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T16:16:08.797Z] [INFO] Tray click: Vincular con mi cuenta
+[2026-05-16T16:16:15.434Z] [INFO] Vincular con código: 859438
+[2026-05-16T16:16:15.434Z] [INFO] [Pairing] Validating code 859438...
+[2026-05-16T16:16:16.146Z] [INFO] [Pairing] Token received and saved. SUCCESS!
+[2026-05-16T16:16:17.172Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:16:49.546Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:17:35.004Z] [INFO] Tray click: Sincronizar ahora
+[2026-05-16T16:17:35.004Z] [INFO] Manual sync requested
+[2026-05-16T16:17:35.029Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:17:49.501Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:18:26.084Z] [INFO] Tray click: Sincronizar ahora
+[2026-05-16T16:18:26.084Z] [INFO] Manual sync requested
+[2026-05-16T16:18:26.104Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:18:49.509Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:19:49.520Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:20:49.530Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:21:49.535Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:22:49.543Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:23:49.547Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:24:49.547Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:25:49.556Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:26:49.569Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:27:49.572Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:28:49.576Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:29:49.577Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:30:49.591Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:31:49.599Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:32:49.617Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:33:49.616Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:34:49.621Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:35:49.634Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:36:49.636Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:37:49.638Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
