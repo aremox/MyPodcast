@@ -111,9 +111,37 @@ export class PlaylistService {
   private load(): PlayerEpisode[] {
     try {
       const raw = localStorage.getItem(STORAGE_KEY);
-      return raw ? JSON.parse(raw) : [];
+      const local = raw ? JSON.parse(raw) : [];
+      
+      // Also try to sync with server in background
+      this.syncWithServer();
+      
+      return local;
     } catch {
       return [];
     }
+  }
+
+  /** Fetch current queue from server to ensure synchronization */
+  private syncWithServer(): void {
+    this.http.get<{ success: boolean; data: any }>(`${this.API_URL}/sync-config`).subscribe({
+      next: (res) => {
+        if (res.success && res.data && res.data.queue) {
+          const serverQueue = res.data.queue;
+          console.log('[Playlist] Received queue from server:', serverQueue.length);
+          
+          // If server has different items, update local (server wins)
+          const localIds = this.queue().map(e => e._id).join(',');
+          const serverIds = serverQueue.map((e: any) => e._id).join(',');
+          
+          if (localIds !== serverIds) {
+            console.log('[Playlist] Updating local queue to match server state');
+            this.queue.set(serverQueue);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(serverQueue));
+          }
+        }
+      },
+      error: (err) => console.error('[Playlist] Background sync error:', err)
+    });
   }
 }
