@@ -4,6 +4,7 @@ import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 
 interface SyncConfig {
+  userId?: string;
   targetUsbSerial: string;
   targetFolder: string;
   syncInterval: number;
@@ -74,14 +75,12 @@ export class DesktopSyncComponent implements OnInit {
     
     // Check every 2 seconds if config has been updated (paired)
     this.pairingCheckInterval = setInterval(() => {
-      this.http.get<{success: boolean, data: SyncConfig}>(`${this.API_URL}/sync-config`).subscribe({
+      this.http.get<any>(`${this.API_URL}/sync-config`).subscribe({
         next: (res) => {
-          // If we have a targetUsbSerial or the pairingCode is gone from server, consider it paired
-          if (res.data && res.data.userId) {
-            // We refresh config, and if it's no longer the "empty" one, we stop
-            this.syncConfig.set(res.data);
+          const config = res.data || res;
+          if (config && config.userId) {
+            this.syncConfig.set(config);
             if (this.pairingCode()) {
-              // Only clear if we actually transitioned
               this.pairingCode.set(null);
               clearInterval(this.pairingCheckInterval);
             }
