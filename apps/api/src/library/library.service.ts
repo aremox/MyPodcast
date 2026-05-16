@@ -118,7 +118,14 @@ export class LibraryService {
       .exec();
     
     const effectiveQueue = fullConfig?.queue || [];
-    this.logger.log(`User ${userId} has ${effectiveQueue.length} items in sync queue.`);
+    
+    // Detailed log for the response to the agent
+    const episodeTitles = (effectiveQueue as any[]).map(e => e.title || e._id).join(', ');
+    this.logger.log(`[AgentSync] Sending config to agent for user ${userId}:
+      - USB Serial: ${config.targetUsbSerial}
+      - Folder: ${config.targetFolder}
+      - Queue Count: ${effectiveQueue.length}
+      - Items: [${episodeTitles}]`);
 
     return {
       userId: config.userId,
