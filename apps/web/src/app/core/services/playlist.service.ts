@@ -1,14 +1,14 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { PlayerEpisode } from './audio-player.service';
 import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../environments/environment';
 
 const STORAGE_KEY = 'playlist_queue';
 
 @Injectable({ providedIn: 'root' })
 export class PlaylistService {
   private http = inject(HttpClient);
-  private readonly API_URL = `${environment.apiUrl}/library`;
+  // Using relative path to match the rest of the app's architecture
+  private readonly API_URL = '/api/library';
 
   /** Full ordered queue */
   readonly queue = signal<PlayerEpisode[]>(this.load());
