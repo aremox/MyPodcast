@@ -81,7 +81,7 @@ export class DesktopSyncComponent implements OnInit {
     const payload = {
       targetUsbSerial: this.editSerial(),
       targetFolder: this.editFolder(),
-      syncInterval: current.syncInterval
+      syncInterval: current.syncInterval || 60
     };
 
     this.http.post<SyncConfig>(`${this.API_URL}/sync-config`, payload).subscribe({

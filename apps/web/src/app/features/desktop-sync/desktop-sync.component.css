@@ -91,6 +91,28 @@
   background: rgba(99, 102, 241, 0.05);
 }
 
+.pairing-action-mini {
+  margin-top: 1.5rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 1rem;
+}
+
+.btn-text {
+  background: none;
+  border: none;
+  color: var(--accent-primary);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  opacity: 0.8;
+}
+
+.btn-text:hover {
+  opacity: 1;
+}
+
 /* Card Styles */
 .sync-card {
   background: rgba(255, 255, 255, 0.05);

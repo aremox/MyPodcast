@@ -108,9 +108,20 @@ export class LibraryService {
   // ===== SYNC CONFIG =====
   async getSyncConfig(userId: string) {
     this.logger.log(`Fetching sync config for user: ${userId}`);
-    return this.syncConfigModel.findOne({ userId: new Types.ObjectId(userId) })
+    const config = await this.syncConfigModel.findOne({ userId: new Types.ObjectId(userId) })
       .populate('queue')
       .exec();
+    
+    if (!config) return null;
+
+    return {
+      userId: config.userId,
+      targetUsbSerial: config.targetUsbSerial || '',
+      targetFolder: config.targetFolder || 'Podcasts',
+      syncInterval: config.syncInterval || 60,
+      lastSyncAt: config.lastSyncAt,
+      queue: config.queue
+    };
   }
 
   async updateSyncConfig(userId: string, update: Partial<SyncConfig>) {

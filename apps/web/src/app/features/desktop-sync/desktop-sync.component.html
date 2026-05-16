@@ -27,9 +27,9 @@
         
         <div class="card-content">
           @if (syncConfig(); as config) {
-            <div class="status-indicator connected">
+            <div class="status-indicator" [class.connected]="config.targetUsbSerial" [class.disconnected]="!config.targetUsbSerial">
               <span class="dot"></span>
-              <span class="label">Agente Vinculado</span>
+              <span class="label">{{ config.targetUsbSerial ? 'Agente Configurado' : 'Pendiente de Configurar' }}</span>
             </div>
 
             <div class="info-list">
@@ -38,7 +38,7 @@
                 @if (isEditing()) {
                   <input type="text" [(ngModel)]="editSerial" class="edit-input" placeholder="ID del USB">
                 } @else {
-                  <span class="value">{{ config.targetUsbSerial }}</span>
+                  <span class="value">{{ config.targetUsbSerial || 'No establecido' }}</span>
                 }
               </div>
               <div class="info-item">
@@ -51,7 +51,7 @@
               </div>
               <div class="info-item">
                 <span class="key">Última sincronización:</span>
-                <span class="value">{{ config.lastSyncAt | date:'short' }}</span>
+                <span class="value">{{ config.lastSyncAt ? (config.lastSyncAt | date:'short') : 'Nunca' }}</span>
               </div>
             </div>
 
@@ -63,6 +63,12 @@
                 </button>
               </div>
             }
+            
+            <div class="pairing-action-mini">
+              <button class="btn-text" (click)="generatePairingCode()">
+                Vincular otro dispositivo
+              </button>
+            </div>
           } @else {
             <div class="status-indicator disconnected">
               <span class="dot"></span>
