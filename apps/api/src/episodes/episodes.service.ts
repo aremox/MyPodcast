@@ -65,31 +65,38 @@ export class EpisodesService {
     const newEpisodeIds: string[] = [];
 
     for (const ep of parsedEpisodes) {
-      // Use findOneAndUpdate to get the document if it's new
-      // $setOnInsert only sets fields on creation
-      const result = await this.episodeModel.findOneAndUpdate(
-        { guid: ep.guid },
-        {
-          $setOnInsert: {
-            podcastId: new Types.ObjectId(podcastId),
-            title: ep.title,
-            description: ep.description,
-            audioUrl: ep.audioUrl,
-            imageUrl: ep.imageUrl,
-            duration: ep.duration,
-            durationSeconds: ep.durationSeconds,
-            publishedAt: ep.publishedAt,
-            guid: ep.guid,
-            ivooxUrl: ep.ivooxUrl,
-            fileSize: ep.fileSize,
-          },
-        },
-        { upsert: true, new: true, rawResult: true },
-      ).exec();
-
-      // In Mongoose findOneAndUpdate with rawResult, we check lastErrorObject.updatedExisting
-      if (result.lastErrorObject && !result.lastErrorObject.updatedExisting) {
-        newEpisodeIds.push(result.value._id.toString());
+      // First, try to find the episode to see if it's really new
+      const existing = await this.episodeModel.findOne({ guid: ep.guid }).select('_id').exec();
+      
+      if (!existing) {
+        // If it doesn't exist, create it
+        const newEpisode = await this.episodeModel.create({
+          podcastId: new Types.ObjectId(podcastId),
+          title: ep.title,
+          description: ep.description,
+          audioUrl: ep.audioUrl,
+          imageUrl: ep.imageUrl,
+          duration: ep.duration,
+          durationSeconds: ep.durationSeconds,
+          publishedAt: ep.publishedAt,
+          guid: ep.guid,
+          ivooxUrl: ep.ivooxUrl,
+          fileSize: ep.fileSize,
+        });
+        newEpisodeIds.push(newEpisode._id.toString());
+      } else {
+        // If it exists, update it (optional, to keep metadata fresh)
+        await this.episodeModel.updateOne(
+          { _id: existing._id },
+          {
+            $set: {
+              audioUrl: ep.audioUrl,
+              duration: ep.duration,
+              durationSeconds: ep.durationSeconds,
+              imageUrl: ep.imageUrl,
+            }
+          }
+        ).exec();
       }
     }
 

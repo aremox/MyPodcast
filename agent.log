@@ -1713,3 +1713,25 @@
 [2026-05-16T22:21:15.723Z] [SYNC] Removing old or reindexed file: 3. 254- Realidades de un Departamento de TI.mp3
 [2026-05-16T22:21:15.770Z] [SYNC] Downloading (2/2): 254- Realidades de un Departamento de TI
 [2026-05-16T22:22:26.554Z] [SYNC] Sync complete!
+[2026-05-16T22:36:15.429Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T22:36:15.710Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T22:36:15.721Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T22:36:15.722Z] [SYNC] Removing old or reindexed file: 1. Green QA_ calidad, eficiencia y sostenibilidad..mp3
+[2026-05-16T22:36:15.763Z] [SYNC] Removing old or reindexed file: 2. 254- Realidades de un Departamento de TI.mp3
+[2026-05-16T22:36:15.809Z] [SYNC] Sync complete!
+[2026-05-16T22:51:15.377Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T22:51:15.663Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T22:51:15.677Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T22:51:15.677Z] [SYNC] Sync complete!
+[2026-05-16T23:06:15.390Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T23:06:15.673Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T23:06:15.694Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T23:06:15.695Z] [SYNC] Sync complete!
+[2026-05-16T23:21:15.394Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T23:21:15.677Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T23:21:15.691Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T23:21:15.691Z] [SYNC] Sync complete!
+[2026-05-16T23:36:15.411Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T23:36:15.692Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T23:36:15.717Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T23:36:15.718Z] [SYNC] Sync complete!
