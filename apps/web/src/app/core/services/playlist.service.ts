@@ -1,7 +1,7 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { PlayerEpisode } from './audio-player.service';
 import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../environments/environment';
+import { environment } from '../../../../environments/environment';
 
 const STORAGE_KEY = 'playlist_queue';
 
@@ -62,6 +62,31 @@ export class PlaylistService {
     arr.splice(toIndex, 0, moved);
     this.queue.set(arr);
     this.save();
+  }
+
+  isInQueue(episodeId: string): boolean {
+    return this.queue().some(e => e._id === episodeId);
+  }
+
+  // ── Playback navigation ───────────────────────────────────────────────────
+
+  setCurrentById(episodeId: string): void {
+    const idx = this.queue().findIndex(e => e._id === episodeId);
+    this.currentIndex.set(idx);
+  }
+
+  next(): PlayerEpisode | null {
+    const ni = this.currentIndex() + 1;
+    if (ni >= this.queue().length) return null;
+    this.currentIndex.set(ni);
+    return this.queue()[ni];
+  }
+
+  prev(): PlayerEpisode | null {
+    const pi = this.currentIndex() - 1;
+    if (pi < 0) return null;
+    this.currentIndex.set(pi);
+    return this.queue()[pi];
   }
 
   // ── Persistence & Cloud Sync ───────────────────────────────────────────────
