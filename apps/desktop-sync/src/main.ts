@@ -12,6 +12,22 @@ const LOG_FILE = path.join(process.cwd(), 'agent.log');
 const ICON_PATH = path.join(process.cwd(), 'apps/desktop-sync/src/assets/icon.ico');
 const CONFIG_FILE = path.join(process.cwd(), 'config.json');
 
+// Simple instance check (using a lock file)
+const LOCK_FILE = path.join(process.cwd(), 'agent.lock');
+if (fs.existsSync(LOCK_FILE)) {
+  const pid = fs.readFileSync(LOCK_FILE, 'utf8');
+  try {
+    process.kill(parseInt(pid), 0);
+    console.error('Another agent instance is already running. Exiting.');
+    process.exit(1);
+  } catch (e) {
+    // Process not running, we can take over
+  }
+}
+fs.writeFileSync(LOCK_FILE, process.pid.toString());
+process.on('exit', () => fs.existsSync(LOCK_FILE) && fs.unlinkSync(LOCK_FILE));
+process.on('SIGINT', () => process.exit());
+
 let isSyncing = false;
 let autoStart = false;
 
@@ -175,6 +191,7 @@ function promptForPairingCode() {
 }
 
 async function validateAndSaveToken(code: string) {
+  log(`[Pairing] Validating code ${code}...`);
   try {
     const response = await fetch('https://podcast.aremox.com/api/library/pair/validate', {
       method: 'POST',
@@ -182,18 +199,27 @@ async function validateAndSaveToken(code: string) {
       body: JSON.stringify({ code })
     });
     
+    if (!response.ok) {
+      throw new Error(`Server responded with ${response.status}`);
+    }
+
     const data = await response.json();
     if (data.token) {
       saveLocalConfig({ jwtToken: data.token });
-      log('Pairing SUCCESSFUL!');
+      log('[Pairing] Token received and saved. SUCCESS!');
       notifier.notify({ title: 'MyPodcast Sync', message: '¡Cuenta vinculada correctamente!', icon: ICON_PATH });
-      fetchConfigAndSync();
+      
+      // Wait a bit to ensure server DB consistency before first fetch
+      setTimeout(() => {
+        fetchConfigAndSync();
+      }, 1000);
     } else {
-      log('Pairing failed: Invalid code', 'ERROR');
+      log('[Pairing] Invalid code or expired', 'ERROR');
       notifier.notify({ title: 'MyPodcast Sync', message: 'Código inválido o expirado.', icon: ICON_PATH });
     }
   } catch (err) {
-    log(`Connection error during pairing: ${err}`, 'ERROR');
+    log(`[Pairing] Connection error: ${err}`, 'ERROR');
+    notifier.notify({ title: 'MyPodcast Sync', message: 'Error de conexión con el servidor', icon: ICON_PATH });
   }
 }
 

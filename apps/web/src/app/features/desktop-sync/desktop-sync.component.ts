@@ -57,9 +57,16 @@ export class DesktopSyncComponent implements OnInit {
   }
 
   generatePairingCode() {
+    this.pairingCode.set(null); // Clear previous
     this.http.post<{code: string}>(`${this.API_URL}/pair/generate`, {}).subscribe({
-      next: (res) => this.pairingCode.set(res.code),
-      error: (err) => console.error('Error generating code', err)
+      next: (res) => {
+        console.log('Pairing code generated and saved:', res.code);
+        this.pairingCode.set(res.code);
+      },
+      error: (err) => {
+        console.error('Error generating code', err);
+        alert('Error al generar el código. Inténtalo de nuevo.');
+      }
     });
   }
 

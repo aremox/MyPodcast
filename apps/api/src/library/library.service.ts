@@ -160,12 +160,15 @@ export class LibraryService {
     const expires = new Date();
     expires.setMinutes(expires.getMinutes() + 10);
 
+    this.logger.log(`[Pairing] Generating code ${code} for user ${userId}...`);
+    
     await this.syncConfigModel.findOneAndUpdate(
       { userId: new Types.ObjectId(userId) },
       { pairingCode: code, pairingCodeExpires: expires },
-      { upsert: true }
+      { upsert: true, new: true }
     ).exec();
 
+    this.logger.log(`[Pairing] Code ${code} persisted successfully.`);
     return code;
   }
 
