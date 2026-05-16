@@ -428,3 +428,128 @@
 [2026-05-16T16:45:49.694Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
 [2026-05-16T16:46:49.704Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
 [2026-05-16T16:47:49.711Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:48:49.719Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:49:49.769Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:50:49.859Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:51:49.754Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:52:49.769Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:53:49.778Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:54:49.781Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:55:49.784Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:55:54.156Z] [INFO] Tray click: Vincular con mi cuenta
+[2026-05-16T16:56:49.802Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:57:49.805Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:58:49.813Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T16:59:06.292Z] [INFO] Tray click: Sincronizar ahora
+[2026-05-16T16:59:06.292Z] [INFO] Manual sync requested
+[2026-05-16T16:59:06.309Z] [INFO] Config Received: USB=undefined, Folder=undefined, Interval=undefineds
+[2026-05-16T17:05:50.950Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:05:51.292Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:05:51.303Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:05:51.304Z] [SYNC] Removing old file: 1. Experto nuclear responde las preguntas más buscadas sobre energía nuclear.mp3
+[2026-05-16T17:05:51.339Z] [SYNC] Removing old file: 2. 255- Spec Driven Design.mp3
+[2026-05-16T17:05:51.391Z] [SYNC] Sync complete!
+[2026-05-16T17:06:51.418Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:06:51.695Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:06:51.706Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:06:51.706Z] [SYNC] Sync complete!
+[2026-05-16T17:07:51.425Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:07:51.699Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:07:51.709Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:07:51.709Z] [SYNC] Sync complete!
+[2026-05-16T17:08:51.436Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:08:51.716Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:08:51.727Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:08:51.728Z] [SYNC] Sync complete!
+[2026-05-16T17:09:51.435Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:09:51.713Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:09:51.723Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:09:51.724Z] [SYNC] Sync complete!
+[2026-05-16T17:10:51.436Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:10:51.711Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:10:51.720Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:10:51.721Z] [SYNC] Sync complete!
+[2026-05-16T17:11:20.168Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:11:20.484Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:11:20.494Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:11:20.494Z] [SYNC] Sync complete!
+[2026-05-16T17:12:20.524Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:12:20.801Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:12:20.813Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:12:20.814Z] [SYNC] Sync complete!
+[2026-05-16T17:13:20.520Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:13:20.803Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:13:20.813Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:13:20.814Z] [SYNC] Sync complete!
+[2026-05-16T17:14:20.519Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:14:20.798Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:14:20.810Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:14:20.810Z] [SYNC] Sync complete!
+[2026-05-16T17:15:20.520Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:15:20.799Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:15:20.809Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:15:20.809Z] [SYNC] Sync complete!
+[2026-05-16T17:16:10.736Z] [INFO] Tray click: Sincronizar ahora
+[2026-05-16T17:16:10.736Z] [INFO] Manual sync requested
+[2026-05-16T17:16:10.753Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:16:11.039Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:16:11.049Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:16:11.050Z] [SYNC] Sync complete!
+[2026-05-16T17:16:20.522Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:16:20.800Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:16:20.811Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:16:20.812Z] [SYNC] Sync complete!
+[2026-05-16T17:16:31.065Z] [INFO] Tray click: Sincronizar ahora
+[2026-05-16T17:16:31.065Z] [INFO] Manual sync requested
+[2026-05-16T17:16:31.082Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:16:31.362Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:16:31.371Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:16:31.372Z] [SYNC] Sync complete!
+[2026-05-16T17:17:20.521Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:17:20.796Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:17:20.805Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:17:20.806Z] [SYNC] Sync complete!
+[2026-05-16T17:18:20.522Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:18:20.797Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:18:20.807Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:18:20.808Z] [SYNC] Sync complete!
+[2026-05-16T17:19:20.521Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:19:20.805Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:19:20.813Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:19:20.814Z] [SYNC] Sync complete!
+[2026-05-16T17:20:20.520Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:20:20.800Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:20:20.810Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:20:20.810Z] [SYNC] Sync complete!
+[2026-05-16T17:21:20.524Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:21:20.802Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:21:20.811Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:21:20.812Z] [SYNC] Sync complete!
+[2026-05-16T17:22:20.520Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:22:20.804Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:22:20.813Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:22:20.813Z] [SYNC] Sync complete!
+[2026-05-16T17:23:20.525Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:23:20.802Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:23:20.813Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:23:20.814Z] [SYNC] Sync complete!
+[2026-05-16T17:24:20.522Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:24:20.798Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:24:20.807Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:24:20.808Z] [SYNC] Sync complete!
+[2026-05-16T17:25:20.523Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:25:20.801Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:25:20.811Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:25:20.812Z] [SYNC] Sync complete!
+[2026-05-16T17:26:20.521Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:26:20.817Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:26:20.826Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:26:20.827Z] [SYNC] Sync complete!
+[2026-05-16T17:27:20.524Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:27:20.802Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:27:20.811Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:27:20.812Z] [SYNC] Sync complete!
+[2026-05-16T17:28:20.523Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=60s
+[2026-05-16T17:28:20.800Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T17:28:20.809Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T17:28:20.810Z] [SYNC] Sync complete!

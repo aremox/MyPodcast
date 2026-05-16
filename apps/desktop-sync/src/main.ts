@@ -30,21 +30,23 @@ process.on('SIGINT', () => process.exit());
 
 let isSyncing = false;
 let autoStart = false;
+let systray: SysTray;
 
 // --- Logger ---
 function log(message: string, level: 'INFO' | 'ERROR' | 'SYNC' = 'INFO') {
-  const entry = `[${newInterval().toISOString()}] [${level}] ${message}\n`;
+  const entry = `[${new Date().toISOString()}] [${level}] ${message}\n`;
   console.log(entry.trim());
   fs.appendFileSync(LOG_FILE, entry);
 }
 
-// Fixed date helper for logging (shadowing new Date for internal logs if needed)
-function newInterval() { return new Date(); }
-
 // --- Persistence ---
 function getLocalConfig() {
   if (fs.existsSync(CONFIG_FILE)) {
-    return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+    try {
+      return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+    } catch (e) {
+      return {};
+    }
   }
   return {};
 }
@@ -58,10 +60,7 @@ function saveLocalConfig(config: any) {
 function isAutostartEnabled(): Promise<boolean> {
   return new Promise((resolve) => {
     const cmd = `reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "${APP_NAME}"`;
-    exec(cmd, (err, stdout) => {
-      const exists = !err;
-      resolve(exists);
-    });
+    exec(cmd, (err) => resolve(!err));
   });
 }
 
@@ -71,12 +70,9 @@ function toggleAutostart() {
     const scriptPath = process.argv[1];
     const command = `"${nodePath}" "${scriptPath}"`;
     
-    let cmd = '';
-    if (enabled) {
-      cmd = `reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "${APP_NAME}" /f`;
-    } else {
-      cmd = `reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "${APP_NAME}" /t REG_SZ /d "${command.replace(/"/g, '\\"')}" /f`;
-    }
+    const cmd = enabled 
+      ? `reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "${APP_NAME}" /f`
+      : `reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "${APP_NAME}" /t REG_SZ /d "${command.replace(/"/g, '\\"')}" /f`;
 
     log(`Toggling autostart. Command: ${cmd}`);
     exec(cmd, (err) => {
@@ -96,22 +92,24 @@ function toggleAutostart() {
 }
 
 // --- Tray Menu ---
-const getMenuItems = () => [
-  { title: "MyPodcast Sync v1.1", tooltip: "Estado del Agente", enabled: false },
-  { title: isSyncing ? "🟡 Sincronizando..." : "🟢 Listo", tooltip: "", enabled: false },
-  { title: "---", tooltip: "", enabled: false },
-  { title: "Sincronizar ahora", tooltip: "Forzar sincronización", enabled: true },
-  { title: "Ver Logs", tooltip: "Abrir archivo de log", enabled: true },
-  { title: autoStart ? "✓ Arrancar con Windows" : "Arrancar con Windows", tooltip: "Alternar inicio automático", enabled: true },
-  { title: "---", tooltip: "", enabled: false },
-  { title: "Configuración (Web)", tooltip: "Abrir panel de control", enabled: true },
-  { title: "Vincular con mi cuenta", tooltip: "Introducir código", enabled: true },
-  { title: "---", tooltip: "", enabled: false },
-  { title: "Reiniciar Agente", tooltip: "Cerrar y volver a abrir", enabled: true },
-  { title: "Salir", tooltip: "Cerrar aplicación", enabled: true }
-];
-
-let systray: SysTray;
+function getMenuItems() {
+  const localConfig = getLocalConfig();
+  const isPaired = !!localConfig.jwtToken;
+  
+  return [
+    { title: `MyPodcast Sync ${isPaired ? '✅' : '❌'}`, tooltip: isPaired ? 'Vinculado' : 'No vinculado', enabled: false },
+    { title: isSyncing ? "🟡 Sincronizando..." : "🟢 Listo", tooltip: "", enabled: false },
+    { title: "---", tooltip: "", enabled: false },
+    { title: "Sincronizar ahora", tooltip: "Forzar sincronización", enabled: true },
+    { title: "Ver Logs", tooltip: "Abrir archivo de log", enabled: true },
+    { title: autoStart ? "✓ Arrancar con Windows" : "Arrancar con Windows", tooltip: "Alternar inicio automático", enabled: true },
+    { title: "---", tooltip: "", enabled: false },
+    { title: "Vincular con mi cuenta", tooltip: "Introducir código", enabled: true },
+    { title: "---", tooltip: "", enabled: false },
+    { title: "Reiniciar Agente", tooltip: "Cerrar y volver a abrir", enabled: true },
+    { title: "Salir", tooltip: "Cerrar aplicación", enabled: true }
+  ];
+}
 
 async function refreshMenu() {
   autoStart = await isAutostartEnabled();
@@ -145,9 +143,7 @@ async function startTray() {
     const title = action.item.title;
     log(`Tray click: ${title}`);
 
-    if (title.includes("Configuración")) {
-      exec('start https://podcast.aremox.com/desktop-sync');
-    } else if (title.includes("Vincular")) {
+    if (title.includes("Vincular")) {
       promptForPairingCode();
     } else if (title.includes("Sincronizar ahora")) {
       log('Manual sync requested');
@@ -171,7 +167,7 @@ function restartAgent() {
   const batchContent = `@echo off\ntimeout /t 2 /nobreak > nul\nstart npx nx serve desktop-sync\ndel "%~f0"`;
   fs.writeFileSync(batchPath, batchContent);
   spawn('cmd.exe', ['/c', batchPath], { detached: true, stdio: 'ignore' }).unref();
-  systray.kill();
+  if (systray) systray.kill();
   process.exit(0);
 }
 
@@ -182,7 +178,7 @@ function promptForPairingCode() {
   
   exec(`cscript //nologo "${vbsPath}"`, (err, stdout) => {
     const code = stdout.trim();
-    fs.unlinkSync(vbsPath);
+    if (fs.existsSync(vbsPath)) fs.unlinkSync(vbsPath);
     if (code && code.length === 6) {
       log(`Vincular con código: ${code}`);
       validateAndSaveToken(code);
@@ -199,9 +195,7 @@ async function validateAndSaveToken(code: string) {
       body: JSON.stringify({ code })
     });
     
-    if (!response.ok) {
-      throw new Error(`Server responded with ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`Server responded with ${response.status}`);
 
     const data = await response.json();
     const token = data.accessToken || data.token;
@@ -210,18 +204,14 @@ async function validateAndSaveToken(code: string) {
       saveLocalConfig({ jwtToken: token });
       log('[Pairing] Token received and saved. SUCCESS!');
       notifier.notify({ title: 'MyPodcast Sync', message: '¡Cuenta vinculada correctamente!', icon: ICON_PATH });
-      
-      // Wait a bit to ensure server DB consistency before first fetch
-      setTimeout(() => {
-        fetchConfigAndSync();
-      }, 1000);
+      refreshMenu();
+      setTimeout(fetchConfigAndSync, 1000);
     } else {
       log('[Pairing] Invalid code or expired', 'ERROR');
       notifier.notify({ title: 'MyPodcast Sync', message: 'Código inválido o expirado.', icon: ICON_PATH });
     }
   } catch (err) {
     log(`[Pairing] Connection error: ${err}`, 'ERROR');
-    notifier.notify({ title: 'MyPodcast Sync', message: 'Error de conexión con el servidor', icon: ICON_PATH });
   }
 }
 
@@ -238,41 +228,33 @@ async function fetchConfigAndSync() {
       headers: { 'Authorization': `Bearer ${localConfig.jwtToken}` }
     });
     const remoteConfig = await response.json();
+    const config = remoteConfig.data || remoteConfig;
 
-    log(`Config Received: USB=${remoteConfig.targetUsbSerial}, Folder=${remoteConfig.targetFolder}, Interval=${remoteConfig.syncInterval}s`);
+    log(`Config Received: USB=${config.targetUsbSerial}, Folder=${config.targetFolder}, Interval=${config.syncInterval}s`);
 
-    if (remoteConfig.targetUsbSerial) {
+    if (config.targetUsbSerial) {
       const drives = await UsbScanner.getRemovableDrives();
-      const drive = drives.find(d => d.serialNumber === remoteConfig.targetUsbSerial);
+      const drive = drives.find(d => d.serialNumber === config.targetUsbSerial);
       
       if (drive) {
-        if (isSyncing) {
-          log('Already syncing, skipping request.');
-          return;
-        }
+        if (isSyncing) return;
         isSyncing = true;
         refreshMenu();
         
-        log(`Starting sync to ${drive.deviceId} (${remoteConfig.targetFolder})`, 'SYNC');
-        
-        const progressCb = (msg: string) => {
-          log(msg, 'SYNC');
-        };
-
         try {
-          await Syncer.startSync(drive.deviceId, remoteConfig.targetFolder, localConfig.jwtToken, progressCb);
+          await Syncer.startSync(drive.deviceId, config.targetFolder, localConfig.jwtToken, (msg) => log(msg, 'SYNC'));
           notifier.notify({ title: 'MyPodcast Sync', message: 'Sincronización completada.', icon: ICON_PATH });
         } catch (err) {
           log(`Sync failed: ${err}`, 'ERROR');
-          notifier.notify({ title: 'MyPodcast Sync', message: `Fallo: ${err}`, icon: ICON_PATH });
         } finally {
           isSyncing = false;
           refreshMenu();
         }
       } else {
-        log(`Configured USB (${remoteConfig.targetUsbSerial}) not found.`);
+        log(`Configured USB (${config.targetUsbSerial}) not found.`);
       }
     }
+    updateLoopInterval(config.syncInterval);
   } catch (err) {
     log(`Error fetching config: ${err}`, 'ERROR');
   }
@@ -282,30 +264,19 @@ async function fetchConfigAndSync() {
 let syncTimer: NodeJS.Timeout;
 let currentInterval = 60000;
 
+function updateLoopInterval(seconds: number) {
+  const newInterval = (seconds || 60) * 1000;
+  if (newInterval !== currentInterval) {
+    log(`Updating sync interval to ${seconds} seconds`);
+    currentInterval = newInterval;
+    if (syncTimer) clearInterval(syncTimer);
+    syncTimer = setInterval(fetchConfigAndSync, currentInterval);
+  }
+}
+
 async function startSyncLoop() {
   await fetchConfigAndSync();
-  
-  const localConfig = getLocalConfig();
-  if (localConfig.jwtToken) {
-    try {
-      const response = await fetch('https://podcast.aremox.com/api/library/sync-config', {
-        headers: { 'Authorization': `Bearer ${localConfig.jwtToken}` }
-      });
-      const config = await response.json();
-      const newInterval = (config.syncInterval || 60) * 1000;
-      
-      if (newInterval !== currentInterval) {
-        log(`Updating sync interval to ${config.syncInterval} seconds`);
-        currentInterval = newInterval;
-        if (syncTimer) clearInterval(syncTimer);
-        syncTimer = setInterval(fetchConfigAndSync, currentInterval);
-      }
-    } catch (err) {
-      if (!syncTimer) syncTimer = setInterval(fetchConfigAndSync, currentInterval);
-    }
-  } else {
-    if (!syncTimer) syncTimer = setInterval(fetchConfigAndSync, currentInterval);
-  }
+  if (!syncTimer) syncTimer = setInterval(fetchConfigAndSync, currentInterval);
 }
 
 startTray();

@@ -145,9 +145,9 @@ export class LibraryController {
 
   @UseGuards(JwtAuthGuard)
   @Post('sync-config')
-  async saveSyncConfig(@Request() req: any, @Body() body: { targetUsbSerial: string; targetFolder: string }) {
-    const config = await this.libraryService.saveSyncConfig(req.user.userId, body.targetUsbSerial, body.targetFolder);
-    return { success: true, data: config };
+  async saveSyncConfig(@Request() req: any, @Body() body: any) {
+    const config = await this.libraryService.updateSyncConfig(req.user.userId, body);
+    return config;
   }
 
   @UseGuards(JwtAuthGuard)

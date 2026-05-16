@@ -134,11 +134,13 @@ export class LibraryService {
     if (update.syncInterval !== undefined) cleanUpdate.syncInterval = update.syncInterval;
     if (update.lastSyncAt !== undefined) cleanUpdate.lastSyncAt = update.lastSyncAt;
 
-    return this.syncConfigModel.findOneAndUpdate(
+    await this.syncConfigModel.findOneAndUpdate(
       { userId: new Types.ObjectId(userId) },
       { $set: cleanUpdate },
-      { new: true, upsert: true, returnDocument: 'after' }
+      { new: true, upsert: true }
     ).exec();
+
+    return this.getSyncConfig(userId);
   }
 
   // Alias for backward compatibility in controller

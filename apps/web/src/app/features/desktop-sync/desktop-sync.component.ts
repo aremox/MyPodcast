@@ -130,19 +130,25 @@ export class DesktopSyncComponent implements OnInit {
 
   updateInterval(seconds: number) {
     const config = this.syncConfig();
-    if (this.isEditing() || !config) return;
+    if (!config || this.saving()) return;
 
     this.saving.set(true);
-    this.http.post<SyncConfig>(`${this.API_URL}/sync-config`, {
-      targetUsbSerial: config.targetUsbSerial,
-      targetFolder: config.targetFolder,
+    // Send full object to ensure consistency, use default empty strings if needed
+    const payload = {
+      targetUsbSerial: config.targetUsbSerial || '',
+      targetFolder: config.targetFolder || 'Podcasts',
       syncInterval: seconds
-    }).subscribe({
+    };
+
+    this.http.post<SyncConfig>(`${this.API_URL}/sync-config`, payload).subscribe({
       next: (newConfig) => {
         this.syncConfig.set(newConfig);
         this.saving.set(false);
       },
-      error: () => this.saving.set(false)
+      error: (err) => {
+        console.error('Error updating interval', err);
+        this.saving.set(false);
+      }
     });
   }
 
