@@ -112,24 +112,13 @@ export class LibraryService {
       .populate('queue')
       .exec();
     
-    if (!config) return null;
-
-    // If manual queue is empty, use favorites as default fallback
-    let effectiveQueue = config.queue;
-    if (!effectiveQueue || effectiveQueue.length === 0) {
-      const favorites = await this.favoriteModel.find({ userId: new Types.ObjectId(userId) })
-        .populate('episodeId')
-        .exec();
-      effectiveQueue = favorites.map(f => f.episodeId) as any;
-      this.logger.log(`Queue empty, using ${effectiveQueue.length} favorites for sync.`);
-    } else {
-      // If queue has items, ensure they are populated
-      // We re-query with populate because findOneAndUpdate might not have populated the result
-      const fullConfig = await this.syncConfigModel.findOne({ userId: new Types.ObjectId(userId) })
-        .populate('queue')
-        .exec();
-      effectiveQueue = fullConfig?.queue || [];
-    }
+    // Strictly use the manual queue from SyncConfig
+    const fullConfig = await this.syncConfigModel.findOne({ userId: new Types.ObjectId(userId) })
+      .populate('queue')
+      .exec();
+    
+    const effectiveQueue = fullConfig?.queue || [];
+    this.logger.log(`User ${userId} has ${effectiveQueue.length} items in sync queue.`);
 
     return {
       userId: config.userId,
