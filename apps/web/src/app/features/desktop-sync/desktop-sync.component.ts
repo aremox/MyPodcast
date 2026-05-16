@@ -11,17 +11,13 @@ import { AuthService } from '../../core/auth/auth.service';
   templateUrl: './desktop-sync.component.html',
   styleUrl: './desktop-sync.component.scss'
 })
-export class DesktopSyncComponent implements OnInit, OnDestroy {
+export class DesktopSyncComponent implements OnInit {
   private http = inject(HttpClient);
   private auth = inject(AuthService);
 
   private readonly API_URL = '/api/library/sync-config';
-  private readonly AGENT_LOCAL_URL = 'http://localhost:31415';
-  private pollInterval: any;
-
-  isAgentOnline = false;
-  isSyncing = false;
-  connectedDrives: any[] = [];
+  
+  isAgentOnline = false; // Esto se podría obtener del backend en el futuro (lastSeen)
   pairingCode: string | null = null;
   
   config: any = {
@@ -31,37 +27,15 @@ export class DesktopSyncComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     this.loadConfigFromBackend();
-    this.checkAgentLocalStatus();
-    this.pollInterval = setInterval(() => this.checkAgentLocalStatus(), 5000);
-  }
-
-  ngOnDestroy() {
-    if (this.pollInterval) {
-      clearInterval(this.pollInterval);
-    }
   }
 
   loadConfigFromBackend() {
     this.http.get<any>(this.API_URL).subscribe({
       next: (res) => {
         if (res.data) {
-          this.config.targetUsbSerial = res.data.targetUsbSerial;
+          this.config.targetUsbSerial = res.data.targetUsbSerial || '';
           this.config.targetFolder = res.data.targetFolder || 'Podcasts';
         }
-      }
-    });
-  }
-
-  checkAgentLocalStatus() {
-    this.http.get(`${this.AGENT_LOCAL_URL}/status`).subscribe({
-      next: (res: any) => {
-        this.isAgentOnline = true;
-        this.isSyncing = res.isSyncing;
-        this.connectedDrives = res.connectedDrives || [];
-      },
-      error: () => {
-        this.isAgentOnline = false;
-        this.connectedDrives = [];
       }
     });
   }

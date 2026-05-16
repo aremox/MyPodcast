@@ -22,6 +22,9 @@ export class SyncConfig {
 
   @Prop()
   pairingCodeExpires?: Date;
+
+  @Prop({ type: [{ type: Types.ObjectId, ref: 'Episode' }], default: [] })
+  queue: Types.ObjectId[];
 }
 
 export const SyncConfigSchema = SchemaFactory.createForClass(SyncConfig);

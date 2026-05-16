@@ -1,9 +1,9 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model } from 'mongoose';
-import { PlayHistory, PlayHistoryDocument } from './schemas/play-history.schema';
-import { Favorite, FavoriteDocument } from './schemas/favorite.schema';
+import { Model, Types } from 'mongoose';
 import { Subscription, SubscriptionDocument } from './schemas/subscription.schema';
+import { Favorite, FavoriteDocument } from './schemas/favorite.schema';
+import { PlayHistory, PlayHistoryDocument } from './schemas/play-history.schema';
 import { SyncConfig, SyncConfigDocument } from './schemas/sync-config.schema';
 
 @Injectable()
@@ -11,192 +11,140 @@ export class LibraryService {
   private readonly logger = new Logger(LibraryService.name);
 
   constructor(
-    @InjectModel(PlayHistory.name) private playHistoryModel: Model<PlayHistoryDocument>,
-    @InjectModel(Favorite.name) private favoriteModel: Model<FavoriteDocument>,
     @InjectModel(Subscription.name) private subscriptionModel: Model<SubscriptionDocument>,
+    @InjectModel(Favorite.name) private favoriteModel: Model<FavoriteDocument>,
+    @InjectModel(PlayHistory.name) private playHistoryModel: Model<PlayHistoryDocument>,
     @InjectModel(SyncConfig.name) private syncConfigModel: Model<SyncConfigDocument>,
   ) {}
 
   // ===== SUBSCRIPTIONS =====
-
-  async getUserSubscriptions(userId: string): Promise<SubscriptionDocument[]> {
-    return this.subscriptionModel
-      .find({ userId })
-      .populate('podcastId')
-      .sort({ createdAt: -1 })
-      .exec();
+  async getUserSubscriptions(userId: string) {
+    return this.subscriptionModel.find({ userId }).populate('podcastId').exec();
   }
 
-  async subscribe(userId: string, podcastId: string): Promise<SubscriptionDocument> {
+  async subscribe(userId: string, podcastId: string) {
     return this.subscriptionModel.findOneAndUpdate(
       { userId, podcastId },
-      { userId, podcastId, notifications: true },
-      { upsert: true, returnDocument: 'after' },
+      { userId, podcastId },
+      { upsert: true, new: true }
     ).exec();
   }
 
-  async unsubscribe(userId: string, podcastId: string): Promise<void> {
-    await this.subscriptionModel.deleteOne({ userId, podcastId }).exec();
-  }
-
-  async isSubscribed(userId: string, podcastId: string): Promise<boolean> {
-    const sub = await this.subscriptionModel.findOne({ userId, podcastId }).exec();
-    return !!sub;
+  async unsubscribe(userId: string, podcastId: string) {
+    return this.subscriptionModel.deleteOne({ userId, podcastId }).exec();
   }
 
   // ===== FAVORITES =====
-
-  async getUserFavorites(userId: string): Promise<FavoriteDocument[]> {
-    return this.favoriteModel
-      .find({ userId })
-      .populate({
-        path: 'episodeId',
-        populate: { path: 'podcastId', select: 'title imageUrl' },
-      })
-      .sort({ createdAt: -1 })
-      .exec();
+  async getUserFavorites(userId: string) {
+    return this.favoriteModel.find({ userId }).populate('episodeId').exec();
   }
 
-  async addFavorite(userId: string, episodeId: string): Promise<FavoriteDocument> {
+  async addFavorite(userId: string, episodeId: string) {
     return this.favoriteModel.findOneAndUpdate(
       { userId, episodeId },
       { userId, episodeId },
-      { upsert: true, returnDocument: 'after' },
+      { upsert: true, new: true }
     ).exec();
   }
 
-  async removeFavorite(userId: string, episodeId: string): Promise<void> {
-    await this.favoriteModel.deleteOne({ userId, episodeId }).exec();
+  async removeFavorite(userId: string, episodeId: string) {
+    return this.favoriteModel.deleteOne({ userId, episodeId }).exec();
   }
 
-  async isFavorite(userId: string, episodeId: string): Promise<boolean> {
-    const fav = await this.favoriteModel.findOne({ userId, episodeId }).exec();
-    return !!fav;
+  // ===== HISTORY / PROGRESS =====
+  async updateProgress(userId: string, episodeId: string, podcastId: string, progress: number, completed: boolean) {
+    return this.playHistoryModel.findOneAndUpdate(
+      { userId, episodeId },
+      { userId, episodeId, podcastId, progress, completed, lastPlayedAt: new Date() },
+      { upsert: true, new: true }
+    ).exec();
   }
 
-  // ===== PLAY HISTORY =====
-
-  async getHistory(userId: string, page = 1, limit = 20) {
+  async getHistory(userId: string, page: number, limit: number) {
     const skip = (page - 1) * limit;
     const [history, total] = await Promise.all([
-      this.playHistoryModel
-        .find({ userId })
-        .populate({
-          path: 'episodeId',
-          populate: { path: 'podcastId', select: 'title imageUrl' },
-        })
+      this.playHistoryModel.find({ userId })
         .sort({ lastPlayedAt: -1 })
         .skip(skip)
         .limit(limit)
+        .populate('episodeId')
         .exec(),
       this.playHistoryModel.countDocuments({ userId }).exec(),
     ]);
     return { history, total };
   }
 
-  async updateProgress(
-    userId: string,
-    episodeId: string,
-    podcastId: string,
-    progress: number,
-    completed: boolean,
-  ): Promise<PlayHistoryDocument> {
-    return this.playHistoryModel.findOneAndUpdate(
-      { userId, episodeId },
-      {
-        userId,
-        episodeId,
-        podcastId,
-        progress,
-        completed,
-        lastPlayedAt: new Date(),
-      },
-      { upsert: true, returnDocument: 'after' },
-    ).exec();
+  async getInProgressEpisodes(userId: string) {
+    return this.playHistoryModel.find({ userId, completed: false })
+      .sort({ lastPlayedAt: -1 })
+      .populate('episodeId')
+      .exec();
   }
 
-  async getEpisodeProgress(userId: string, episodeId: string): Promise<PlayHistoryDocument | null> {
+  async getEpisodeProgress(userId: string, episodeId: string) {
     return this.playHistoryModel.findOne({ userId, episodeId }).exec();
   }
 
-  async getInProgressEpisodes(userId: string, limit = 10): Promise<PlayHistoryDocument[]> {
-    return this.playHistoryModel
-      .find({ userId, completed: false, progress: { $gt: 0 } })
-      .populate({
-        path: 'episodeId',
-        populate: { path: 'podcastId', select: 'title imageUrl' },
-      })
-      .sort({ lastPlayedAt: -1 })
-      .limit(limit)
-      .exec();
-  }
-
-  async getPodcastProgress(userId: string, podcastId: string): Promise<string[]> {
-    const history = await this.playHistoryModel
-      .find({ userId, podcastId, completed: true })
-      .select('episodeId')
-      .exec();
+  async getPodcastProgress(userId: string, podcastId: string) {
+    const history = await this.playHistoryModel.find({ userId, podcastId, completed: true }).exec();
     return history.map(h => h.episodeId.toString());
   }
 
-  async markAllAsCompleted(userId: string, podcastId: string, completed: boolean, allEpisodeIds: string[]): Promise<void> {
-    if (!completed) {
-      // Just set completed to false for all existing history for this podcast
-      await this.playHistoryModel.updateMany(
-        { userId, podcastId },
-        { $set: { completed: false, progress: 0 } }
-      ).exec();
-    } else {
-      // Need to create or update history for ALL episodes to be completed
-      const bulkOps: any[] = allEpisodeIds.map(episodeId => ({
+  async markAllAsCompleted(userId: string, podcastId: string, completed: boolean, episodeIds: string[]) {
+    if (completed) {
+      const ops = episodeIds.map(id => ({
         updateOne: {
-          filter: { userId, episodeId },
-          update: {
-            $set: {
-              userId,
-              episodeId,
-              podcastId,
-              progress: 100, // Or whatever max is, but completed: true is the key
-              completed: true,
-              lastPlayedAt: new Date(),
-            }
-          },
+          filter: { userId, episodeId: id },
+          update: { userId, episodeId: id, podcastId, progress: 100, completed: true, lastPlayedAt: new Date() },
           upsert: true
         }
       }));
-
-      if (bulkOps.length > 0) {
-        await this.playHistoryModel.bulkWrite(bulkOps);
-      }
+      return this.playHistoryModel.bulkWrite(ops);
+    } else {
+      return this.playHistoryModel.deleteMany({ userId, podcastId }).exec();
     }
   }
 
   // ===== SYNC CONFIG =====
-
-  async getSyncConfig(userId: string): Promise<SyncConfigDocument | null> {
-    return this.syncConfigModel.findOne({ userId }).exec();
+  async getSyncConfig(userId: string) {
+    this.logger.log(`Fetching sync config for user: ${userId}`);
+    return this.syncConfigModel.findOne({ userId: new Types.ObjectId(userId) })
+      .populate('queue')
+      .exec();
   }
 
-  async saveSyncConfig(userId: string, targetUsbSerial: string, targetFolder: string): Promise<SyncConfigDocument> {
+  async updateSyncConfig(userId: string, update: Partial<SyncConfig>) {
+    this.logger.log(`Updating sync config for user: ${userId}`);
     return this.syncConfigModel.findOneAndUpdate(
-      { userId },
-      { userId, targetUsbSerial, targetFolder },
-      { upsert: true, returnDocument: 'after' }
+      { userId: new Types.ObjectId(userId) },
+      { $set: update },
+      { new: true, upsert: true }
     ).exec();
   }
 
-  async updateLastSyncAt(userId: string): Promise<void> {
-    await this.syncConfigModel.updateOne({ userId }, { lastSyncAt: new Date() }).exec();
+  // Alias for backward compatibility in controller
+  async saveSyncConfig(userId: string, targetUsbSerial: string, targetFolder: string) {
+    return this.updateSyncConfig(userId, { targetUsbSerial, targetFolder });
   }
 
+  async updateQueue(userId: string, episodeIds: string[]) {
+    this.logger.log(`Updating queue for user ${userId} with ${episodeIds.length} episodes`);
+    return this.syncConfigModel.findOneAndUpdate(
+      { userId: new Types.ObjectId(userId) },
+      { $set: { queue: episodeIds.map(id => new Types.ObjectId(id)) } },
+      { new: true, upsert: true }
+    ).exec();
+  }
+
+  // ===== PAIRING =====
   async generatePairingCode(userId: string): Promise<string> {
-    const code = Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
     const expires = new Date();
-    expires.setMinutes(expires.getMinutes() + 10); // 10 mins
+    expires.setMinutes(expires.getMinutes() + 10);
 
     await this.syncConfigModel.findOneAndUpdate(
-      { userId },
-      { userId, pairingCode: code, pairingCodeExpires: expires },
+      { userId: new Types.ObjectId(userId) },
+      { pairingCode: code, pairingCodeExpires: expires },
       { upsert: true }
     ).exec();
 
@@ -204,12 +152,16 @@ export class LibraryService {
   }
 
   async validatePairingCode(code: string): Promise<string | null> {
+    this.logger.log(`Validating code: ${code}`);
     const config = await this.syncConfigModel.findOne({
       pairingCode: code,
       pairingCodeExpires: { $gt: new Date() }
     }).exec();
 
-    if (!config) return null;
+    if (!config) {
+      this.logger.warn(`Invalid or expired code: ${code}`);
+      return null;
+    }
 
     // Clear code after use
     config.pairingCode = undefined;

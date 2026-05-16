@@ -130,6 +130,13 @@ export class LibraryController {
   // ===== SYNC CONFIG =====
 
   @UseGuards(JwtAuthGuard)
+  @Post('queue')
+  async updateQueue(@Request() req: any, @Body('episodeIds') episodeIds: string[]) {
+    await this.libraryService.updateQueue(req.user.userId, episodeIds);
+    return { success: true };
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('sync-config')
   async getSyncConfig(@Request() req: any) {
     const config = await this.libraryService.getSyncConfig(req.user.userId);
