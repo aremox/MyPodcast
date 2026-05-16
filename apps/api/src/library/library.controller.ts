@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, Body, Query, Request, UseGuards, Inject, forwardRef } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, Query, Request, UseGuards, Inject, forwardRef, Logger } from '@nestjs/common';
 import { LibraryService } from './library.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthService } from '../auth/auth.service';
@@ -6,6 +6,8 @@ import { EpisodesService } from '../episodes/episodes.service';
 
 @Controller('library')
 export class LibraryController {
+  private readonly logger = new Logger(LibraryController.name);
+
   constructor(
     private libraryService: LibraryService,
     @Inject(forwardRef(() => EpisodesService)) private episodesService: EpisodesService,
@@ -129,12 +131,7 @@ export class LibraryController {
 
   // ===== SYNC CONFIG =====
 
-  @UseGuards(JwtAuthGuard)
-  @Post('queue')
-  async updateQueue(@Request() req: any, @Body('episodeIds') episodeIds: string[]) {
-    await this.libraryService.updateQueue(req.user.userId, episodeIds);
-    return { success: true };
-  }
+
 
   @UseGuards(JwtAuthGuard)
   @Get('sync-config')
