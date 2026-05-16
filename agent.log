@@ -1627,3 +1627,24 @@
 [2026-05-16T20:25:04.529Z] [SYNC] Fetching playlist queue from server...
 [2026-05-16T20:25:04.550Z] [SYNC] Found 4 items in web queue.
 [2026-05-16T20:25:04.552Z] [SYNC] Sync complete!
+[2026-05-16T20:35:58.162Z] [INFO] Tray click: Sincronizar ahora
+[2026-05-16T20:35:58.162Z] [INFO] Manual sync requested
+[2026-05-16T20:35:58.311Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T20:35:58.593Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T20:35:58.607Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T20:35:58.607Z] [SYNC] Removing old or reindexed file: 1. Experto nuclear responde las preguntas más buscadas sobre energía nuclear.mp3
+[2026-05-16T20:35:58.635Z] [SYNC] Removing old or reindexed file: 2. 255- Spec Driven Design.mp3
+[2026-05-16T20:35:58.689Z] [SYNC] Removing old or reindexed file: 3. Fallo de sistema - 864_ He vencido al mundo - 10_05_26.mp3
+[2026-05-16T20:35:58.778Z] [SYNC] Removing old or reindexed file: 4. Todos, menos los humanos_ Musk, Samdios y la fiesta de la IA.mp3
+[2026-05-16T20:35:58.816Z] [SYNC] Sync complete!
+[2026-05-16T20:36:15.561Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T20:36:15.855Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T20:36:15.870Z] [SYNC] Found 0 items in web queue.
+[2026-05-16T20:36:15.871Z] [SYNC] Sync complete!
+[2026-05-16T20:36:44.033Z] [INFO] Tray click: Sincronizar ahora
+[2026-05-16T20:36:44.034Z] [INFO] Manual sync requested
+[2026-05-16T20:36:44.063Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T20:36:44.342Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T20:36:44.363Z] [SYNC] Found 4 items in web queue.
+[2026-05-16T20:36:44.363Z] [SYNC] Downloading (1/4): Los MCPs y Skills llegan a Gemini. Diferencias clave y casos de uso.
+[2026-05-16T20:37:44.480Z] [SYNC] Downloading (2/4): Experto nuclear responde las preguntas más buscadas sobre energía nuclear
