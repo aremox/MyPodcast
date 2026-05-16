@@ -151,6 +151,13 @@ export class LibraryController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Post('queue')
+  async updateQueue(@Request() req: any, @Body() body: { episodeIds: string[] }) {
+    await this.libraryService.updateSyncConfig(req.user.userId, { queue: body.episodeIds as any });
+    return { success: true };
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('pair/generate')
   async generatePairingCode(@Request() req: any) {
     const code = await this.libraryService.generatePairingCode(req.user.userId);

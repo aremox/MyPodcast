@@ -20,7 +20,8 @@ export class Syncer {
     const response = await fetch('https://podcast.aremox.com/api/library/sync-config', {
       headers: { 'Authorization': `Bearer ${token}` }
     });
-    const config = await response.json();
+    const rawConfig = await response.json();
+    const config = rawConfig.data || rawConfig;
     const queue = config.queue || [];
 
     onProgress?.(`Found ${queue.length} items in web queue.`);
