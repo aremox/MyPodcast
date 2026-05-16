@@ -26,7 +26,7 @@
         </div>
         
         <div class="card-content">
-          @if (syncConfig()) {
+          @if (syncConfig(); as config) {
             <div class="status-indicator connected">
               <span class="dot"></span>
               <span class="label">Agente Vinculado</span>
@@ -38,7 +38,7 @@
                 @if (isEditing()) {
                   <input type="text" [(ngModel)]="editSerial" class="edit-input" placeholder="ID del USB">
                 } @else {
-                  <span class="value">{{ syncConfig().targetUsbSerial }}</span>
+                  <span class="value">{{ config.targetUsbSerial }}</span>
                 }
               </div>
               <div class="info-item">
@@ -46,12 +46,12 @@
                 @if (isEditing()) {
                   <input type="text" [(ngModel)]="editFolder" class="edit-input" placeholder="Carpeta destino">
                 } @else {
-                  <span class="value">/{{ syncConfig().targetFolder }}</span>
+                  <span class="value">/{{ config.targetFolder }}</span>
                 }
               </div>
               <div class="info-item">
                 <span class="key">Última sincronización:</span>
-                <span class="value">{{ syncConfig().lastSyncAt | date:'short' }}</span>
+                <span class="value">{{ config.lastSyncAt | date:'short' }}</span>
               </div>
             </div>
 
@@ -77,7 +77,7 @@
       </section>
 
       <!-- Card: Configuración de Intervalo -->
-      @if (syncConfig()) {
+      @if (syncConfig(); as config) {
         <section class="sync-card">
           <div class="card-header">
             <div class="icon-circle">
@@ -87,13 +87,13 @@
           </div>
           
           <div class="card-content">
-            <p class="description">¿Cada cuánto tiempo debe el agente comprobar si hay nuevos episodios? (Actual: <b>{{ getIntervalLabel(syncConfig().syncInterval) }}</b>)</p>
+            <p class="description">¿Cada cuánto tiempo debe el agente comprobar si hay nuevos episodios? (Actual: <b>{{ getIntervalLabel(config.syncInterval) }}</b>)</p>
             
             <div class="interval-selector">
               @for (item of intervals; track item.value) {
                 <button 
                   class="interval-chip" 
-                  [class.active]="syncConfig().syncInterval === item.value"
+                  [class.active]="config.syncInterval === item.value"
                   [disabled]="saving() || isEditing()"
                   (click)="updateInterval(item.value)">
                   {{ item.label }}

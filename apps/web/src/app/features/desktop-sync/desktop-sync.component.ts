@@ -3,6 +3,13 @@ import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 
+interface SyncConfig {
+  targetUsbSerial: string;
+  targetFolder: string;
+  syncInterval: number;
+  lastSyncAt?: Date;
+}
+
 @Component({
   selector: 'app-desktop-sync',
   standalone: true,
@@ -14,7 +21,7 @@ export class DesktopSyncComponent implements OnInit {
   private http = inject(HttpClient);
   private readonly API_URL = '/api/library';
 
-  syncConfig = signal<any>(null);
+  syncConfig = signal<SyncConfig | null>(null);
   pairingCode = signal<string | null>(null);
   loading = signal<boolean>(false);
   saving = signal<boolean>(false);
@@ -38,7 +45,7 @@ export class DesktopSyncComponent implements OnInit {
 
   loadConfig() {
     this.loading.set(true);
-    this.http.get(`${this.API_URL}/sync-config`).subscribe({
+    this.http.get<SyncConfig>(`${this.API_URL}/sync-config`).subscribe({
       next: (config) => {
         this.syncConfig.set(config);
         this.editSerial.set(config.targetUsbSerial);
@@ -50,31 +57,34 @@ export class DesktopSyncComponent implements OnInit {
   }
 
   generatePairingCode() {
-    this.http.post(`${this.API_URL}/pair/generate`, {}).subscribe({
-      next: (res: any) => this.pairingCode.set(res.code),
+    this.http.post<{code: string}>(`${this.API_URL}/pair/generate`, {}).subscribe({
+      next: (res) => this.pairingCode.set(res.code),
       error: (err) => console.error('Error generating code', err)
     });
   }
 
   toggleEdit() {
-    if (this.isEditing()) {
+    const config = this.syncConfig();
+    if (this.isEditing() && config) {
       // Cancel: Restore values
-      this.editSerial.set(this.syncConfig().targetUsbSerial);
-      this.editFolder.set(this.syncConfig().targetFolder);
+      this.editSerial.set(config.targetUsbSerial);
+      this.editFolder.set(config.targetFolder);
     }
     this.isEditing.set(!this.isEditing());
   }
 
   saveConfig() {
-    this.saving.set(true);
     const current = this.syncConfig();
+    if (!current) return;
+
+    this.saving.set(true);
     const payload = {
       targetUsbSerial: this.editSerial(),
       targetFolder: this.editFolder(),
       syncInterval: current.syncInterval
     };
 
-    this.http.post(`${this.API_URL}/sync-config`, payload).subscribe({
+    this.http.post<SyncConfig>(`${this.API_URL}/sync-config`, payload).subscribe({
       next: (newConfig) => {
         this.syncConfig.set(newConfig);
         this.saving.set(false);
@@ -85,10 +95,11 @@ export class DesktopSyncComponent implements OnInit {
   }
 
   updateInterval(seconds: number) {
-    if (this.isEditing()) return;
-    this.saving.set(true);
     const config = this.syncConfig();
-    this.http.post(`${this.API_URL}/sync-config`, {
+    if (this.isEditing() || !config) return;
+
+    this.saving.set(true);
+    this.http.post<SyncConfig>(`${this.API_URL}/sync-config`, {
       targetUsbSerial: config.targetUsbSerial,
       targetFolder: config.targetFolder,
       syncInterval: seconds
