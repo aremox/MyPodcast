@@ -34,8 +34,12 @@ export class Syncer {
 
     for (const file of existingFiles) {
       if (!queueFileNames.includes(file)) {
-        onProgress?.(`Removing old file: ${file}`);
-        fs.unlinkSync(path.join(targetDir, file));
+        onProgress?.(`Removing old or reindexed file: ${file}`);
+        try {
+          fs.unlinkSync(path.join(targetDir, file));
+        } catch (e) {
+          // Ignore if already deleted or locked
+        }
       }
     }
 
