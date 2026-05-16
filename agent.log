@@ -1593,3 +1593,15 @@
 [2026-05-16T20:06:15.601Z] [SYNC] Fetching playlist queue from server...
 [2026-05-16T20:06:15.624Z] [SYNC] Found 4 items in web queue.
 [2026-05-16T20:06:15.626Z] [SYNC] Sync complete!
+[2026-05-16T20:12:30.342Z] [INFO] Tray click: Sincronizar ahora
+[2026-05-16T20:12:30.343Z] [INFO] Manual sync requested
+[2026-05-16T20:12:30.368Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T20:12:30.655Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T20:12:30.677Z] [SYNC] Found 4 items in web queue.
+[2026-05-16T20:12:30.679Z] [SYNC] Sync complete!
+[2026-05-16T20:12:41.896Z] [INFO] Tray click: Sincronizar ahora
+[2026-05-16T20:12:41.896Z] [INFO] Manual sync requested
+[2026-05-16T20:12:41.919Z] [INFO] Config Received: USB=DF0C9B1B, Folder=Podcasts, Interval=900s
+[2026-05-16T20:12:42.199Z] [SYNC] Fetching playlist queue from server...
+[2026-05-16T20:12:42.213Z] [SYNC] Found 4 items in web queue.
+[2026-05-16T20:12:42.215Z] [SYNC] Sync complete!

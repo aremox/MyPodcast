@@ -91,10 +91,13 @@ export class PlaylistService {
 
   // ── Persistence & Cloud Sync ───────────────────────────────────────────────
 
+  private lastLocalUpdate = 0;
+
   private save(): void {
     try {
       const episodes = this.queue();
       localStorage.setItem(STORAGE_KEY, JSON.stringify(episodes));
+      this.lastLocalUpdate = Date.now();
       
       const episodeIds = episodes.map(e => e._id);
       console.log(`[Playlist] Attempting cloud sync with ${episodeIds.length} episodes...`, episodeIds);
@@ -131,23 +134,25 @@ export class PlaylistService {
     this.http.get<{ success: boolean; data: any }>(`${this.API_URL}/sync-config`).subscribe({
       next: (res) => {
         if (res.success && res.data && res.data.queue) {
+          // If we recently updated locally, ignore server for a few seconds to let cloud update
+          if (Date.now() - this.lastLocalUpdate < 5000) {
+            console.log('[Playlist] Ignoring server sync (recent local update)');
+            return;
+          }
+
           const serverQueue = res.data.queue.map((ep: any) => ({
             ...ep,
-            // Ensure compatibility between DB model and PlayerEpisode
             imageUrl: ep.imageUrl || ep.image || ep.podcastId?.imageUrl,
             audioUrl: ep.audioUrl || ep.url
           }));
 
-          console.log('[Playlist] Received queue from server:', serverQueue.length);
-          
-          // Use JSON stringify for a deep comparison of IDs
           const localIds = JSON.stringify(this.queue().map(e => e._id));
           const serverIds = JSON.stringify(serverQueue.map((e: any) => e._id));
           
           if (localIds !== serverIds) {
-            console.log('[Playlist] Server has different queue, but NOT overwriting local for now to allow manual sync fix');
-            // this.queue.set(serverQueue);
-            // localStorage.setItem(STORAGE_KEY, JSON.stringify(serverQueue));
+            console.log('[Playlist] Updating local queue to match server state');
+            this.queue.set(serverQueue);
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(serverQueue));
           }
         }
       },
