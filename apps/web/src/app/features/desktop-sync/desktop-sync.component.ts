@@ -1,7 +1,6 @@
 import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../environments/environment';
 
 @Component({
   selector: 'app-desktop-sync',
@@ -12,7 +11,8 @@ import { environment } from '../../../environments/environment';
 })
 export class DesktopSyncComponent implements OnInit {
   private http = inject(HttpClient);
-  private readonly API_URL = `${environment.apiUrl}/library`;
+  // Using relative path to match the rest of the app's architecture
+  private readonly API_URL = '/api/library';
 
   syncConfig = signal<any>(null);
   pairingCode = signal<string | null>(null);
