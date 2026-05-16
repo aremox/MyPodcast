@@ -128,12 +128,19 @@ export class LibraryService {
   }
 
   async updateQueue(userId: string, episodeIds: string[]) {
-    this.logger.log(`Updating queue for user ${userId} with ${episodeIds.length} episodes`);
-    return this.syncConfigModel.findOneAndUpdate(
+    this.logger.log(`[Queue] Updating for user ${userId}. Received ${episodeIds?.length || 0} IDs`);
+    if (episodeIds && episodeIds.length > 0) {
+      this.logger.log(`[Queue] First ID: ${episodeIds[0]}`);
+    }
+    
+    const result = await this.syncConfigModel.findOneAndUpdate(
       { userId: new Types.ObjectId(userId) },
       { $set: { queue: episodeIds.map(id => new Types.ObjectId(id)) } },
       { new: true, upsert: true }
     ).exec();
+
+    this.logger.log(`[Queue] Update complete. New queue length in DB: ${result.queue.length}`);
+    return result;
   }
 
   // ===== PAIRING =====

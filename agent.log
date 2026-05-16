@@ -1,0 +1,92 @@
+[2026-05-16T11:26:29.307Z] [INFO] Agent Started
+[2026-05-16T11:27:03.983Z] [INFO] Autostart enabled
+[2026-05-16T11:27:32.447Z] [INFO] Agent Started
+[2026-05-16T11:28:32.467Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:29:32.481Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:30:32.489Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:31:32.497Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:32:32.504Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:33:32.506Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:34:32.511Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:35:32.519Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:36:00.455Z] [INFO] Autostart disabled
+[2026-05-16T11:36:18.797Z] [INFO] Autostart enabled
+[2026-05-16T11:36:32.527Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:37:27.739Z] [INFO] Agent Started
+[2026-05-16T11:38:23.159Z] [INFO] Toggling autostart. Command: reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "MyPodcastSync" /f
+[2026-05-16T11:38:23.184Z] [INFO] Autostart disabled
+[2026-05-16T11:38:27.760Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:38:36.346Z] [INFO] Manual sync requested
+[2026-05-16T11:38:36.346Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:38:44.088Z] [INFO] Toggling autostart. Command: reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "MyPodcastSync" /t REG_SZ /d "\"C:\Program Files\nodejs\node.exe\" \"D:\Programacion\IA\mypodcast\node_modules\@nx\js\src\executors\node\node-with-esm-loader\"" /f
+[2026-05-16T11:38:44.111Z] [INFO] Autostart enabled
+[2026-05-16T11:38:57.006Z] [INFO] Toggling autostart. Command: reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "MyPodcastSync" /f
+[2026-05-16T11:38:57.026Z] [INFO] Autostart disabled
+[2026-05-16T11:39:30.458Z] [INFO] Agent Started
+[2026-05-16T11:39:30.490Z] [INFO] Autostart check: exists=false, stdout=
+[2026-05-16T11:39:44.550Z] [INFO] Autostart check: exists=false, stdout=
+[2026-05-16T11:39:44.550Z] [INFO] Toggling autostart. Command: reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "MyPodcastSync" /t REG_SZ /d "\"C:\Program Files\nodejs\node.exe\" \"D:\Programacion\IA\mypodcast\node_modules\@nx\js\src\executors\node\node-with-esm-loader\"" /f
+[2026-05-16T11:39:44.575Z] [INFO] Autostart enabled
+[2026-05-16T11:39:44.597Z] [INFO] Autostart check: exists=true, stdout=HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
+    MyPodcastSync    REG_SZ    "C:\Program Files\nodejs\node.exe" "D:\Programacion\IA\mypodcast\node_modules\@nx\js\src\executors\node\node-with-esm-loader"
+[2026-05-16T11:39:58.583Z] [INFO] Autostart check: exists=true, stdout=HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
+    MyPodcastSync    REG_SZ    "C:\Program Files\nodejs\node.exe" "D:\Programacion\IA\mypodcast\node_modules\@nx\js\src\executors\node\node-with-esm-loader"
+[2026-05-16T11:39:58.584Z] [INFO] Toggling autostart. Command: reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "MyPodcastSync" /f
+[2026-05-16T11:39:58.608Z] [INFO] Autostart disabled
+[2026-05-16T11:39:58.630Z] [INFO] Autostart check: exists=false, stdout=
+[2026-05-16T11:40:07.262Z] [INFO] Autostart check: exists=false, stdout=
+[2026-05-16T11:40:07.262Z] [INFO] Toggling autostart. Command: reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "MyPodcastSync" /t REG_SZ /d "\"C:\Program Files\nodejs\node.exe\" \"D:\Programacion\IA\mypodcast\node_modules\@nx\js\src\executors\node\node-with-esm-loader\"" /f
+[2026-05-16T11:40:07.282Z] [INFO] Autostart enabled
+[2026-05-16T11:40:07.303Z] [INFO] Autostart check: exists=true, stdout=HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
+    MyPodcastSync    REG_SZ    "C:\Program Files\nodejs\node.exe" "D:\Programacion\IA\mypodcast\node_modules\@nx\js\src\executors\node\node-with-esm-loader"
+[2026-05-16T11:40:30.480Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:41:26.943Z] [INFO] Agent Started
+[2026-05-16T11:41:26.971Z] [INFO] Autostart check: exists=true, stdout=HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
+    MyPodcastSync    REG_SZ    "C:\Program Files\nodejs\node.exe" "D:\Programacion\IA\mypodcast\node_modules\@nx\js\src\executors\node\node-with-esm-loader"
+[2026-05-16T11:41:31.733Z] [INFO] Autostart check: exists=true, stdout=HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
+    MyPodcastSync    REG_SZ    "C:\Program Files\nodejs\node.exe" "D:\Programacion\IA\mypodcast\node_modules\@nx\js\src\executors\node\node-with-esm-loader"
+[2026-05-16T11:41:31.733Z] [INFO] Toggling autostart. Command: reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "MyPodcastSync" /f
+[2026-05-16T11:41:31.757Z] [INFO] Autostart disabled
+[2026-05-16T11:41:31.781Z] [INFO] Autostart check: exists=false, stdout=
+[2026-05-16T11:41:42.245Z] [INFO] Autostart check: exists=false, stdout=
+[2026-05-16T11:41:42.246Z] [INFO] Toggling autostart. Command: reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "MyPodcastSync" /t REG_SZ /d "\"C:\Program Files\nodejs\node.exe\" \"D:\Programacion\IA\mypodcast\node_modules\@nx\js\src\executors\node\node-with-esm-loader\"" /f
+[2026-05-16T11:41:42.269Z] [INFO] Autostart enabled
+[2026-05-16T11:41:42.290Z] [INFO] Autostart check: exists=true, stdout=HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
+    MyPodcastSync    REG_SZ    "C:\Program Files\nodejs\node.exe" "D:\Programacion\IA\mypodcast\node_modules\@nx\js\src\executors\node\node-with-esm-loader"
+[2026-05-16T11:41:52.397Z] [INFO] Autostart check: exists=true, stdout=HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
+    MyPodcastSync    REG_SZ    "C:\Program Files\nodejs\node.exe" "D:\Programacion\IA\mypodcast\node_modules\@nx\js\src\executors\node\node-with-esm-loader"
+[2026-05-16T11:41:52.397Z] [INFO] Toggling autostart. Command: reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "MyPodcastSync" /f
+[2026-05-16T11:41:52.417Z] [INFO] Autostart disabled
+[2026-05-16T11:41:52.438Z] [INFO] Autostart check: exists=false, stdout=
+[2026-05-16T11:42:26.958Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:42:41.882Z] [INFO] Agent Started
+[2026-05-16T11:42:41.909Z] [INFO] Autostart check: exists=false, stdout=
+[2026-05-16T11:43:41.901Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:44:14.246Z] [INFO] Agent Started
+[2026-05-16T11:44:14.273Z] [INFO] Autostart check: exists=false, stdout=
+[2026-05-16T11:44:17.200Z] [INFO] Tray click: Arrancar con Windows
+[2026-05-16T11:44:17.221Z] [INFO] Autostart check: exists=false, stdout=
+[2026-05-16T11:44:17.221Z] [INFO] Toggling autostart. Command: reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "MyPodcastSync" /t REG_SZ /d "\"C:\Program Files\nodejs\node.exe\" \"D:\Programacion\IA\mypodcast\node_modules\@nx\js\src\executors\node\node-with-esm-loader\"" /f
+[2026-05-16T11:44:17.244Z] [INFO] Autostart enabled
+[2026-05-16T11:44:17.268Z] [INFO] Autostart check: exists=true, stdout=HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
+    MyPodcastSync    REG_SZ    "C:\Program Files\nodejs\node.exe" "D:\Programacion\IA\mypodcast\node_modules\@nx\js\src\executors\node\node-with-esm-loader"
+[2026-05-16T11:44:29.728Z] [INFO] Tray click: Arrancar con Windows
+[2026-05-16T11:44:29.749Z] [INFO] Autostart check: exists=true, stdout=HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run
+    MyPodcastSync    REG_SZ    "C:\Program Files\nodejs\node.exe" "D:\Programacion\IA\mypodcast\node_modules\@nx\js\src\executors\node\node-with-esm-loader"
+[2026-05-16T11:44:29.749Z] [INFO] Toggling autostart. Command: reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Run" /v "MyPodcastSync" /f
+[2026-05-16T11:44:29.773Z] [INFO] Autostart disabled
+[2026-05-16T11:44:29.794Z] [INFO] Autostart check: exists=false, stdout=
+[2026-05-16T11:44:39.657Z] [INFO] Tray click: Ver Logs
+[2026-05-16T11:45:14.260Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:46:14.268Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:46:23.056Z] [INFO] Tray click: Sincronizar ahora
+[2026-05-16T11:46:23.057Z] [INFO] Manual sync requested
+[2026-05-16T11:46:23.057Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:46:37.201Z] [INFO] Agent Started
+[2026-05-16T11:46:37.212Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:46:37.231Z] [INFO] Autostart check: exists=false, stdout=
+[2026-05-16T11:47:37.223Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:48:34.256Z] [INFO] Tray click: Sincronizar ahora
+[2026-05-16T11:48:34.256Z] [INFO] Manual sync requested
+[2026-05-16T11:48:34.257Z] [INFO] Not paired. Skipping sync.
+[2026-05-16T11:48:37.235Z] [INFO] Not paired. Skipping sync.

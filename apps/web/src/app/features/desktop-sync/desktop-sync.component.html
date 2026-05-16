@@ -1,64 +1,105 @@
-<div class="container py-5">
-  <div class="row justify-content-center">
-    <div class="col-md-8">
-      <div class="card shadow-lg border-0 bg-dark text-light">
-        <div class="card-body p-5">
-          <div class="d-flex align-items-center mb-4">
-            <i class="bi bi-usb-drive fs-1 text-primary me-3"></i>
-            <div>
-              <h2 class="mb-0">Sincronización USB</h2>
-              <p class="text-muted mb-0">Gestiona la descarga automática a tu dispositivo USB</p>
-            </div>
-          </div>
+<div class="sync-container animate-fade-in">
+  <header class="page-header">
+    <h1>🖥️ Sincronización de Escritorio</h1>
+    <p class="subtitle">Gestiona la conexión con tu agente de escritorio y el volcado al USB.</p>
+  </header>
 
-          <!-- PAIRING SECTION -->
-          <div class="pairing-box p-4 rounded bg-black mb-5 border border-secondary">
-            <h4 class="mb-3">1. Vincular Agente de Escritorio</h4>
-            <p class="small text-muted">Abre el agente en tu PC, haz clic derecho en el icono del reloj y selecciona "Vincular con mi cuenta".</p>
+  @if (loading()) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Cargando configuración...</p>
+    </div>
+  } @else {
+    <div class="sync-grid">
+      <!-- Card: Estado del Agente -->
+      <section class="sync-card">
+        <div class="card-header">
+          <div class="icon-circle">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+          <h2>Estado del Agente</h2>
+        </div>
+        
+        <div class="card-content">
+          @if (syncConfig()) {
+            <div class="status-indicator connected">
+              <span class="dot"></span>
+              <span class="label">Agente Vinculado</span>
+            </div>
+            <div class="info-list">
+              <div class="info-item">
+                <span class="key">USB Destino:</span>
+                <span class="value">{{ syncConfig().targetUsbSerial }}</span>
+              </div>
+              <div class="info-item">
+                <span class="key">Carpeta:</span>
+                <span class="value">/{{ syncConfig().targetFolder }}</span>
+              </div>
+              <div class="info-item">
+                <span class="key">Última sincronización:</span>
+                <span class="value">{{ syncConfig().lastSyncAt | date:'short' }}</span>
+              </div>
+            </div>
+          } @else {
+            <div class="status-indicator disconnected">
+              <span class="dot"></span>
+              <span class="label">Sin vincular</span>
+            </div>
+            <p class="description">Descarga el agente de escritorio y vincúlalo para empezar a sincronizar tus podcasts automáticamente.</p>
+            <button class="btn-primary" (click)="generatePairingCode()">
+              Vincular nuevo dispositivo
+            </button>
+          }
+        </div>
+      </section>
+
+      <!-- Card: Configuración de Intervalo -->
+      @if (syncConfig()) {
+        <section class="sync-card">
+          <div class="card-header">
+            <div class="icon-circle">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <h2>Frecuencia de Sincronización</h2>
+          </div>
+          
+          <div class="card-content">
+            <p class="description">¿Cada cuánto tiempo debe el agente comprobar si hay nuevos episodios en tu cola?</p>
             
-            @if (!pairingCode) {
-              <button class="btn btn-outline-primary" (click)="generatePairingCode()">
-                Generar Nuevo Código de Vinculación
-              </button>
-            } @else {
-              <div class="text-center py-3">
-                <p class="mb-2">Introduce este código en el Agente:</p>
-                <div class="display-4 fw-bold text-primary" style="letter-spacing: 5px;">
-                  {{ pairingCode.slice(0,3) }}-{{ pairingCode.slice(3) }}
-                </div>
-                <p class="text-warning small mt-2">
-                  <i class="bi bi-clock-history me-1"></i>
-                  Este código caduca en 10 minutos.
-                </p>
+            <div class="interval-selector">
+              @for (item of intervals; track item.value) {
+                <button 
+                  class="interval-chip" 
+                  [class.active]="syncConfig().syncInterval === item.value"
+                  [disabled]="saving()"
+                  (click)="updateInterval(item.value)">
+                  {{ item.label }}
+                </button>
+              }
+            </div>
+
+            @if (saving()) {
+              <div class="saving-indicator">
+                <div class="mini-spinner"></div>
+                <span>Guardando cambios...</span>
               </div>
             }
           </div>
+        </section>
+      }
 
-          <!-- CONFIG SECTION -->
-          <div class="config-box">
-            <h4 class="mb-4">2. Configuración de Sincronización</h4>
-            
-            <div class="mb-4">
-              <label class="form-label text-muted small uppercase fw-bold">Número de Serie del USB</label>
-              <input type="text" class="form-control bg-dark text-white border-secondary p-3" 
-                     [(ngModel)]="config.targetUsbSerial" placeholder="Ej: 12345678">
-              <div class="form-text text-muted mt-2">
-                El agente solo copiará archivos cuando este USB esté conectado.
-              </div>
-            </div>
-
-            <div class="mb-4">
-              <label class="form-label text-muted small uppercase fw-bold">Carpeta de Destino (en el USB)</label>
-              <input type="text" class="form-control bg-dark text-white border-secondary p-3" 
-                     [(ngModel)]="config.targetFolder" placeholder="Ej: Podcasts">
-            </div>
-
-            <button class="btn btn-primary w-100 p-3 fw-bold" (click)="saveConfig()">
-              Guardar Configuración
-            </button>
+      <!-- Card: Código de Vinculación -->
+      @if (pairingCode()) {
+        <section class="sync-card pairing-card animate-slide-up">
+          <div class="card-header">
+            <h2>Código de Vinculación</h2>
           </div>
-        </div>
-      </div>
+          <div class="card-content centered">
+            <div class="code-display">{{ pairingCode() }}</div>
+            <p class="help-text">Introduce este código en el agente de escritorio (botón "Vincular con mi cuenta"). Válido por 10 minutos.</p>
+          </div>
+        </section>
+      }
     </div>
-  </div>
+  }
 </div>

@@ -25,6 +25,9 @@ export class SyncConfig {
 
   @Prop({ type: [{ type: Types.ObjectId, ref: 'Episode' }], default: [] })
   queue: Types.ObjectId[];
+
+  @Prop({ default: 60 })
+  syncInterval: number;
 }
 
 export const SyncConfigSchema = SchemaFactory.createForClass(SyncConfig);
