@@ -164,6 +164,10 @@ export class LibraryController {
       return { success: false, message: 'Código inválido o expirado' };
     }
     const authData = await this.authService.loginById(userId);
-    return { success: true, ...authData };
+    return { 
+      success: true, 
+      token: authData.accessToken, // Alias for compatibility
+      ...authData 
+    };
   }
 }

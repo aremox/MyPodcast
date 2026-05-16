@@ -204,8 +204,10 @@ async function validateAndSaveToken(code: string) {
     }
 
     const data = await response.json();
-    if (data.token) {
-      saveLocalConfig({ jwtToken: data.token });
+    const token = data.accessToken || data.token;
+
+    if (token) {
+      saveLocalConfig({ jwtToken: token });
       log('[Pairing] Token received and saved. SUCCESS!');
       notifier.notify({ title: 'MyPodcast Sync', message: '¡Cuenta vinculada correctamente!', icon: ICON_PATH });
       
