@@ -28,6 +28,21 @@ export class SyncConfig {
 
   @Prop({ default: 60 })
   syncInterval: number;
+
+  @Prop({ type: Number })
+  usbTotalSpace?: number;
+
+  @Prop({ type: Number })
+  usbFreeSpace?: number;
+
+  @Prop({ type: Number })
+  usbPodcastsSpace?: number;
+
+  @Prop({ type: Number })
+  usbOtherSpace?: number;
+
+  @Prop()
+  usbFormat?: string;
 }
 
 export const SyncConfigSchema = SchemaFactory.createForClass(SyncConfig);

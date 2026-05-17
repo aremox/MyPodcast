@@ -9,6 +9,11 @@ interface SyncConfig {
   targetFolder: string;
   syncInterval: number;
   lastSyncAt?: Date;
+  usbTotalSpace?: number;
+  usbFreeSpace?: number;
+  usbPodcastsSpace?: number;
+  usbOtherSpace?: number;
+  usbFormat?: string;
 }
 
 @Component({
@@ -21,6 +26,32 @@ interface SyncConfig {
 export class DesktopSyncComponent implements OnInit {
   private http = inject(HttpClient);
   private readonly API_URL = '/api/library';
+
+  formatBytes(bytes: number | undefined): string {
+    if (bytes === undefined || bytes === null || isNaN(bytes)) return '0 B';
+    if (bytes === 0) return '0 GB';
+    const k = 1024;
+    const dm = 1;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+  }
+
+  getPercentage(partial: number | undefined, total: number | undefined): number {
+    if (!partial || !total) return 0;
+    return Math.round((partial / total) * 100);
+  }
+
+  isDiskSpaceLow(): boolean {
+    const config = this.syncConfig();
+    if (!config || !config.usbFreeSpace) return false;
+    return config.usbFreeSpace < 1024 * 1024 * 1024; // Less than 1GB
+  }
+
+  getUsedSpace(config: SyncConfig | null): number {
+    if (!config || !config.usbTotalSpace || !config.usbFreeSpace) return 0;
+    return Math.max(0, config.usbTotalSpace - config.usbFreeSpace);
+  }
 
   syncConfig = signal<SyncConfig | null>(null);
   pairingCode = signal<string | null>(null);

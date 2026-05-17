@@ -163,6 +163,40 @@ function sendConfigUpdate() {
   }
 }
 
+async function reportUsbStorageSpace(driveSerialNumber: string, targetFolder: string, jwtToken: string) {
+  try {
+    const drives = await UsbScanner.getRemovableDrives();
+    const drive = drives.find(d => d.serialNumber === driveSerialNumber);
+    if (drive) {
+      const podcastsDir = path.join(drive.deviceId, targetFolder);
+      const podcastsSpace = Syncer.getFolderSize(podcastsDir);
+      const totalSpace = drive.size;
+      const freeSpace = drive.freeSpace;
+      const otherSpace = Math.max(0, totalSpace - freeSpace - podcastsSpace);
+      const format = drive.fileSystem;
+
+      log(`[Storage] Reportando estadísticas USB: Total=${(totalSpace/1e9).toFixed(1)}GB, Libre=${(freeSpace/1e9).toFixed(1)}GB, Podcasts=${(podcastsSpace/1e9).toFixed(2)}GB`);
+      
+      await fetch('https://podcast.aremox.com/api/library/sync-config', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${jwtToken}`
+        },
+        body: JSON.stringify({
+          usbTotalSpace: totalSpace,
+          usbFreeSpace: freeSpace,
+          usbPodcastsSpace: podcastsSpace,
+          usbOtherSpace: otherSpace,
+          usbFormat: format
+        })
+      });
+    }
+  } catch (err) {
+    log(`[Storage] Error al reportar estadísticas USB: ${err}`, 'ERROR');
+  }
+}
+
 // --- Sync Coordination Core ---
 async function fetchConfigAndSync() {
   const localConfig = getLocalConfig();
@@ -202,6 +236,9 @@ async function fetchConfigAndSync() {
       if (drive) {
         log(`USB emparejado detectado en unidad ${drive.deviceId}. Iniciando descarga...`);
         
+        // Report initial USB space
+        await reportUsbStorageSpace(config.targetUsbSerial, config.targetFolder, localConfig.jwtToken);
+
         await Syncer.startSync(drive.deviceId, config.targetFolder, localConfig.jwtToken, (msg) => {
           log(msg, 'SYNC');
           
@@ -218,6 +255,9 @@ async function fetchConfigAndSync() {
         });
 
         notify('MyPodcast Sync', '¡Sincronización de podcasts completada!');
+
+        // Report final USB space (after downloads)
+        await reportUsbStorageSpace(config.targetUsbSerial, config.targetFolder, localConfig.jwtToken);
       } else {
         log(`El USB configurado (${config.targetUsbSerial}) no se encuentra conectado.`, 'ERROR');
         sendSyncStatus(false, 'USB no conectado');

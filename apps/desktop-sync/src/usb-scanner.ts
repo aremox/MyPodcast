@@ -9,6 +9,9 @@ export interface UsbDrive {
   driveType: number;      // 2 = Removable
   description: string;
   serialNumber: string;   // VolumeSerialNumber
+  size: number;
+  freeSpace: number;
+  fileSystem: string;
 }
 
 export class UsbScanner {
@@ -17,7 +20,7 @@ export class UsbScanner {
    */
   static async getRemovableDrives(): Promise<UsbDrive[]> {
     try {
-      const command = `powershell -NoProfile -Command "Get-CimInstance Win32_LogicalDisk | Select-Object DeviceID, VolumeName, DriveType, Description, VolumeSerialNumber | ConvertTo-Json"`;
+      const command = `powershell -NoProfile -Command "Get-CimInstance Win32_LogicalDisk | Select-Object DeviceID, VolumeName, DriveType, Description, VolumeSerialNumber, Size, FreeSpace, FileSystem | ConvertTo-Json"`;
       const { stdout } = await execAsync(command);
       
       if (!stdout.trim()) return [];
@@ -33,7 +36,10 @@ export class UsbScanner {
           volumeName: d.VolumeName || 'USB Drive',
           driveType: d.DriveType,
           description: d.Description,
-          serialNumber: d.VolumeSerialNumber
+          serialNumber: d.VolumeSerialNumber,
+          size: Number(d.Size) || 0,
+          freeSpace: Number(d.FreeSpace) || 0,
+          fileSystem: d.FileSystem || 'Unknown'
         }));
     } catch (error) {
       console.error('[UsbScanner] Error fetching drives:', error);

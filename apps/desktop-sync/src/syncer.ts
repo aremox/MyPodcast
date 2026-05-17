@@ -73,4 +73,24 @@ export class Syncer {
   private static sanitizeFilename(name: string): string {
     return name.replace(/[<>:"/\\|?*]/g, '_').trim();
   }
+
+  static getFolderSize(dirPath: string): number {
+    if (!fs.existsSync(dirPath)) return 0;
+    let totalSize = 0;
+    try {
+      const items = fs.readdirSync(dirPath);
+      for (const item of items) {
+        const fullPath = path.join(dirPath, item);
+        const stats = fs.statSync(fullPath);
+        if (stats.isDirectory()) {
+          totalSize += this.getFolderSize(fullPath);
+        } else if (stats.isFile()) {
+          totalSize += stats.size;
+        }
+      }
+    } catch (e) {
+      // Ignore
+    }
+    return totalSize;
+  }
 }

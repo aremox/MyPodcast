@@ -133,7 +133,12 @@ export class LibraryService {
       targetFolder: config.targetFolder || 'Podcasts',
       syncInterval: config.syncInterval || 60,
       lastSyncAt: config.lastSyncAt,
-      queue: effectiveQueue
+      queue: effectiveQueue,
+      usbTotalSpace: config.usbTotalSpace,
+      usbFreeSpace: config.usbFreeSpace,
+      usbPodcastsSpace: config.usbPodcastsSpace,
+      usbOtherSpace: config.usbOtherSpace,
+      usbFormat: config.usbFormat
     };
   }
 
@@ -147,6 +152,11 @@ export class LibraryService {
     if (update.syncInterval !== undefined) cleanUpdate.syncInterval = update.syncInterval;
     if (update.lastSyncAt !== undefined) cleanUpdate.lastSyncAt = update.lastSyncAt;
     if (update.queue !== undefined) cleanUpdate.queue = update.queue;
+    if (update.usbTotalSpace !== undefined) cleanUpdate.usbTotalSpace = update.usbTotalSpace;
+    if (update.usbFreeSpace !== undefined) cleanUpdate.usbFreeSpace = update.usbFreeSpace;
+    if (update.usbPodcastsSpace !== undefined) cleanUpdate.usbPodcastsSpace = update.usbPodcastsSpace;
+    if (update.usbOtherSpace !== undefined) cleanUpdate.usbOtherSpace = update.usbOtherSpace;
+    if (update.usbFormat !== undefined) cleanUpdate.usbFormat = update.usbFormat;
 
     await this.syncConfigModel.findOneAndUpdate(
       { userId: new Types.ObjectId(userId) },

@@ -303,3 +303,222 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* --- USB Storage Map Premium Styles --- */
+.fs-badge {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  padding: 0.2rem 0.5rem;
+  border-radius: 0.4rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  margin-left: auto;
+}
+
+.storage-icon {
+  background: linear-gradient(135deg, #ec4899, #8b5cf6) !important;
+}
+
+.storage-icon.dimmed {
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: var(--text-secondary) !important;
+}
+
+.storage-bar-container {
+  background: rgba(0, 0, 0, 0.3);
+  padding: 4px;
+  border-radius: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 1.5rem;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+}
+
+.storage-bar {
+  display: flex;
+  height: 24px;
+  border-radius: 0.8rem;
+  overflow: hidden;
+  position: relative;
+  background: #1e1e2e;
+}
+
+.partition {
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+.partition:hover {
+  filter: brightness(1.15);
+}
+
+.partition.podcasts {
+  background: linear-gradient(90deg, #ec4899, #a855f7);
+  box-shadow: 0 0 12px rgba(236, 72, 153, 0.4);
+}
+
+.partition.other {
+  background: linear-gradient(90deg, #3b82f6, #06b6d4);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.3);
+}
+
+.partition.free {
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.03),
+    rgba(255, 255, 255, 0.03) 10px,
+    rgba(255, 255, 255, 0.07) 10px,
+    rgba(255, 255, 255, 0.07) 20px
+  );
+  border-left: 1px dashed rgba(255, 255, 255, 0.15);
+}
+
+.pct-tooltip {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: white;
+  opacity: 0;
+  transform: scale(0.8);
+  transition: all 0.2s ease;
+  pointer-events: none;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.6);
+}
+
+.partition:hover .pct-tooltip {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.space-warning-banner {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+  padding: 0.75rem 1rem;
+  border-radius: 0.8rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.85rem;
+  margin-bottom: 1.5rem;
+  animation: pulseWarning 2s infinite ease-in-out;
+}
+
+@keyframes pulseWarning {
+  0%, 100% { border-color: rgba(245, 158, 11, 0.3); box-shadow: 0 0 0 rgba(245, 158, 11, 0); }
+  50% { border-color: rgba(245, 158, 11, 0.6); box-shadow: 0 0 8px rgba(245, 158, 11, 0.15); }
+}
+
+.warning-icon {
+  flex-shrink: 0;
+}
+
+.storage-legend {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.legend-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.8rem;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  transition: background 0.2s ease;
+}
+
+.legend-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-top: 0.25rem;
+  flex-shrink: 0;
+}
+
+.podcasts-dot {
+  background: linear-gradient(135deg, #ec4899, #a855f7);
+  box-shadow: 0 0 6px #ec4899;
+}
+
+.other-dot {
+  background: linear-gradient(135deg, #3b82f6, #06b6d4);
+  box-shadow: 0 0 6px #3b82f6;
+}
+
+.free-dot {
+  background: rgba(255, 255, 255, 0.3);
+  border: 1px dashed rgba(255, 255, 255, 0.5);
+}
+
+.legend-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+}
+
+.legend-name {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.legend-value {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.storage-footer {
+  display: flex;
+  justify-content: space-between;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  padding-top: 1rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.storage-footer b {
+  color: var(--text-primary);
+}
+
+/* Disabled Card Graphic */
+.disabled-card {
+  opacity: 0.8;
+  border-style: dashed;
+}
+
+.centered-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.dimmed-graphic {
+  color: var(--text-secondary);
+  opacity: 0.3;
+  margin-bottom: 1.25rem;
+  background: rgba(255, 255, 255, 0.03);
+  padding: 1.25rem;
+  border-radius: 50%;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+}
+
+.compact {
+  max-width: 280px;
+  margin: 0 auto;
+}
