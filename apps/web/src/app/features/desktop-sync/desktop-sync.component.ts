@@ -77,11 +77,12 @@ export class DesktopSyncComponent implements OnInit {
 
   loadConfig() {
     this.loading.set(true);
-    this.http.get<SyncConfig>(`${this.API_URL}/sync-config`).subscribe({
-      next: (config) => {
+    this.http.get<any>(`${this.API_URL}/sync-config`).subscribe({
+      next: (res) => {
+        const config = res.data || res;
         this.syncConfig.set(config);
-        this.editSerial.set(config.targetUsbSerial);
-        this.editFolder.set(config.targetFolder);
+        this.editSerial.set(config.targetUsbSerial || '');
+        this.editFolder.set(config.targetFolder || 'Podcasts');
         this.loading.set(false);
       },
       error: () => this.loading.set(false)

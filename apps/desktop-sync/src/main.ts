@@ -6,9 +6,13 @@ import * as fs from 'fs';
 
 // --- Configuration & Constants ---
 const APP_NAME = "MyPodcastSync";
-const LOG_FILE = path.join(process.cwd(), 'agent.log');
-const ICON_PATH = path.join(process.cwd(), 'apps/desktop-sync/src/assets/icon.ico');
-const CONFIG_FILE = path.join(process.cwd(), 'config.json');
+const CONFIG_DIR = app.getPath('userData');
+if (!fs.existsSync(CONFIG_DIR)) {
+  fs.mkdirSync(CONFIG_DIR, { recursive: true });
+}
+const LOG_FILE = path.join(CONFIG_DIR, 'agent.log');
+const CONFIG_FILE = path.join(CONFIG_DIR, 'config.json');
+const ICON_PATH = path.join(__dirname, 'assets/icon.ico');
 
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
@@ -71,6 +75,11 @@ function saveLocalConfig(config: any) {
   fs.writeFileSync(CONFIG_FILE, JSON.stringify({ ...current, ...config }, null, 2));
 }
 
+function getServerUrl(): string {
+  const local = getLocalConfig();
+  return local.serverUrl || 'https://podcast.aremox.com';
+}
+
 // --- IPC Interface Handlers ---
 ipcMain.handle('get-config', async () => {
   const local = getLocalConfig();
@@ -87,7 +96,8 @@ ipcMain.handle('get-config', async () => {
 ipcMain.handle('pair-account', async (_, code: string) => {
   log(`[Pairing] Intentando vincular con código: ${code}...`);
   try {
-    const response = await fetch('https://podcast.aremox.com/api/library/pair/validate', {
+    const serverUrl = getServerUrl();
+    const response = await fetch(`${serverUrl}/api/library/pair/validate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code })
@@ -177,7 +187,8 @@ async function reportUsbStorageSpace(driveSerialNumber: string, targetFolder: st
 
       log(`[Storage] Reportando estadísticas USB: Total=${(totalSpace/1e9).toFixed(1)}GB, Libre=${(freeSpace/1e9).toFixed(1)}GB, Podcasts=${(podcastsSpace/1e9).toFixed(2)}GB`);
       
-      await fetch('https://podcast.aremox.com/api/library/sync-config', {
+      const serverUrl = getServerUrl();
+      await fetch(`${serverUrl}/api/library/sync-config`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -211,7 +222,8 @@ async function fetchConfigAndSync() {
   sendSyncStatus(true, 'Obteniendo lista del servidor...');
 
   try {
-    const response = await fetch('https://podcast.aremox.com/api/library/sync-config', {
+    const serverUrl = getServerUrl();
+    const response = await fetch(`${serverUrl}/api/library/sync-config`, {
       headers: { 'Authorization': `Bearer ${localConfig.jwtToken}` }
     });
     
@@ -239,6 +251,7 @@ async function fetchConfigAndSync() {
         // Report initial USB space
         await reportUsbStorageSpace(config.targetUsbSerial, config.targetFolder, localConfig.jwtToken);
 
+        const serverUrl = getServerUrl();
         await Syncer.startSync(drive.deviceId, config.targetFolder, localConfig.jwtToken, (msg) => {
           log(msg, 'SYNC');
           
@@ -252,7 +265,7 @@ async function fetchConfigAndSync() {
             pct = 100;
           }
           sendSyncStatus(true, msg, pct);
-        });
+        }, serverUrl);
 
         notify('MyPodcast Sync', '¡Sincronización de podcasts completada!');
 

@@ -9,7 +9,8 @@ export class Syncer {
     driveLetter: string, 
     folder: string, 
     token: string,
-    onProgress?: (msg: string) => void
+    onProgress?: (msg: string) => void,
+    serverUrl = 'https://podcast.aremox.com'
   ) {
     const targetDir = path.join(driveLetter, folder);
     if (!fs.existsSync(targetDir)) {
@@ -17,7 +18,7 @@ export class Syncer {
     }
 
     onProgress?.('Fetching playlist queue from server...');
-    const response = await fetch('https://podcast.aremox.com/api/library/sync-config', {
+    const response = await fetch(`${serverUrl}/api/library/sync-config`, {
       headers: { 'Authorization': `Bearer ${token}` }
     });
     const rawConfig = await response.json();
@@ -52,7 +53,7 @@ export class Syncer {
       if (!fs.existsSync(filePath)) {
         onProgress?.(`Downloading (${i + 1}/${queue.length}): ${ep.title}`);
         try {
-          const downloadUrl = `https://podcast.aremox.com/api/proxy/audio/${ep._id}`;
+          const downloadUrl = `${serverUrl}/api/proxy/audio/${ep._id}`;
           const res = await fetch(downloadUrl, {
             headers: { 'Authorization': `Bearer ${token}` }
           });
