@@ -1794,3 +1794,43 @@
 [2026-05-17T09:59:07.821Z] [SYNC] Downloading (2/21): Fallo de sistema - 864: He vencido al mundo - 10/05/26
 [2026-05-17T10:00:00.522Z] [INFO] Aplicación minimizada a la bandeja del sistema.
 [2026-05-17T10:00:11.075Z] [INFO] Aplicación minimizada a la bandeja del sistema.
+[2026-05-17T10:01:35.887Z] [SYNC] Downloading (3/21): Experto nuclear responde las preguntas más buscadas sobre energía nuclear
+[2026-05-17T10:01:49.753Z] [SYNC] Downloading (4/21): Por qué NADIE habla de las Gafas Inteligentes
+[2026-05-17T10:02:23.792Z] [SYNC] Downloading (5/21): La tecnología que quiere vencer a la muerte (y ya existe)
+[2026-05-17T10:02:33.263Z] [SYNC] Downloading (6/21): La TECNOLOGÍA de la NUEVA F1 ¿es un error?
+[2026-05-17T10:02:42.124Z] [SYNC] Downloading (7/21): OpenClaw en acción: el cambio que nadie espera
+[2026-05-17T10:03:04.350Z] [SYNC] Downloading (8/21): Todos, menos los humanos: Musk, Samdios y la fiesta de la IA
+[2026-05-17T10:03:42.603Z] [SYNC] Downloading (9/21): Tesla FSD avanza en Europa, Toyota prepara un Corolla eléctrico y BYD rebaja el acceso al eléctrico | EP654 | 14/05/2026
+[2026-05-17T10:03:54.679Z] [SYNC] Downloading (10/21): Xpeng X9, un monovolumen eléctrico y muy premium llega a EUROPA y más| EP653 | 14/05/2026
+[2026-05-17T10:04:08.258Z] [SYNC] Downloading (11/21): China aprieta el acelerador: SUV baratos y camiones eléctricos de largo recorrido | EP652 | 13/05/2026
+[2026-05-17T10:04:25.551Z] [SYNC] Downloading (12/21): 1105- El hombre que recuperó 400.000$ en Bitcoin gracias a la IA
+[2026-05-17T10:04:29.165Z] [SYNC] Downloading (13/21): 1104- Este es El futuro de los relojes inteligentes
+[2026-05-17T10:04:33.863Z] [SYNC] Downloading (14/21): 1103- Google quiere plantarle cara a APPLE
+[2026-05-17T10:04:38.347Z] [SYNC] Downloading (15/21): 1102- ¿Hay una gran BURBUJA en la IA?
+[2026-05-17T10:04:42.097Z] [SYNC] Downloading (16/21): 1101- Netflix y fútbol
+[2026-05-17T10:04:46.096Z] [SYNC] Downloading (17/21): Elon Musk se pasa de Grok a Claude para ganar las elecciones del Real Madrid
+[2026-05-17T10:06:26.979Z] [SYNC] Downloading (18/21): ChatGPT vuelve a ser mejor que Claude gracias a la potencia de cómputo de los WC japoneses
+[2026-05-17T10:08:12.868Z] [SYNC] Downloading (19/21): El poliamor explicado con OpenAI y Microsoft: abren la pareja pero uno sale perdiendo
+[2026-05-17T10:09:40.261Z] [SYNC] Downloading (20/21): OpenAI tiene un arma inesperada para acabar con Anthropic: portales extraterrestres
+[2026-05-17T10:11:16.839Z] [SYNC] Downloading (21/21): Meta clona a Mark Zuckerberg mientras OpenAI deja que los hackers destruyan Basic-Fit
+[2026-05-17T10:13:16.349Z] [SYNC] Sync complete!
+[2026-05-17T10:18:47.171Z] [INFO] Configuración: USB=DF0C9B1B, Carpeta=Podcasts, Intervalo=900s
+[2026-05-17T10:18:47.464Z] [INFO] USB emparejado detectado en unidad E:. Iniciando descarga...
+[2026-05-17T10:18:47.465Z] [SYNC] Fetching playlist queue from server...
+[2026-05-17T10:18:47.490Z] [SYNC] Found 21 items in web queue.
+[2026-05-17T10:18:47.500Z] [SYNC] Sync complete!
+[2026-05-17T10:33:47.181Z] [INFO] Configuración: USB=DF0C9B1B, Carpeta=Podcasts, Intervalo=900s
+[2026-05-17T10:33:47.473Z] [INFO] USB emparejado detectado en unidad E:. Iniciando descarga...
+[2026-05-17T10:33:47.474Z] [SYNC] Fetching playlist queue from server...
+[2026-05-17T10:33:47.498Z] [SYNC] Found 21 items in web queue.
+[2026-05-17T10:33:47.507Z] [SYNC] Sync complete!
+[2026-05-17T10:48:47.225Z] [INFO] Configuración: USB=DF0C9B1B, Carpeta=Podcasts, Intervalo=900s
+[2026-05-17T10:48:47.535Z] [INFO] USB emparejado detectado en unidad E:. Iniciando descarga...
+[2026-05-17T10:48:47.535Z] [SYNC] Fetching playlist queue from server...
+[2026-05-17T10:48:47.592Z] [SYNC] Found 21 items in web queue.
+[2026-05-17T10:48:47.602Z] [SYNC] Sync complete!
+[2026-05-17T11:03:47.224Z] [INFO] Configuración: USB=DF0C9B1B, Carpeta=Podcasts, Intervalo=900s
+[2026-05-17T11:03:47.529Z] [INFO] USB emparejado detectado en unidad E:. Iniciando descarga...
+[2026-05-17T11:03:47.529Z] [SYNC] Fetching playlist queue from server...
+[2026-05-17T11:03:47.557Z] [SYNC] Found 21 items in web queue.
+[2026-05-17T11:03:47.568Z] [SYNC] Sync complete!

@@ -1,6 +1,6 @@
-import { Component } from '@angular/core';
+import { Component, HostListener, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
-import { AudioPlayerService } from '../../../core/services/audio-player.service';
+import { AudioPlayerService, PlaybackSpeed } from '../../../core/services/audio-player.service';
 import { PlaylistService } from '../../../core/services/playlist.service';
 
 @Component({
@@ -70,6 +70,26 @@ import { PlaylistService } from '../../../core/services/playlist.service';
                 </svg>
               </button>
             }
+
+            <!-- Speed Control Dropdown Container -->
+            <div class="speed-control-container">
+              <button class="ctrl-btn speed-btn" (click)="toggleSpeedMenu($event)" aria-label="Cambiar velocidad de reproducción" [title]="'Velocidad: ' + player.speed() + 'x'">
+                {{ player.speed() }}x
+              </button>
+              
+              @if (showSpeedMenu()) {
+                <div class="speed-menu">
+                  @for (s of speeds; track s) {
+                    <button 
+                      class="speed-option" 
+                      [class.active]="player.speed() === s" 
+                      (click)="selectSpeed(s, $event)">
+                      {{ s }}x
+                    </button>
+                  }
+                </div>
+              }
+            </div>
           </div>
 
           <!-- Time + queue info -->
@@ -182,6 +202,69 @@ import { PlaylistService } from '../../../core/services/playlist.service';
     }
     .play-btn:hover { background: var(--accent-hover); transform: scale(1.05); }
 
+    /* Speed Control Styles */
+    .speed-control-container {
+      position: relative;
+    }
+    .speed-btn {
+      font-size: var(--font-xs);
+      font-weight: 600;
+      color: var(--text-secondary);
+      border: 1px solid rgba(255,255,255,0.1);
+      width: 38px; height: 38px;
+      min-width: 38px; min-height: 38px;
+      border-radius: var(--radius-full);
+    }
+    .speed-btn:hover {
+      color: var(--accent);
+      border-color: rgba(var(--accent), 0.3);
+      background: rgba(255,255,255,0.05);
+    }
+    .speed-menu {
+      position: absolute;
+      bottom: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-bottom: 8px;
+      background: var(--bg-elevated);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: var(--radius-md);
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(20px);
+      display: flex;
+      flex-direction: column;
+      padding: 6px;
+      min-width: 76px;
+      z-index: 1000;
+      animation: fadeInUp 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translate(-50%, 8px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+    .speed-option {
+      padding: 6px 12px;
+      font-size: var(--font-xs);
+      font-weight: 500;
+      color: var(--text-secondary);
+      border-radius: var(--radius-sm);
+      text-align: center;
+      transition: all var(--transition-fast);
+      width: 100%;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+    }
+    .speed-option:hover {
+      background: rgba(255,255,255,0.08);
+      color: var(--text-primary);
+    }
+    .speed-option.active {
+      background: var(--accent);
+      color: var(--bg-primary);
+      font-weight: 700;
+    }
+
     /* Right info */
     .right-info {
       display: flex; flex-direction: column; align-items: flex-end;
@@ -208,6 +291,9 @@ import { PlaylistService } from '../../../core/services/playlist.service';
   `,
 })
 export class MiniPlayerComponent {
+  readonly showSpeedMenu = signal(false);
+  readonly speeds: PlaybackSpeed[] = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+
   constructor(
     public player: AudioPlayerService,
     public pl: PlaylistService,
@@ -225,4 +311,21 @@ export class MiniPlayerComponent {
     const pct = (event.clientX - rect.left) / rect.width;
     this.player.seekToPercent(pct * 100);
   }
+
+  toggleSpeedMenu(event: MouseEvent): void {
+    event.stopPropagation();
+    this.showSpeedMenu.update(v => !v);
+  }
+
+  selectSpeed(speed: PlaybackSpeed, event: MouseEvent): void {
+    event.stopPropagation();
+    this.player.setSpeed(speed);
+    this.showSpeedMenu.set(false);
+  }
+
+  @HostListener('document:click')
+  onDocumentClick(): void {
+    this.showSpeedMenu.set(false);
+  }
 }
+
