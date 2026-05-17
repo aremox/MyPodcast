@@ -26,13 +26,46 @@ if (!gotTheLock) {
   console.log('Another instance is already running. Quitting.');
   app.quit();
 } else {
-  app.on('second-instance', () => {
+  app.on('second-instance', (event, commandLine) => {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       mainWindow.show();
       mainWindow.focus();
     }
+    handleDeepLinkArgs(commandLine);
   });
+}
+
+function handleDeepLinkArgs(args: string[]) {
+  log(`Recibidos argumentos de línea de comandos: ${JSON.stringify(args)}`);
+  
+  const deepLink = args.find(arg => arg.startsWith('mypodcastsync://'));
+  if (deepLink) {
+    log(`Deep link detectado: ${deepLink}`);
+    try {
+      const urlObj = new URL(deepLink);
+      const host = urlObj.host; // e.g. "open-folder" or "play"
+      const params = urlObj.searchParams;
+      
+      if (host === 'open-folder') {
+        const folderPath = params.get('path');
+        if (folderPath) {
+          const decoded = decodeURIComponent(folderPath);
+          log(`Abriendo carpeta: ${decoded}`);
+          shell.openPath(decoded);
+        }
+      } else if (host === 'play') {
+        const filePath = params.get('file');
+        if (filePath) {
+          const decoded = decodeURIComponent(filePath);
+          log(`Reproduciendo archivo: ${decoded}`);
+          shell.openPath(decoded);
+        }
+      }
+    } catch (err) {
+      log(`Error al procesar deep link: ${err}`, 'ERROR');
+    }
+  }
 }
 
 // --- Logger ---
@@ -51,11 +84,19 @@ function log(message: string, level: 'INFO' | 'ERROR' | 'SYNC' = 'INFO') {
 }
 
 function notify(title: string, message: string) {
-  new Notification({
+  const notif = new Notification({
     title,
     body: message,
     icon: ICON_PATH
-  }).show();
+  });
+  notif.on('click', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+  notif.show();
 }
 
 // --- Local Config Persistance ---
@@ -90,6 +131,7 @@ ipcMain.handle('get-config', async () => {
     folder: local.targetFolder || 'Podcasts',
     syncInterval: local.syncInterval || 60,
     serverUrl: local.serverUrl || 'https://podcast.aremox.com',
+    downloadSpeedLimit: local.downloadSpeedLimit || 0,
     autostart
   };
 });
@@ -213,10 +255,23 @@ function sendConfigUpdate() {
       folder: local.targetFolder || 'Podcasts',
       syncInterval: local.syncInterval || 60,
       serverUrl: local.serverUrl || 'https://podcast.aremox.com',
+      downloadSpeedLimit: local.downloadSpeedLimit || 0,
       autostart
     });
   }
 }
+
+ipcMain.handle('set-speed-limit', async (_, limit: number) => {
+  try {
+    saveLocalConfig({ downloadSpeedLimit: limit });
+    log(`[Config] Límite de velocidad de descarga actualizado a: ${limit > 0 ? limit + ' KB/s' : 'Sin límite'}`);
+    sendConfigUpdate();
+    return true;
+  } catch (err) {
+    log(`[Config] Error al guardar el límite de velocidad: ${err}`, 'ERROR');
+    return false;
+  }
+});
 
 async function reportUsbStorageSpace(driveSerialNumber: string, targetFolder: string, jwtToken: string) {
   try {
@@ -272,6 +327,25 @@ async function fetchConfigAndSync() {
       headers: { 'Authorization': `Bearer ${localConfig.jwtToken}` }
     });
     
+    if (response.status === 401) {
+      log('Sesión expirada o no autorizada (HTTP 401). Desvinculando automáticamente...', 'ERROR');
+      notify('Sesión Expirada', 'La vinculación con el servidor ha caducado. Por favor, vuelve a vincular el dispositivo.');
+      saveLocalConfig({
+        jwtToken: null,
+        targetUsbSerial: null,
+        targetFolder: null,
+        syncInterval: null
+      });
+      if (syncTimer) {
+        clearInterval(syncTimer);
+        syncTimer = null;
+      }
+      sendConfigUpdate();
+      isSyncing = false;
+      sendSyncStatus(false);
+      return;
+    }
+
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     
     const remoteConfig = await response.json();
@@ -297,7 +371,7 @@ async function fetchConfigAndSync() {
         await reportUsbStorageSpace(config.targetUsbSerial, config.targetFolder, localConfig.jwtToken);
 
         const serverUrl = getServerUrl();
-        await Syncer.startSync(drive.deviceId, config.targetFolder, localConfig.jwtToken, (msg) => {
+        const stats = await Syncer.startSync(drive.deviceId, config.targetFolder, localConfig.jwtToken, (msg) => {
           log(msg, 'SYNC');
           
           let pct = 0;
@@ -312,22 +386,44 @@ async function fetchConfigAndSync() {
           sendSyncStatus(true, msg, pct);
         }, serverUrl);
 
-        notify('MyPodcast Sync', '¡Sincronización de podcasts completada!');
+        // Rich native notification detailing downloaded and deleted files
+        if (stats.downloaded > 0 || stats.deleted > 0) {
+          let summaryMsg = `Descargados: ${stats.downloaded} nuevo(s)`;
+          if (stats.deleted > 0) {
+            summaryMsg += `, Eliminados: ${stats.deleted} antiguo(s)`;
+          }
+          summaryMsg += `. Total en cola: ${stats.total}.`;
+          
+          if (stats.failed > 0) {
+            summaryMsg += ` (${stats.failed} fallidos)`;
+            notify('Sincronización con Advertencias', summaryMsg);
+          } else {
+            notify('Sincronización Completada', summaryMsg);
+          }
+        } else {
+          if (stats.failed > 0) {
+            notify('Sincronización Incompleta', `No se pudo descargar ningún podcast nuevo. Fallos: ${stats.failed}.`);
+          } else {
+            notify('Podcasts al Día', `Todos tus podcasts están actualizados (${stats.total} en cola).`);
+          }
+        }
 
         // Report final USB space (after downloads)
         await reportUsbStorageSpace(config.targetUsbSerial, config.targetFolder, localConfig.jwtToken);
       } else {
         log(`El USB configurado (${config.targetUsbSerial}) no se encuentra conectado.`, 'ERROR');
         sendSyncStatus(false, 'USB no conectado');
+        notify('USB No Detectado', `El dispositivo USB configurado (${config.targetUsbSerial}) no está conectado.`);
       }
     } else {
       log('No hay ningún número de serie USB configurado en tu cuenta.');
       sendSyncStatus(false, 'USB no configurado');
     }
     updateLoopInterval(config.syncInterval);
-  } catch (err) {
+  } catch (err: any) {
     log(`Excepción en la sincronización: ${err}`, 'ERROR');
     sendSyncStatus(false, 'Error de sincronización');
+    notify('Sincronización Fallida', `Error inesperado: ${err.message || err}`);
   } finally {
     isSyncing = false;
     sendSyncStatus(false);
@@ -409,13 +505,30 @@ function setupTray() {
 // --- App Lifecycle Event Registers ---
 app.whenReady().then(() => {
   log('Arrancando agente de sincronización en segundo plano con Electron...');
+  
+  // Register custom protocol for deep linking
+  if (process.defaultApp) {
+    if (process.argv.length >= 2) {
+      app.setAsDefaultProtocolClient('mypodcastsync', process.execPath, [path.resolve(process.argv[1])]);
+    }
+  } else {
+    app.setAsDefaultProtocolClient('mypodcastsync');
+  }
+
+  // Handle deep link on cold start
+  handleDeepLinkArgs(process.argv);
+
   createWindow();
   setupTray();
   startSyncLoop();
 
   // Watch removable USBs changes in real-time
   UsbScanner.startMonitoring(10000, (drive) => {
-    log(`Nueva unidad extraíble detectada: ${drive.volumeName} (${drive.deviceId})`);
+    log(`Nueva unidad extraíble detectada: ${drive.volumeName} (${drive.deviceId}) - SN: ${drive.serialNumber}`);
+    const local = getLocalConfig();
+    if (local.targetUsbSerial && local.targetUsbSerial === drive.serialNumber) {
+      notify('USB Detectado', `Se ha detectado el dispositivo USB '${drive.volumeName || 'Podcast USB'}'. Iniciando sincronización automática...`);
+    }
     fetchConfigAndSync();
   });
 });

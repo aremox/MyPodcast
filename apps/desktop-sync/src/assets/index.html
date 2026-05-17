@@ -505,6 +505,21 @@
           <span class="info-label">Servidor Conectado</span>
           <span id="server-url-text" class="info-value" style="word-break: break-all;">https://podcast.aremox.com</span>
         </div>
+        <!-- Download speed limit configuration -->
+        <div class="info-item" style="grid-column: span 2; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px;">
+          <div style="display: flex; flex-direction: column; gap: 2px;">
+            <span class="info-label">Límite de velocidad</span>
+            <span id="speed-limit-status" class="info-value">Sin límite</span>
+          </div>
+          <select id="speed-limit-select" class="server-input" style="width: auto; min-width: 130px; padding: 6px 12px; margin: 0; font-size: 0.85rem; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--card-border); border-radius: 8px; color: var(--text-main); font-weight: 500; cursor: pointer; outline: none; transition: all 0.3s ease;">
+            <option value="0">Sin límite</option>
+            <option value="512">512 KB/s</option>
+            <option value="1024">1 MB/s</option>
+            <option value="2048">2 MB/s</option>
+            <option value="5120">5 MB/s</option>
+            <option value="10240">10 MB/s</option>
+          </select>
+        </div>
       </div>
     </div>
 
@@ -637,6 +652,22 @@
         btnSync.classList.remove('hidden');
         btnUnpair.classList.remove('hidden');
       }
+
+      // Speed limit setting
+      if (config.downloadSpeedLimit !== undefined) {
+        const select = document.getElementById('speed-limit-select');
+        const status = document.getElementById('speed-limit-status');
+        if (select) {
+          select.value = String(config.downloadSpeedLimit);
+          if (config.downloadSpeedLimit === 0) {
+            status.textContent = 'Sin límite';
+          } else if (config.downloadSpeedLimit < 1024) {
+            status.textContent = `${config.downloadSpeedLimit} KB/s`;
+          } else {
+            status.textContent = `${(config.downloadSpeedLimit / 1024).toFixed(0)} MB/s`;
+          }
+        }
+      }
     }
 
     // Initial Loading
@@ -737,6 +768,22 @@
         } finally {
           btnUnpair.disabled = false;
         }
+      }
+    });
+
+    const speedLimitSelect = document.getElementById('speed-limit-select');
+    speedLimitSelect.addEventListener('change', async () => {
+      const limit = parseInt(speedLimitSelect.value);
+      appendLog(`[Config] Guardando nuevo límite de velocidad: ${limit > 0 ? limit + ' KB/s' : 'Sin límite'}...`);
+      try {
+        const success = await window.electronAPI.setSpeedLimit(limit);
+        if (success) {
+          appendLog('[SUCCESS] Límite de velocidad guardado correctamente.');
+        } else {
+          appendLog('[ERROR] No se pudo guardar el límite de velocidad.');
+        }
+      } catch (err) {
+        appendLog('[ERROR] Error al cambiar límite de velocidad: ' + err);
       }
     });
 

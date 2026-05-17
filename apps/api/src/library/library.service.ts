@@ -109,12 +109,24 @@ export class LibraryService {
   async getSyncConfig(userId: string) {
     this.logger.log(`Fetching sync config for user: ${userId}`);
     const config = await this.syncConfigModel.findOne({ userId: new Types.ObjectId(userId) })
-      .populate('queue')
+      .populate({
+        path: 'queue',
+        populate: {
+          path: 'podcastId',
+          select: 'title imageUrl'
+        }
+      })
       .exec();
     
     // Strictly use the manual queue from SyncConfig
     const fullConfig = await this.syncConfigModel.findOne({ userId: new Types.ObjectId(userId) })
-      .populate('queue')
+      .populate({
+        path: 'queue',
+        populate: {
+          path: 'podcastId',
+          select: 'title imageUrl'
+        }
+      })
       .exec();
     
     const effectiveQueue = fullConfig?.queue || [];
