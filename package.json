@@ -69,6 +69,7 @@
     "@typescript-eslint/utils": "^8.40.0",
     "angular-eslint": "^21.2.0",
     "electron": "^42.1.0",
+    "electron-builder": "^26.8.1",
     "eslint": "^9.8.0",
     "eslint-config-prettier": "^10.0.0",
     "jest": "^30.0.2",

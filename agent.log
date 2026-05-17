@@ -1854,3 +1854,13 @@
 [2026-05-17T12:03:47.575Z] [SYNC] Fetching playlist queue from server...
 [2026-05-17T12:03:47.599Z] [SYNC] Found 21 items in web queue.
 [2026-05-17T12:03:47.609Z] [SYNC] Sync complete!
+[2026-05-17T12:10:33.827Z] [INFO] Aplicación minimizada a la bandeja del sistema.
+[2026-05-17T12:11:30.526Z] [INFO] Arrancando agente de sincronización en segundo plano con Electron...
+[2026-05-17T12:11:30.766Z] [INFO] Configuración: USB=DF0C9B1B, Carpeta=Podcasts, Intervalo=900s
+[2026-05-17T12:11:31.123Z] [INFO] USB emparejado detectado en unidad E:. Iniciando descarga...
+[2026-05-17T12:11:31.433Z] [INFO] [Storage] Reportando estadísticas USB: Total=31.3GB, Libre=30.5GB, Podcasts=0.74GB
+[2026-05-17T12:11:31.509Z] [SYNC] Fetching playlist queue from server...
+[2026-05-17T12:11:31.567Z] [SYNC] Found 21 items in web queue.
+[2026-05-17T12:11:31.578Z] [SYNC] Sync complete!
+[2026-05-17T12:11:31.908Z] [INFO] [Storage] Reportando estadísticas USB: Total=31.3GB, Libre=30.5GB, Podcasts=0.74GB
+[2026-05-17T12:11:31.975Z] [INFO] Cambiando intervalo de sincronización automática a 900 segundos
