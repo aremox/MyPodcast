@@ -29,14 +29,35 @@
       -webkit-font-smoothing: antialiased;
     }
 
-    body {
+    html, body {
       background: var(--bg-primary);
       color: var(--text-main);
-      height: 100vh;
-      overflow: hidden;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      overflow: hidden !important;
+    }
+
+    body {
       display: flex;
       flex-direction: column;
       position: relative;
+    }
+
+    /* Sleek custom scrollbars for inner log console */
+    .log-console::-webkit-scrollbar {
+      width: 6px;
+    }
+    .log-console::-webkit-scrollbar-track {
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 10px;
+    }
+    .log-console::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+    }
+    .log-console::-webkit-scrollbar-thumb:hover {
+      background: rgba(255, 255, 255, 0.25);
     }
 
     /* Gradient mesh background */

@@ -449,8 +449,8 @@ async function startSyncLoop() {
 // --- Window and Tray Creation ---
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 550,
-    height: 650,
+    width: 620,
+    height: 780,
     resizable: false,
     maximizable: false,
     title: 'MyPodcast Sync Agent',
