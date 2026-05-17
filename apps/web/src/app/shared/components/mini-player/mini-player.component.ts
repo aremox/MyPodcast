@@ -1,4 +1,4 @@
-import { Component, HostListener, signal } from '@angular/core';
+import { Component, HostListener, signal, ViewChild, ElementRef, effect } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AudioPlayerService, PlaybackSpeed } from '../../../core/services/audio-player.service';
 import { PlaylistService } from '../../../core/services/playlist.service';
@@ -9,10 +9,22 @@ import { PlaylistService } from '../../../core/services/playlist.service';
   template: `
     @if (player.currentEpisode(); as episode) {
       <div class="mini-player">
-        <div class="progress-bar" (click)="onProgressClick($event)" title="Haz clic para saltar">
-          <div class="progress-fill" [style.width.%]="player.progress()"></div>
-          <div class="progress-buffered" [style.width.%]="bufferedPercent()"></div>
+        <!-- Interactive Waveform Progress Visualizer -->
+        <div class="waveform-container" 
+             (mousemove)="onMouseMove($event)" 
+             (mouseleave)="onMouseLeave()" 
+             (click)="onWaveformClick($event)"
+             title="Haz clic para saltar en la reproducción">
+          
+          <canvas #waveformCanvas class="waveform-canvas"></canvas>
+          
+          @if (showTooltip()) {
+            <div class="waveform-tooltip" [style.left.px]="tooltipLeft()">
+              {{ tooltipText() }}
+            </div>
+          }
         </div>
+
         <div class="player-content">
           <!-- Episode info — click to go to playlist -->
           <a routerLink="/playlist" class="episode-info">
@@ -119,28 +131,42 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       backdrop-filter: blur(20px);
     }
 
-    /* Clickable progress bar */
-    .progress-bar {
-      height: 4px;
-      background: rgba(255,255,255,0.08);
+    /* Waveform visualizer container */
+    .waveform-container {
+      height: 48px;
+      background: rgba(0, 0, 0, 0.2);
       cursor: pointer;
       position: relative;
-      overflow: hidden;
+      display: flex;
+      align-items: center;
+      padding: 0 var(--space-lg);
+      border-bottom: 1px solid rgba(255,255,255,0.03);
     }
-    .progress-bar:hover { height: 6px; }
-    .progress-fill {
-      height: 100%;
-      background: var(--accent-gradient);
-      transition: width 250ms linear;
-      position: absolute; top: 0; left: 0;
-      z-index: 2;
+    .waveform-canvas {
+      width: 100%;
+      height: 36px;
+      display: block;
     }
-    .progress-buffered {
-      height: 100%;
-      background: rgba(255,255,255,0.15);
-      position: absolute; top: 0; left: 0;
-      z-index: 1;
-      transition: width 500ms ease;
+    .waveform-tooltip {
+      position: absolute;
+      bottom: calc(100% - 4px);
+      transform: translateX(-50%);
+      background: #18181b;
+      color: #fff;
+      padding: 4px 8px;
+      font-size: 10px;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      pointer-events: none;
+      z-index: 1010;
+      white-space: nowrap;
+      animation: fadeIn 0.1s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translate(-50%, 4px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
     }
 
     .player-content {
@@ -291,25 +317,192 @@ import { PlaylistService } from '../../../core/services/playlist.service';
   `,
 })
 export class MiniPlayerComponent {
+  @ViewChild('waveformCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
+
   readonly showSpeedMenu = signal(false);
   readonly speeds: PlaybackSpeed[] = [0.5, 0.75, 1, 1.25, 1.3, 1.5, 1.75, 2];
+
+  // Tooltip & hover preview state
+  readonly showTooltip = signal(false);
+  readonly tooltipText = signal('');
+  readonly tooltipLeft = signal(0);
+  readonly hoverPercent = signal(0);
 
   constructor(
     public player: AudioPlayerService,
     public pl: PlaylistService,
     private router: Router,
-  ) {}
+  ) {
+    // Redraw waveform whenever progress, buffer or active episode changes
+    effect(() => {
+      // Accessing signals to track dependencies
+      this.player.currentEpisode();
+      this.player.progress();
+      this.player.buffered();
+      
+      // Request redraw on the next frame to avoid DOM rendering lags
+      requestAnimationFrame(() => {
+        this.drawWaveform();
+      });
+    });
+  }
 
   bufferedPercent(): number {
     const d = this.player.duration();
     return d > 0 ? (this.player.buffered() / d) * 100 : 0;
   }
 
-  onProgressClick(event: MouseEvent): void {
-    const bar = event.currentTarget as HTMLElement;
-    const rect = bar.getBoundingClientRect();
-    const pct = (event.clientX - rect.left) / rect.width;
-    this.player.seekToPercent(pct * 100);
+  generateEpisodeWaveform(id: string, count: number): number[] {
+    const heights: number[] = [];
+    let seed = 0;
+    for (let i = 0; i < id.length; i++) {
+      seed += id.charCodeAt(i);
+    }
+    
+    for (let i = 0; i < count; i++) {
+      // Create high/low wave overlays
+      const wave1 = Math.sin((i / count) * Math.PI * 6 + seed);
+      const wave2 = Math.cos((i / count) * Math.PI * 18 - seed);
+      const wave3 = Math.sin((i / count) * Math.PI * 36 + seed * 2);
+      
+      let val = Math.abs(wave1 * 0.5 + wave2 * 0.3 + wave3 * 0.2);
+      
+      // Symmetrical envelope shape
+      const envelope = Math.sin((i / count) * Math.PI);
+      val = val * 0.85 + 0.15;
+      val = val * envelope;
+      
+      heights.push(Math.max(0.12, Math.min(0.9, val)));
+    }
+    return heights;
+  }
+
+  drawWaveform(): void {
+    if (!this.canvasRef) return;
+    const canvas = this.canvasRef.nativeElement;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Canvas sizes & high-DPI scaling
+    const rect = canvas.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      ctx.scale(dpr, dpr);
+    }
+
+    const width = rect.width;
+    const height = rect.height;
+
+    ctx.clearRect(0, 0, width, height);
+
+    const episode = this.player.currentEpisode();
+    if (!episode) return;
+
+    const barCount = 140; // Dense premium waveform bars
+    const heights = this.generateEpisodeWaveform(episode._id, barCount);
+
+    const progress = this.player.progress();
+    const buffered = this.bufferedPercent();
+    const hoverPct = this.hoverPercent();
+
+    const barWidth = 3;
+    const gap = 2;
+    const totalBarWidth = barWidth + gap;
+
+    const maxBars = Math.floor(width / totalBarWidth);
+
+    for (let i = 0; i < maxBars; i++) {
+      const idx = Math.floor(i * (barCount / maxBars));
+      const val = heights[idx] || 0.12;
+
+      // Vertical sizing and symmetry
+      const barHeight = val * height * 0.85;
+      const x = i * totalBarWidth;
+      const y = (height - barHeight) / 2;
+
+      const barPct = (i / maxBars) * 100;
+
+      // Color selection
+      let color = 'rgba(255, 255, 255, 0.14)'; // Unplayed background
+
+      if (barPct <= progress) {
+        // Played zone: Gradient (Purple to Pink)
+        const grad = ctx.createLinearGradient(x, y, x, y + barHeight);
+        grad.addColorStop(0, '#a855f7'); // Violet-500
+        grad.addColorStop(1, '#ec4899'); // Pink-500
+        color = grad as any;
+      } else if (barPct <= buffered) {
+        // Buffered zone
+        color = 'rgba(255, 255, 255, 0.32)';
+      }
+
+      // Hover preview highlight state
+      if (this.showTooltip() && barPct <= hoverPct && barPct > progress) {
+        color = 'rgba(168, 85, 247, 0.45)';
+      }
+
+      ctx.fillStyle = color as any;
+      this.drawRoundedRect(ctx, x, y, barWidth, barHeight, 1.5);
+    }
+  }
+
+  drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number): void {
+    ctx.beginPath();
+    ctx.moveTo(x + radius, y);
+    ctx.lineTo(x + width - radius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+    ctx.lineTo(x + width, y + height - radius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+    ctx.lineTo(x + radius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+    ctx.lineTo(x, y + radius);
+    ctx.quadraticCurveTo(x, y, x + radius, y);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  @HostListener('window:resize')
+  onResize(): void {
+    this.drawWaveform();
+  }
+
+  onMouseMove(event: MouseEvent): void {
+    if (!this.canvasRef) return;
+    const canvas = this.canvasRef.nativeElement;
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const pct = Math.max(0, Math.min(100, (mouseX / rect.width) * 100));
+
+    this.hoverPercent.set(pct);
+    this.showTooltip.set(true);
+
+    const duration = this.player.duration();
+    if (duration > 0) {
+      const hoverTime = (pct / 100) * duration;
+      this.tooltipText.set(this.player.formatTime(hoverTime));
+    }
+
+    this.tooltipLeft.set(mouseX);
+    this.drawWaveform();
+  }
+
+  onMouseLeave(): void {
+    this.showTooltip.set(false);
+    this.hoverPercent.set(0);
+    this.drawWaveform();
+  }
+
+  onWaveformClick(event: MouseEvent): void {
+    if (!this.canvasRef) return;
+    const canvas = this.canvasRef.nativeElement;
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const pct = Math.max(0, Math.min(100, (mouseX / rect.width) * 100));
+    this.player.seekToPercent(pct);
   }
 
   toggleSpeedMenu(event: MouseEvent): void {
@@ -328,4 +521,5 @@ export class MiniPlayerComponent {
     this.showSpeedMenu.set(false);
   }
 }
+
 

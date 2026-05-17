@@ -29,7 +29,7 @@ import { AuthService } from './core/auth/auth.service';
       padding-bottom: 0;
     }
     .app-main.has-player {
-      padding-bottom: 90px;
+      padding-bottom: 130px;
     }
   `,
 })
