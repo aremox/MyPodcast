@@ -292,7 +292,7 @@ import { PlaylistService } from '../../../core/services/playlist.service';
 })
 export class MiniPlayerComponent {
   readonly showSpeedMenu = signal(false);
-  readonly speeds: PlaybackSpeed[] = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
+  readonly speeds: PlaybackSpeed[] = [0.5, 0.75, 1, 1.25, 1.3, 1.5, 1.75, 2];
 
   constructor(
     public player: AudioPlayerService,

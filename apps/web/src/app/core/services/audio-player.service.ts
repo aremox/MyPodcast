@@ -15,7 +15,7 @@ export interface PlayerEpisode {
   podcastImageUrl?: string;
 }
 
-export type PlaybackSpeed = 0.5 | 0.75 | 1 | 1.25 | 1.5 | 1.75 | 2;
+export type PlaybackSpeed = 0.5 | 0.75 | 1 | 1.25 | 1.3 | 1.5 | 1.75 | 2;
 
 @Injectable({ providedIn: 'root' })
 export class AudioPlayerService {
