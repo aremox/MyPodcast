@@ -89,8 +89,52 @@ ipcMain.handle('get-config', async () => {
     usbSerial: local.targetUsbSerial || null,
     folder: local.targetFolder || 'Podcasts',
     syncInterval: local.syncInterval || 60,
+    serverUrl: local.serverUrl || 'https://podcast.aremox.com',
     autostart
   };
+});
+
+ipcMain.handle('set-server-url', async (_, url: string) => {
+  try {
+    let cleanUrl = url.trim();
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      cleanUrl = 'https://' + cleanUrl;
+    }
+    cleanUrl = cleanUrl.replace(/\/+$/, ''); // Remove trailing slashes
+    saveLocalConfig({ serverUrl: cleanUrl });
+    log(`[Config] URL del servidor actualizada a: ${cleanUrl}`);
+    sendConfigUpdate();
+    return true;
+  } catch (err) {
+    log(`[Config] Error al guardar la URL del servidor: ${err}`, 'ERROR');
+    return false;
+  }
+});
+
+ipcMain.handle('unpair-account', async () => {
+  log('[Pairing] Desvinculando cuenta de este dispositivo...');
+  try {
+    saveLocalConfig({
+      jwtToken: null,
+      targetUsbSerial: null,
+      targetFolder: null,
+      syncInterval: null
+    });
+    
+    // Stop sync loops if running
+    if (syncTimer) {
+      clearInterval(syncTimer);
+      syncTimer = null;
+    }
+    
+    log('[Pairing] Dispositivo desvinculado correctamente.');
+    notify('MyPodcast Sync', 'Dispositivo desvinculado.');
+    sendConfigUpdate();
+    return true;
+  } catch (err) {
+    log(`[Pairing] Error al desvincular dispositivo: ${err}`, 'ERROR');
+    return false;
+  }
 });
 
 ipcMain.handle('pair-account', async (_, code: string) => {
@@ -168,6 +212,7 @@ function sendConfigUpdate() {
       usbSerial: local.targetUsbSerial || null,
       folder: local.targetFolder || 'Podcasts',
       syncInterval: local.syncInterval || 60,
+      serverUrl: local.serverUrl || 'https://podcast.aremox.com',
       autostart
     });
   }

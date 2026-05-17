@@ -386,6 +386,55 @@
       box-shadow: none;
     }
 
+    /* Server settings card styles */
+    .server-settings-card {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--card-border);
+      width: 100%;
+      max-width: 320px;
+    }
+
+    .server-input-group {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .server-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 10px 12px;
+      color: var(--text-main);
+      font-size: 0.85rem;
+      transition: all 0.3s ease;
+    }
+
+    .server-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 10px rgba(94, 92, 230, 0.15);
+    }
+
+    .btn-unpair {
+      background: rgba(255, 69, 58, 0.08);
+      color: var(--error);
+      border: 1px solid rgba(255, 69, 58, 0.2);
+    }
+
+    .btn-unpair:hover {
+      background: var(--error);
+      color: white;
+      border-color: var(--error);
+      box-shadow: 0 4px 12px rgba(255, 69, 58, 0.25);
+    }
+
     /* Hidden utilities */
     .hidden {
       display: none !important;
@@ -420,6 +469,15 @@
           <input type="text" id="pairing-code" class="pairing-input" maxlength="6" placeholder="000000" autofocus>
           <button id="btn-pair" class="btn">Vincular</button>
         </div>
+
+        <!-- Server configuration inside pairing screen -->
+        <div class="server-settings-card">
+          <span class="info-label" style="text-align: center; display: block; margin-bottom: 2px;">Servidor MyPodcast</span>
+          <div class="server-input-group">
+            <input type="url" id="server-url-input" class="server-input" placeholder="https://podcast.aremox.com">
+            <button id="btn-save-url" class="btn btn-secondary" style="padding: 8px 14px; font-size: 0.85rem;">Guardar</button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -441,6 +499,11 @@
         <div class="info-item">
           <span class="info-label">Inicio con Windows</span>
           <span id="autostart-status" class="info-value">Comprobando...</span>
+        </div>
+        <!-- Connected Server URL in Dashboard Grid -->
+        <div class="info-item" style="grid-column: span 2;">
+          <span class="info-label">Servidor Conectado</span>
+          <span id="server-url-text" class="info-value" style="word-break: break-all;">https://podcast.aremox.com</span>
         </div>
       </div>
     </div>
@@ -469,13 +532,14 @@
 
     <!-- Bottom Actions -->
     <div class="actions-bar">
-      <button id="btn-sync" class="btn" style="flex: 1;">
+      <button id="btn-sync" class="btn" style="flex: 2;">
         <svg style="width: 16px; height: 16px; fill: white;" viewBox="0 0 24 24">
           <path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/>
         </svg>
         Sincronizar Ahora
       </button>
-      <button id="btn-autostart" class="btn btn-secondary" style="flex: 1;">Autostart Windows</button>
+      <button id="btn-autostart" class="btn btn-secondary" style="flex: 1.5;">Auto-inicio</button>
+      <button id="btn-unpair" class="btn btn-secondary btn-unpair" style="flex: 1.5;">Desvincular</button>
     </div>
   </main>
 
@@ -489,6 +553,13 @@
     const btnPair = document.getElementById('btn-pair');
     const consoleDiv = document.getElementById('console');
     
+    // Server settings elements
+    const serverUrlInput = document.getElementById('server-url-input');
+    const btnSaveUrl = document.getElementById('btn-save-url');
+    const serverUrlText = document.getElementById('server-url-text');
+    const btnUnpair = document.getElementById('btn-unpair');
+    const btnSync = document.getElementById('btn-sync');
+
     // Config fields
     const usbName = document.getElementById('usb-name');
     const folderName = document.getElementById('folder-name');
@@ -519,12 +590,12 @@
       } else if (message.includes('[SYNC]')) {
         line.classList.add('sync');
         textSpan.textContent = message.replace(/\[.*\]\s*\[SYNC\]\s*/i, '');
-      } else if (message.includes('SUCCESS') || message.includes('complete')) {
+      } else if (message.includes('SUCCESS') || message.includes('complete') || message.includes('EXITOSA') || message.includes('correctamente')) {
         line.classList.add('success');
-        textSpan.textContent = message.replace(/\[.*\]\s*\[INFO\]\s*/i, '');
+        textSpan.textContent = message.replace(/\[.*\]\s*\[(INFO|Config|Pairing)\]\s*/i, '');
       } else {
         line.classList.add('info');
-        textSpan.textContent = message.replace(/\[.*\]\s*\[INFO\]\s*/i, '');
+        textSpan.textContent = message.replace(/\[.*\]\s*\[(INFO|Config|Pairing)\]\s*/i, '');
       }
       
       line.appendChild(textSpan);
@@ -536,11 +607,21 @@
 
     // Refresh configurations on screen
     function updateUI(config) {
+      // Sync Server URL fields
+      if (config.serverUrl) {
+        serverUrlInput.value = config.serverUrl;
+        serverUrlText.textContent = config.serverUrl;
+      }
+
       if (!config.isPaired) {
         setupView.classList.remove('hidden');
         dashboardView.classList.add('hidden');
         statusBadge.className = 'status-badge disconnected';
         statusText.textContent = 'No Vinculado';
+        
+        // Hide sync and unpair since they don't apply when unpaired
+        btnSync.classList.add('hidden');
+        btnUnpair.classList.add('hidden');
       } else {
         setupView.classList.add('hidden');
         dashboardView.classList.remove('hidden');
@@ -551,6 +632,10 @@
         folderName.textContent = config.folder || 'Podcasts';
         intervalTime.textContent = config.syncInterval ? `${config.syncInterval}s` : '900s';
         autostartStatus.textContent = config.autostart ? 'Activado' : 'Desactivado';
+        
+        // Show sync and unpair actions
+        btnSync.classList.remove('hidden');
+        btnUnpair.classList.remove('hidden');
       }
     }
 
@@ -614,7 +699,48 @@
       }
     });
 
-    document.getElementById('btn-sync').addEventListener('click', () => {
+    btnSaveUrl.addEventListener('click', async () => {
+      const url = serverUrlInput.value.trim();
+      if (!url) {
+        appendLog('[ERROR] La URL del servidor no puede estar vacía.');
+        return;
+      }
+      btnSaveUrl.disabled = true;
+      appendLog('[INFO] Guardando URL del servidor...');
+      try {
+        const success = await window.electronAPI.setServerUrl(url);
+        if (success) {
+          appendLog('[SUCCESS] URL del servidor guardada correctamente.');
+        } else {
+          appendLog('[ERROR] No se pudo guardar la URL del servidor.');
+        }
+      } catch (err) {
+        appendLog('[ERROR] Error al guardar la URL: ' + err);
+      } finally {
+        btnSaveUrl.disabled = false;
+      }
+    });
+
+    btnUnpair.addEventListener('click', async () => {
+      if (confirm('¿Estás seguro de que deseas desvincular este dispositivo? Se cerrará la sesión actual.')) {
+        btnUnpair.disabled = true;
+        appendLog('[INFO] Desvinculando dispositivo...');
+        try {
+          const success = await window.electronAPI.unpairAccount();
+          if (success) {
+            appendLog('[SUCCESS] Dispositivo desvinculado con éxito.');
+          } else {
+            appendLog('[ERROR] No se pudo desvincular el dispositivo.');
+          }
+        } catch (err) {
+          appendLog('[ERROR] Error al desvincular: ' + err);
+        } finally {
+          btnUnpair.disabled = false;
+        }
+      }
+    });
+
+    btnSync.addEventListener('click', () => {
       window.electronAPI.triggerSync();
     });
 

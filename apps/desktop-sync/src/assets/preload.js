@@ -3,6 +3,8 @@ const { contextBridge, ipcRenderer } = require('electron');
 contextBridge.exposeInMainWorld('electronAPI', {
   getConfig: () => ipcRenderer.invoke('get-config'),
   pairAccount: (code) => ipcRenderer.invoke('pair-account', code),
+  unpairAccount: () => ipcRenderer.invoke('unpair-account'),
+  setServerUrl: (url) => ipcRenderer.invoke('set-server-url', url),
   triggerSync: () => ipcRenderer.send('trigger-sync'),
   toggleAutostart: () => ipcRenderer.send('toggle-autostart'),
   openLogsFolder: () => ipcRenderer.send('open-logs-folder'),
