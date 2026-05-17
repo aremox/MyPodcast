@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MyPodcast Desktop Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0a0b10;
+      --card-bg: rgba(18, 20, 29, 0.7);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --accent: #5e5ce6;
+      --accent-rgb: 94, 92, 230;
+      --success: #30d158;
+      --warning: #ffd60a;
+      --error: #ff453a;
+      --text-main: #f5f5f7;
+      --text-muted: #8e8e93;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Outfit', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    body {
+      background: var(--bg-primary);
+      color: var(--text-main);
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+    }
+
+    /* Gradient mesh background */
+    body::before {
+      content: '';
+      position: absolute;
+      top: -20%;
+      right: -20%;
+      width: 60%;
+      height: 60%;
+      background: radial-gradient(circle, rgba(94, 92, 230, 0.15) 0%, transparent 70%);
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    body::after {
+      content: '';
+      position: absolute;
+      bottom: -20%;
+      left: -20%;
+      width: 60%;
+      height: 60%;
+      background: radial-gradient(circle, rgba(48, 209, 88, 0.1) 0%, transparent 70%);
+      z-index: -1;
+      pointer-events: none;
+    }
+
+    /* App Header */
+    header {
+      padding: 20px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--card-border);
+      background: rgba(10, 11, 16, 0.5);
+      backdrop-filter: blur(10px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-container {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, var(--accent), #a28eff);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 4px 12px rgba(94, 92, 230, 0.3);
+    }
+
+    .logo-container svg {
+      width: 18px;
+      height: 18px;
+      fill: white;
+    }
+
+    h1 {
+      font-size: 1.15rem;
+      font-weight: 600;
+      letter-spacing: -0.5px;
+      background: linear-gradient(180deg, #ffffff 0%, #d1d1d6 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.8rem;
+      font-weight: 500;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      transition: all 0.3s ease;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+    }
+
+    .status-badge.connected .status-dot {
+      background: var(--success);
+      box-shadow: 0 0 8px var(--success);
+    }
+
+    .status-badge.disconnected .status-dot {
+      background: var(--error);
+      box-shadow: 0 0 8px var(--error);
+    }
+
+    .status-badge.syncing .status-dot {
+      background: var(--warning);
+      box-shadow: 0 0 8px var(--warning);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 0.5; }
+      50% { opacity: 1; }
+      100% { opacity: 0.5; }
+    }
+
+    /* Main Container */
+    main {
+      flex: 1;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      overflow-y: auto;
+    }
+
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 20px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    }
+
+    /* Pairing Section */
+    #pairing-section {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      padding: 30px 20px;
+      gap: 16px;
+    }
+
+    #pairing-section h2 {
+      font-size: 1.3rem;
+      font-weight: 600;
+    }
+
+    #pairing-section p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      max-width: 320px;
+      line-height: 1.4;
+    }
+
+    .pairing-form {
+      display: flex;
+      gap: 10px;
+      width: 100%;
+      max-width: 320px;
+      margin-top: 10px;
+    }
+
+    .pairing-input {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 12px;
+      color: var(--text-main);
+      font-size: 1.1rem;
+      font-weight: 600;
+      text-align: center;
+      letter-spacing: 2px;
+      transition: all 0.3s ease;
+    }
+
+    .pairing-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 12px rgba(94, 92, 230, 0.2);
+    }
+
+    .btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 12px 20px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .btn:hover {
+      background: #706ffd;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(94, 92, 230, 0.3);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    /* Dashboard Info */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 16px;
+    }
+
+    .info-item {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      padding: 12px 16px;
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .info-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+
+    .info-value {
+      font-size: 0.95rem;
+      font-weight: 500;
+    }
+
+    /* Sync Progress Bar */
+    .progress-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .progress-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.85rem;
+    }
+
+    .progress-details {
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 75%;
+    }
+
+    .progress-percent {
+      font-weight: 600;
+    }
+
+    .progress-track {
+      width: 100%;
+      height: 8px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 4px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), #a28eff);
+      width: 0%;
+      border-radius: 4px;
+      transition: width 0.3s ease;
+    }
+
+    /* Log Panel */
+    .log-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      min-height: 120px;
+    }
+
+    .log-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .log-title {
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+
+    .log-console {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 12px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      user-select: text;
+    }
+
+    .log-line {
+      line-height: 1.4;
+      word-break: break-all;
+    }
+
+    .log-line .time {
+      color: #636366;
+      margin-right: 6px;
+    }
+
+    .log-line.error { color: var(--error); }
+    .log-line.success { color: var(--success); }
+    .log-line.sync { color: #00d4ff; }
+    .log-line.info { color: #d1d1d6; }
+
+    /* Footer Buttons */
+    .actions-bar {
+      display: flex;
+      gap: 12px;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid var(--card-border);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.15);
+      box-shadow: none;
+    }
+
+    /* Hidden utilities */
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="logo-container">
+        <svg viewBox="0 0 24 24">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v-1.07zM17.9 13c-.1 1.79-1.16 3.39-2.9 4.1V15c0-1.1-.9-2-2-2h-3v-2h2c1.1 0 2-.9 2-2V7h1c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41z"/>
+        </svg>
+      </div>
+      <h1>MyPodcast Sync</h1>
+    </div>
+    <div id="status-badge" class="status-badge disconnected">
+      <div class="status-dot"></div>
+      <span id="status-text">Desconectado</span>
+    </div>
+  </header>
+
+  <!-- Main View -->
+  <main>
+    <!-- State 1: Unpaired / Setup -->
+    <div id="setup-view" class="card hidden">
+      <div id="pairing-section">
+        <h2>Vincular Dispositivo</h2>
+        <p>Introduce el código de vinculación de 6 dígitos que aparece en la web de MyPodcast para sincronizar tu cuenta.</p>
+        <div class="pairing-form">
+          <input type="text" id="pairing-code" class="pairing-input" maxlength="6" placeholder="000000" autofocus>
+          <button id="btn-pair" class="btn">Vincular</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- State 2: Active Dashboard -->
+    <div id="dashboard-view" class="card hidden">
+      <div class="info-grid">
+        <div class="info-item">
+          <span class="info-label">Dispositivo USB</span>
+          <span id="usb-name" class="info-value">Escaneando...</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Directorio Destino</span>
+          <span id="folder-name" class="info-value">Cargando...</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Intervalo de Sync</span>
+          <span id="interval-time" class="info-value">Calculando...</span>
+        </div>
+        <div class="info-item">
+          <span class="info-label">Inicio con Windows</span>
+          <span id="autostart-status" class="info-value">Comprobando...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sync progress card (Shown only when syncing) -->
+    <div id="progress-view" class="card progress-section hidden">
+      <div class="progress-header">
+        <span id="progress-desc" class="progress-details">Sincronizando contenidos...</span>
+        <span id="progress-pct" class="progress-percent">0%</span>
+      </div>
+      <div class="progress-track">
+        <div id="progress-bar" class="progress-fill"></div>
+      </div>
+    </div>
+
+    <!-- Live logs Console -->
+    <div class="card log-panel">
+      <div class="log-header">
+        <span class="log-title">Registro de Actividad (Live)</span>
+        <button id="btn-open-logs" class="btn btn-secondary" style="padding: 4px 10px; font-size: 0.75rem;">Ver archivo completo</button>
+      </div>
+      <div id="console" class="log-console">
+        <!-- Lines will be added here -->
+      </div>
+    </div>
+
+    <!-- Bottom Actions -->
+    <div class="actions-bar">
+      <button id="btn-sync" class="btn" style="flex: 1;">
+        <svg style="width: 16px; height: 16px; fill: white;" viewBox="0 0 24 24">
+          <path d="M12 6v3l4-4-4-4v3c-4.42 0-8 3.58-8 8 0 1.57.46 3.03 1.24 4.26L6.7 14.8c-.45-.83-.7-1.79-.7-2.8 0-3.31 2.69-6 6-6zm6.76 1.74L17.3 9.2c.44.84.7 1.79.7 2.8 0 3.31-2.69 6-6 6v-3l-4 4 4 4v-3c4.42 0 8-3.58 8-8 0-1.57-.46-3.03-1.24-4.26z"/>
+        </svg>
+        Sincronizar Ahora
+      </button>
+      <button id="btn-autostart" class="btn btn-secondary" style="flex: 1;">Autostart Windows</button>
+    </div>
+  </main>
+
+  <script>
+    const setupView = document.getElementById('setup-view');
+    const dashboardView = document.getElementById('dashboard-view');
+    const progressView = document.getElementById('progress-view');
+    const statusBadge = document.getElementById('status-badge');
+    const statusText = document.getElementById('status-text');
+    const pairingCodeInput = document.getElementById('pairing-code');
+    const btnPair = document.getElementById('btn-pair');
+    const consoleDiv = document.getElementById('console');
+    
+    // Config fields
+    const usbName = document.getElementById('usb-name');
+    const folderName = document.getElementById('folder-name');
+    const intervalTime = document.getElementById('interval-time');
+    const autostartStatus = document.getElementById('autostart-status');
+
+    // Progress fields
+    const progressDesc = document.getElementById('progress-desc');
+    const progressPct = document.getElementById('progress-pct');
+    const progressBar = document.getElementById('progress-bar');
+
+    // Add log line helper
+    function appendLog(message) {
+      const line = document.createElement('div');
+      line.className = 'log-line';
+      
+      const timeSpan = document.createElement('span');
+      timeSpan.className = 'time';
+      const now = new Date();
+      timeSpan.textContent = now.toTimeString().split(' ')[0];
+      line.appendChild(timeSpan);
+      
+      const textSpan = document.createElement('span');
+      // Format color and trim level prefix
+      if (message.includes('[ERROR]')) {
+        line.classList.add('error');
+        textSpan.textContent = message.replace(/\[.*\]\s*\[ERROR\]\s*/i, '');
+      } else if (message.includes('[SYNC]')) {
+        line.classList.add('sync');
+        textSpan.textContent = message.replace(/\[.*\]\s*\[SYNC\]\s*/i, '');
+      } else if (message.includes('SUCCESS') || message.includes('complete')) {
+        line.classList.add('success');
+        textSpan.textContent = message.replace(/\[.*\]\s*\[INFO\]\s*/i, '');
+      } else {
+        line.classList.add('info');
+        textSpan.textContent = message.replace(/\[.*\]\s*\[INFO\]\s*/i, '');
+      }
+      
+      line.appendChild(textSpan);
+      consoleDiv.appendChild(line);
+      
+      // Auto scroll
+      consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    }
+
+    // Refresh configurations on screen
+    function updateUI(config) {
+      if (!config.isPaired) {
+        setupView.classList.remove('hidden');
+        dashboardView.classList.add('hidden');
+        statusBadge.className = 'status-badge disconnected';
+        statusText.textContent = 'No Vinculado';
+      } else {
+        setupView.classList.add('hidden');
+        dashboardView.classList.remove('hidden');
+        statusBadge.className = 'status-badge connected';
+        statusText.textContent = 'Vinculado';
+        
+        usbName.textContent = config.usbSerial ? `USB (${config.usbSerial})` : 'No Configurado';
+        folderName.textContent = config.folder || 'Podcasts';
+        intervalTime.textContent = config.syncInterval ? `${config.syncInterval}s` : '900s';
+        autostartStatus.textContent = config.autostart ? 'Activado' : 'Desactivado';
+      }
+    }
+
+    // Initial Loading
+    window.addEventListener('DOMContentLoaded', async () => {
+      appendLog('[INFO] Inicializando interfaz del agente...');
+      try {
+        const config = await window.electronAPI.getConfig();
+        updateUI(config);
+      } catch (err) {
+        appendLog('[ERROR] Error cargando config inicial: ' + err);
+      }
+
+      // Event handlers from main process
+      window.electronAPI.onLog((logText) => {
+        appendLog(logText);
+      });
+
+      window.electronAPI.onConfigUpdated((config) => {
+        updateUI(config);
+      });
+
+      window.electronAPI.onSyncStatus((status) => {
+        if (status.isSyncing) {
+          statusBadge.className = 'status-badge syncing';
+          statusText.textContent = 'Sincronizando';
+          progressView.classList.remove('hidden');
+          progressDesc.textContent = status.message || 'Sincronizando...';
+          
+          if (status.percent !== undefined) {
+            const pct = Math.round(status.percent);
+            progressPct.textContent = `${pct}%`;
+            progressBar.style.width = `${pct}%`;
+          }
+        } else {
+          statusBadge.className = 'status-badge connected';
+          statusText.textContent = 'Vinculado';
+          progressView.classList.add('hidden');
+        }
+      });
+    });
+
+    // Buttons actions
+    btnPair.addEventListener('click', async () => {
+      const code = pairingCodeInput.value.trim();
+      if (code.length !== 6) {
+        appendLog('[ERROR] Código inválido (debe tener 6 dígitos)');
+        return;
+      }
+      btnPair.disabled = true;
+      appendLog('[INFO] Intentando vincular...');
+      try {
+        const success = await window.electronAPI.pairAccount(code);
+        if (success) {
+          pairingCodeInput.value = '';
+        }
+      } catch (err) {
+        appendLog('[ERROR] Fallo de vinculación: ' + err);
+      } finally {
+        btnPair.disabled = false;
+      }
+    });
+
+    document.getElementById('btn-sync').addEventListener('click', () => {
+      window.electronAPI.triggerSync();
+    });
+
+    document.getElementById('btn-autostart').addEventListener('click', () => {
+      window.electronAPI.toggleAutostart();
+    });
+
+    document.getElementById('btn-open-logs').addEventListener('click', () => {
+      window.electronAPI.openLogsFolder();
+    });
+  </script>
+</body>
+</html>

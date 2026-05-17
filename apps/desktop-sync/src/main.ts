@@ -1,10 +1,8 @@
-import SysTray from 'systray2';
+import { app, BrowserWindow, ipcMain, Tray, Menu, Notification, shell } from 'electron';
 import { UsbScanner } from './usb-scanner';
 import { Syncer } from './syncer';
 import * as path from 'path';
 import * as fs from 'fs';
-import { exec, spawn } from 'child_process';
-const notifier = require('node-notifier');
 
 // --- Configuration & Constants ---
 const APP_NAME = "MyPodcastSync";
@@ -12,34 +10,51 @@ const LOG_FILE = path.join(process.cwd(), 'agent.log');
 const ICON_PATH = path.join(process.cwd(), 'apps/desktop-sync/src/assets/icon.ico');
 const CONFIG_FILE = path.join(process.cwd(), 'config.json');
 
-// Simple instance check (using a lock file)
-const LOCK_FILE = path.join(process.cwd(), 'agent.lock');
-if (fs.existsSync(LOCK_FILE)) {
-  const pid = fs.readFileSync(LOCK_FILE, 'utf8');
-  try {
-    process.kill(parseInt(pid), 0);
-    console.error('Another agent instance is already running. Exiting.');
-    process.exit(1);
-  } catch (e) {
-    // Process not running, we can take over
-  }
-}
-fs.writeFileSync(LOCK_FILE, process.pid.toString());
-process.on('exit', () => fs.existsSync(LOCK_FILE) && fs.unlinkSync(LOCK_FILE));
-process.on('SIGINT', () => process.exit());
-
+let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
 let isSyncing = false;
-let autoStart = false;
-let systray: SysTray;
+let syncTimer: NodeJS.Timeout | null = null;
+let currentInterval = 60000;
+
+// --- Single Instance Lock ---
+const gotTheLock = app.requestSingleInstanceLock();
+if (!gotTheLock) {
+  console.log('Another instance is already running. Quitting.');
+  app.quit();
+} else {
+  app.on('second-instance', () => {
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.show();
+      mainWindow.focus();
+    }
+  });
+}
 
 // --- Logger ---
 function log(message: string, level: 'INFO' | 'ERROR' | 'SYNC' = 'INFO') {
   const entry = `[${new Date().toISOString()}] [${level}] ${message}\n`;
   console.log(entry.trim());
-  fs.appendFileSync(LOG_FILE, entry);
+  try {
+    fs.appendFileSync(LOG_FILE, entry);
+  } catch (err) {
+    // Ignore writing errors
+  }
+  // Send live logs to Renderer
+  if (mainWindow && !mainWindow.webContents.isDestroyed()) {
+    mainWindow.webContents.send('log-added', entry.trim());
+  }
 }
 
-// --- Persistence ---
+function notify(title: string, message: string) {
+  new Notification({
+    title,
+    body: message,
+    icon: ICON_PATH
+  }).show();
+}
+
+// --- Local Config Persistance ---
 function getLocalConfig() {
   if (fs.existsSync(CONFIG_FILE)) {
     try {
@@ -56,138 +71,21 @@ function saveLocalConfig(config: any) {
   fs.writeFileSync(CONFIG_FILE, JSON.stringify({ ...current, ...config }, null, 2));
 }
 
-// --- Autostart Management ---
-function isAutostartEnabled(): Promise<boolean> {
-  return new Promise((resolve) => {
-    const cmd = `reg query "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "${APP_NAME}"`;
-    exec(cmd, (err) => resolve(!err));
-  });
-}
+// --- IPC Interface Handlers ---
+ipcMain.handle('get-config', async () => {
+  const local = getLocalConfig();
+  const autostart = app.getLoginItemSettings().openAtLogin;
+  return {
+    isPaired: !!local.jwtToken,
+    usbSerial: local.targetUsbSerial || null,
+    folder: local.targetFolder || 'Podcasts',
+    syncInterval: local.syncInterval || 60,
+    autostart
+  };
+});
 
-function toggleAutostart() {
-  isAutostartEnabled().then(enabled => {
-    const nodePath = process.execPath;
-    const scriptPath = process.argv[1];
-    const command = `"${nodePath}" "${scriptPath}"`;
-    
-    const cmd = enabled 
-      ? `reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "${APP_NAME}" /f`
-      : `reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "${APP_NAME}" /t REG_SZ /d "${command.replace(/"/g, '\\"')}" /f`;
-
-    log(`Toggling autostart. Command: ${cmd}`);
-    exec(cmd, (err) => {
-      if (err) {
-        log(`Failed to toggle autostart: ${err}`, 'ERROR');
-      } else {
-        log(enabled ? 'Autostart disabled' : 'Autostart enabled');
-        notifier.notify({
-          title: 'MyPodcast Sync',
-          message: enabled ? 'Inicio automático desactivado' : 'Inicio automático activado',
-          icon: ICON_PATH
-        });
-        refreshMenu();
-      }
-    });
-  });
-}
-
-// --- Tray Menu ---
-function getMenuItems() {
-  const localConfig = getLocalConfig();
-  const isPaired = !!localConfig.jwtToken;
-  
-  return [
-    { title: `MyPodcast Sync ${isPaired ? '✅' : '❌'}`, tooltip: isPaired ? 'Vinculado' : 'No vinculado', enabled: false },
-    { title: isSyncing ? "🟡 Sincronizando..." : "🟢 Listo", tooltip: "", enabled: false },
-    { title: "---", tooltip: "", enabled: false },
-    { title: "Sincronizar ahora", tooltip: "Forzar sincronización", enabled: true },
-    { title: "Ver Logs", tooltip: "Abrir archivo de log", enabled: true },
-    { title: autoStart ? "✓ Arrancar con Windows" : "Arrancar con Windows", tooltip: "Alternar inicio automático", enabled: true },
-    { title: "---", tooltip: "", enabled: false },
-    { title: "Vincular con mi cuenta", tooltip: "Introducir código", enabled: true },
-    { title: "---", tooltip: "", enabled: false },
-    { title: "Reiniciar Agente", tooltip: "Cerrar y volver a abrir", enabled: true },
-    { title: "Salir", tooltip: "Cerrar aplicación", enabled: true }
-  ];
-}
-
-async function refreshMenu() {
-  autoStart = await isAutostartEnabled();
-  if (systray) {
-    systray.sendAction({
-      type: 'update-menu',
-      menu: { 
-        icon: ICON_PATH, 
-        title: "MyPodcast Sync", 
-        tooltip: "MyPodcast USB Auto-Sync", 
-        items: getMenuItems() 
-      },
-    });
-  }
-}
-
-async function startTray() {
-  autoStart = await isAutostartEnabled();
-  systray = new SysTray({
-    menu: { 
-      icon: ICON_PATH, 
-      title: "MyPodcast Sync", 
-      tooltip: "MyPodcast USB Auto-Sync", 
-      items: getMenuItems() 
-    },
-    debug: false,
-    copyDir: true,
-  });
-
-  systray.onClick(action => {
-    const title = action.item.title;
-    log(`Tray click: ${title}`);
-
-    if (title.includes("Vincular")) {
-      promptForPairingCode();
-    } else if (title.includes("Sincronizar ahora")) {
-      log('Manual sync requested');
-      fetchConfigAndSync();
-    } else if (title === "Ver Logs") {
-      exec(`notepad.exe "${LOG_FILE}"`);
-    } else if (title.includes("Arrancar con Windows")) {
-      toggleAutostart();
-    } else if (title === "Reiniciar Agente") {
-      restartAgent();
-    } else if (title === "Salir") {
-      systray.kill();
-      process.exit(0);
-    }
-  });
-}
-
-function restartAgent() {
-  log('Restarting agent via batch...');
-  const batchPath = path.join(process.cwd(), 'restart.bat');
-  const batchContent = `@echo off\ntimeout /t 2 /nobreak > nul\nstart npx nx serve desktop-sync\ndel "%~f0"`;
-  fs.writeFileSync(batchPath, batchContent);
-  spawn('cmd.exe', ['/c', batchPath], { detached: true, stdio: 'ignore' }).unref();
-  if (systray) systray.kill();
-  process.exit(0);
-}
-
-// --- Pairing System ---
-function promptForPairingCode() {
-  const vbsPath = path.join(process.cwd(), 'input.vbs');
-  fs.writeFileSync(vbsPath, 'code = InputBox("Introduce el código de vinculación de la web:", "Vincular MyPodcast")\nWScript.Echo code');
-  
-  exec(`cscript //nologo "${vbsPath}"`, (err, stdout) => {
-    const code = stdout.trim();
-    if (fs.existsSync(vbsPath)) fs.unlinkSync(vbsPath);
-    if (code && code.length === 6) {
-      log(`Vincular con código: ${code}`);
-      validateAndSaveToken(code);
-    }
-  });
-}
-
-async function validateAndSaveToken(code: string) {
-  log(`[Pairing] Validating code ${code}...`);
+ipcMain.handle('pair-account', async (_, code: string) => {
+  log(`[Pairing] Intentando vincular con código: ${code}...`);
   try {
     const response = await fetch('https://podcast.aremox.com/api/library/pair/validate', {
       method: 'POST',
@@ -202,72 +100,147 @@ async function validateAndSaveToken(code: string) {
 
     if (token) {
       saveLocalConfig({ jwtToken: token });
-      log('[Pairing] Token received and saved. SUCCESS!');
-      notifier.notify({ title: 'MyPodcast Sync', message: '¡Cuenta vinculada correctamente!', icon: ICON_PATH });
-      refreshMenu();
+      log('[Pairing] Token JWT recibido y guardado. Vinculación EXITOSA.');
+      notify('MyPodcast Sync', '¡Dispositivo vinculado con éxito!');
+      sendConfigUpdate();
       setTimeout(fetchConfigAndSync, 1000);
+      return true;
     } else {
-      log('[Pairing] Invalid code or expired', 'ERROR');
-      notifier.notify({ title: 'MyPodcast Sync', message: 'Código inválido o expirado.', icon: ICON_PATH });
+      log('[Pairing] Código inválido o expirado', 'ERROR');
+      notify('MyPodcast Sync', 'El código de vinculación no es válido.');
+      return false;
     }
   } catch (err) {
-    log(`[Pairing] Connection error: ${err}`, 'ERROR');
+    log(`[Pairing] Error de conexión: ${err}`, 'ERROR');
+    notify('MyPodcast Sync', 'Error de red al intentar vincular.');
+    return false;
+  }
+});
+
+ipcMain.on('trigger-sync', () => {
+  log('Sincronización manual iniciada por el usuario.');
+  fetchConfigAndSync();
+});
+
+ipcMain.on('toggle-autostart', () => {
+  const current = app.getLoginItemSettings().openAtLogin;
+  app.setLoginItemSettings({
+    openAtLogin: !current,
+    path: process.execPath,
+    args: []
+  });
+  log(`Arranque automático cambiado: ${!current ? 'ACTIVADO' : 'DESACTIVADO'}`);
+  notify('MyPodcast Sync', !current ? 'Inicio automático con Windows activado' : 'Inicio automático con Windows desactivado');
+  sendConfigUpdate();
+});
+
+ipcMain.on('open-logs-folder', () => {
+  if (fs.existsSync(LOG_FILE)) {
+    shell.showItemInFolder(LOG_FILE);
+  } else {
+    log('El archivo de logs aún no existe.', 'ERROR');
+  }
+});
+
+// --- UI Sync Broadcasting ---
+function sendSyncStatus(isSyncing: boolean, message = '', percent = 0) {
+  if (mainWindow && !mainWindow.webContents.isDestroyed()) {
+    mainWindow.webContents.send('sync-status', { isSyncing, message, percent });
   }
 }
 
-// --- Sync Logic ---
+function sendConfigUpdate() {
+  if (mainWindow && !mainWindow.webContents.isDestroyed()) {
+    const local = getLocalConfig();
+    const autostart = app.getLoginItemSettings().openAtLogin;
+    mainWindow.webContents.send('config-updated', {
+      isPaired: !!local.jwtToken,
+      usbSerial: local.targetUsbSerial || null,
+      folder: local.targetFolder || 'Podcasts',
+      syncInterval: local.syncInterval || 60,
+      autostart
+    });
+  }
+}
+
+// --- Sync Coordination Core ---
 async function fetchConfigAndSync() {
   const localConfig = getLocalConfig();
   if (!localConfig.jwtToken) {
-    log('Not paired. Skipping sync.');
+    log('Dispositivo no emparejado. Sincronización cancelada.');
+    sendSyncStatus(false);
     return;
   }
+
+  if (isSyncing) return;
+  isSyncing = true;
+  sendSyncStatus(true, 'Obteniendo lista del servidor...');
 
   try {
     const response = await fetch('https://podcast.aremox.com/api/library/sync-config', {
       headers: { 'Authorization': `Bearer ${localConfig.jwtToken}` }
     });
+    
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    
     const remoteConfig = await response.json();
     const config = remoteConfig.data || remoteConfig;
 
-    log(`Config Received: USB=${config.targetUsbSerial}, Folder=${config.targetFolder}, Interval=${config.syncInterval}s`);
+    log(`Configuración: USB=${config.targetUsbSerial}, Carpeta=${config.targetFolder}, Intervalo=${config.syncInterval}s`);
+    
+    saveLocalConfig({
+      targetUsbSerial: config.targetUsbSerial,
+      targetFolder: config.targetFolder,
+      syncInterval: config.syncInterval
+    });
+    sendConfigUpdate();
 
     if (config.targetUsbSerial) {
       const drives = await UsbScanner.getRemovableDrives();
       const drive = drives.find(d => d.serialNumber === config.targetUsbSerial);
       
       if (drive) {
-        if (isSyncing) return;
-        isSyncing = true;
-        refreshMenu();
+        log(`USB emparejado detectado en unidad ${drive.deviceId}. Iniciando descarga...`);
         
-        try {
-          await Syncer.startSync(drive.deviceId, config.targetFolder, localConfig.jwtToken, (msg) => log(msg, 'SYNC'));
-          notifier.notify({ title: 'MyPodcast Sync', message: 'Sincronización completada.', icon: ICON_PATH });
-        } catch (err) {
-          log(`Sync failed: ${err}`, 'ERROR');
-        } finally {
-          isSyncing = false;
-          refreshMenu();
-        }
+        await Syncer.startSync(drive.deviceId, config.targetFolder, localConfig.jwtToken, (msg) => {
+          log(msg, 'SYNC');
+          
+          let pct = 0;
+          const match = msg.match(/Downloading\s*\((\d+)\/(\d+)\)/i);
+          if (match) {
+            const current = parseInt(match[1]);
+            const total = parseInt(match[2]);
+            pct = (current / total) * 100;
+          } else if (msg.toLowerCase().includes('complete')) {
+            pct = 100;
+          }
+          sendSyncStatus(true, msg, pct);
+        });
+
+        notify('MyPodcast Sync', '¡Sincronización de podcasts completada!');
       } else {
-        log(`Configured USB (${config.targetUsbSerial}) not found.`);
+        log(`El USB configurado (${config.targetUsbSerial}) no se encuentra conectado.`, 'ERROR');
+        sendSyncStatus(false, 'USB no conectado');
       }
+    } else {
+      log('No hay ningún número de serie USB configurado en tu cuenta.');
+      sendSyncStatus(false, 'USB no configurado');
     }
     updateLoopInterval(config.syncInterval);
   } catch (err) {
-    log(`Error fetching config: ${err}`, 'ERROR');
+    log(`Excepción en la sincronización: ${err}`, 'ERROR');
+    sendSyncStatus(false, 'Error de sincronización');
+  } finally {
+    isSyncing = false;
+    sendSyncStatus(false);
   }
 }
 
-// --- Lifecycle ---
-let syncTimer: NodeJS.Timeout;
-let currentInterval = 60000;
-
+// --- Sync Loop management ---
 function updateLoopInterval(seconds: number) {
   const newInterval = (seconds || 60) * 1000;
   if (newInterval !== currentInterval) {
-    log(`Updating sync interval to ${seconds} seconds`);
+    log(`Cambiando intervalo de sincronización automática a ${seconds} segundos`);
     currentInterval = newInterval;
     if (syncTimer) clearInterval(syncTimer);
     syncTimer = setInterval(fetchConfigAndSync, currentInterval);
@@ -279,10 +252,78 @@ async function startSyncLoop() {
   if (!syncTimer) syncTimer = setInterval(fetchConfigAndSync, currentInterval);
 }
 
-startTray();
-startSyncLoop();
+// --- Window and Tray Creation ---
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 550,
+    height: 650,
+    resizable: false,
+    maximizable: false,
+    title: 'MyPodcast Sync Agent',
+    icon: ICON_PATH,
+    webPreferences: {
+      preload: path.join(__dirname, 'assets/preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false
+    }
+  });
 
-UsbScanner.startMonitoring(10000, () => {
-  log('USB Change detected');
-  fetchConfigAndSync();
+  mainWindow.removeMenu();
+  mainWindow.loadFile(path.join(__dirname, 'assets/index.html'));
+
+  mainWindow.on('close', (e) => {
+    // If not explicitly quitting the app via Tray menu, hide the window to run in background
+    if (!(app as any).isQuiting) {
+      e.preventDefault();
+      mainWindow?.hide();
+      log('Aplicación minimizada a la bandeja del sistema.');
+    }
+  });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
+}
+
+function setupTray() {
+  tray = new Tray(ICON_PATH);
+  const contextMenu = Menu.buildFromTemplate([
+    { label: 'MyPodcast Desktop Agent', enabled: false },
+    { type: 'separator' },
+    { label: 'Mostrar Panel de Control', click: () => { mainWindow?.show(); } },
+    { label: 'Sincronizar Ahora', click: () => { fetchConfigAndSync(); } },
+    { type: 'separator' },
+    { label: 'Salir', click: () => {
+        (app as any).isQuiting = true;
+        app.quit();
+      }
+    }
+  ]);
+
+  tray.setToolTip('MyPodcast USB Auto-Sync');
+  tray.setContextMenu(contextMenu);
+
+  tray.on('double-click', () => {
+    mainWindow?.show();
+  });
+}
+
+// --- App Lifecycle Event Registers ---
+app.whenReady().then(() => {
+  log('Arrancando agente de sincronización en segundo plano con Electron...');
+  createWindow();
+  setupTray();
+  startSyncLoop();
+
+  // Watch removable USBs changes in real-time
+  UsbScanner.startMonitoring(10000, (drive) => {
+    log(`Nueva unidad extraíble detectada: ${drive.volumeName} (${drive.deviceId})`);
+    fetchConfigAndSync();
+  });
+});
+
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
 });

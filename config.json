@@ -1,3 +1,6 @@
 {
-  "jwtToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2YTAyNGQ2MjhhMDMwYjdiNDc4ZTE5ZWIiLCJlbWFpbCI6ImFyZW5hc21vcmFudGVAZ21haWwuY29tIiwiaWF0IjoxNzc4OTQ4MTc1LCJleHAiOjE3Nzk1NTI5NzV9.NhmuMzHmDD5MFyMmrqpyTVuNac7-gFkbEHsJnQn56DA"
+  "jwtToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2YTAyNGQ2MjhhMDMwYjdiNDc4ZTE5ZWIiLCJlbWFpbCI6ImFyZW5hc21vcmFudGVAZ21haWwuY29tIiwiaWF0IjoxNzc4OTQ4MTc1LCJleHAiOjE3Nzk1NTI5NzV9.NhmuMzHmDD5MFyMmrqpyTVuNac7-gFkbEHsJnQn56DA",
+  "targetUsbSerial": "DF0C9B1B",
+  "targetFolder": "Podcasts",
+  "syncInterval": 900
 }
