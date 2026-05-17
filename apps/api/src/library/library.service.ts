@@ -53,6 +53,17 @@ export class LibraryService {
 
   // ===== HISTORY / PROGRESS =====
   async updateProgress(userId: string, episodeId: string, podcastId: string, progress: number, completed: boolean) {
+    if (completed) {
+      try {
+        await this.syncConfigModel.updateOne(
+          { userId: new Types.ObjectId(userId) },
+          { $pull: { queue: new Types.ObjectId(episodeId) } }
+        ).exec();
+        this.logger.log(`[Queue] Removed completed episode ${episodeId} from user ${userId} queue`);
+      } catch (err) {
+        this.logger.error(`[Queue] Error removing completed episode from sync queue: ${err}`);
+      }
+    }
     return this.playHistoryModel.findOneAndUpdate(
       { userId, episodeId },
       { userId, episodeId, podcastId, progress, completed, lastPlayedAt: new Date() },
@@ -92,6 +103,17 @@ export class LibraryService {
 
   async markAllAsCompleted(userId: string, podcastId: string, completed: boolean, episodeIds: string[]) {
     if (completed) {
+      try {
+        const objectIds = episodeIds.map(id => new Types.ObjectId(id));
+        await this.syncConfigModel.updateOne(
+          { userId: new Types.ObjectId(userId) },
+          { $pull: { queue: { $in: objectIds } } }
+        ).exec();
+        this.logger.log(`[Queue] Removed all completed episodes for podcast ${podcastId} from user ${userId} queue`);
+      } catch (err) {
+        this.logger.error(`[Queue] Error removing all completed episodes from sync queue: ${err}`);
+      }
+
       const ops = episodeIds.map(id => ({
         updateOne: {
           filter: { userId, episodeId: id },

@@ -13,6 +13,7 @@ export interface PlayerEpisode {
   podcastId: string;
   podcastTitle?: string;
   podcastImageUrl?: string;
+  publishedAt?: Date | string;
 }
 
 export type PlaybackSpeed = 0.5 | 0.75 | 1 | 1.25 | 1.3 | 1.5 | 1.75 | 2;

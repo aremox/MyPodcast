@@ -31,33 +31,54 @@ export class Syncer {
     let downloadedCount = 0;
     let failedCount = 0;
 
-    // 1. Clean up files NOT in the queue
+    // 1. Scan existing files and identify missing/reindexed/unwanted files in a single pass
     const existingFiles = fs.readdirSync(targetDir).filter(f => f.endsWith('.mp3'));
-    const queueFileNames = queue.map((ep: any, index: number) => 
-      `${index + 1}. ${this.sanitizeFilename(ep.title)}.mp3`
-    );
-
-    for (const file of existingFiles) {
-      if (!queueFileNames.includes(file)) {
-        onProgress?.(`Eliminando archivo antiguo o reindexado: ${file}`);
-        try {
-          fs.unlinkSync(path.join(targetDir, file));
-          deletedCount++;
-        } catch (e) {
-          // Ignore if already deleted or locked
-        }
-      }
-    }
-
-    // 2. Identify missing files
     const missingItems: { ep: any; index: number; fileName: string; filePath: string }[] = [];
+
     for (let i = 0; i < queue.length; i++) {
       const ep = queue[i];
       const fileName = `${i + 1}. ${this.sanitizeFilename(ep.title)}.mp3`;
       const filePath = path.join(targetDir, fileName);
 
-      if (!fs.existsSync(filePath)) {
-        missingItems.push({ ep, index: i, fileName, filePath });
+      if (fs.existsSync(filePath)) {
+        // File is already perfectly named and positioned.
+        // Remove it from the existingFiles list so we don't delete it.
+        const idx = existingFiles.indexOf(fileName);
+        if (idx > -1) {
+          existingFiles.splice(idx, 1);
+        }
+      } else {
+        // Check if the file exists under a different index (reindexed due to queue deletions/additions)
+        const titlePart = ` ${this.sanitizeFilename(ep.title)}.mp3`;
+        const match = existingFiles.find(f => f.endsWith(titlePart));
+
+        if (match) {
+          onProgress?.(`Reindexando archivo existente: ${match} -> ${fileName}`);
+          try {
+            fs.renameSync(path.join(targetDir, match), filePath);
+            const idx = existingFiles.indexOf(match);
+            if (idx > -1) {
+              existingFiles.splice(idx, 1);
+            }
+          } catch (e) {
+            // If rename fails, fallback to treat it as missing so it can be re-downloaded safely
+            missingItems.push({ ep, index: i, fileName, filePath });
+          }
+        } else {
+          // Truly missing file
+          missingItems.push({ ep, index: i, fileName, filePath });
+        }
+      }
+    }
+
+    // 2. Clean up any remaining files in existingFiles (episodes no longer in the queue, including completed ones)
+    for (const file of existingFiles) {
+      onProgress?.(`Eliminando archivo antiguo o completado: ${file}`);
+      try {
+        fs.unlinkSync(path.join(targetDir, file));
+        deletedCount++;
+      } catch (e) {
+        // Ignore if locked or already deleted
       }
     }
 

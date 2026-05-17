@@ -1,7 +1,8 @@
-import { Component, signal } from '@angular/core';
+import { Component, signal, computed, inject, OnInit } from '@angular/core';
 import { PlaylistService } from '../../core/services/playlist.service';
 import { AudioPlayerService, PlayerEpisode } from '../../core/services/audio-player.service';
 import { ExportService } from '../../core/services/export.service';
+import { ApiService } from '../../core/services/api.service';
 
 @Component({
   selector: 'app-playlist',
@@ -32,6 +33,180 @@ import { ExportService } from '../../core/services/export.service';
           </div>
         }
       </div>
+
+      <!-- Smart automated filters -->
+      @if (!pl.isEmpty()) {
+        <div class="smart-filters-container card">
+          <div class="filters-header" (click)="toggleFiltersPanel()">
+            <div class="filters-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+              <h3>Filtros y Reglas Automatizadas</h3>
+            </div>
+            <div class="filters-status">
+              @if (activeRulesCount() > 0) {
+                <span class="badge-active">{{ activeRulesCount() }} activas</span>
+              } @else {
+                <span class="badge-inactive">Desactivadas</span>
+              }
+              <span class="arrow" [class.open]="showFiltersPanel()">▼</span>
+            </div>
+          </div>
+
+          @if (showFiltersPanel()) {
+            <div class="filters-body">
+              <p class="filters-subtitle">Configura reglas automáticas para ordenar y priorizar tu cola de reproducción e instalador USB.</p>
+              
+              <div class="rules-list">
+                <!-- Rule 1: Priorizar no escuchados / empezados -->
+                <div class="rule-card" [class.enabled]="isRuleEnabled('prioritize_unplayed')">
+                  <div class="rule-main">
+                    <div class="rule-info">
+                      <span class="rule-name">Priorizar no escuchados / Empezados</span>
+                      <span class="rule-desc">Mueve arriba de la cola los episodios que están a medias para terminarlos, o los que no has empezado.</span>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" [checked]="isRuleEnabled('prioritize_unplayed')" (change)="toggleRule('prioritize_unplayed')">
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                  @if (isRuleEnabled('prioritize_unplayed')) {
+                    <div class="rule-config animate-fade-in">
+                      <label>Criterio de orden:</label>
+                      <select [value]="getRuleConfig('prioritize_unplayed', 'mode') || 'in_progress_first'" (change)="updateRuleConfig('prioritize_unplayed', 'mode', $any($event.target).value)">
+                        <option value="in_progress_first">Primero en progreso (a medias)</option>
+                        <option value="unplayed_first">Primero nuevos (sin empezar)</option>
+                      </select>
+                    </div>
+                  }
+                </div>
+
+                <!-- Rule 2: Auto-añadir cortos al inicio -->
+                <div class="rule-card" [class.enabled]="isRuleEnabled('prepend_short')">
+                  <div class="rule-main">
+                    <div class="rule-info">
+                      <span class="rule-name">Auto-añadir cortos al inicio</span>
+                      <span class="rule-desc">Coloca automáticamente al inicio los episodios de un podcast seleccionado si duran menos de cierto tiempo.</span>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" [checked]="isRuleEnabled('prepend_short')" (change)="toggleRule('prepend_short')">
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                  @if (isRuleEnabled('prepend_short')) {
+                    <div class="rule-config animate-fade-in">
+                      <div class="config-row">
+                        <div class="config-col">
+                          <label>Podcast:</label>
+                          <select [value]="getRuleConfig('prepend_short', 'podcastId') || ''" (change)="updateRuleConfig('prepend_short', 'podcastId', $any($event.target).value)">
+                            <option value="">-- Todos los Podcasts --</option>
+                            @for (sub of subscriptions(); track sub._id) {
+                              <option [value]="sub._id">{{ sub.title }}</option>
+                            }
+                          </select>
+                        </div>
+                        <div class="config-col">
+                          <label>Duración máxima (minutos):</label>
+                          <input type="number" min="1" max="180" [value]="getRuleConfig('prepend_short', 'maxMinutes') || 10" (input)="updateRuleConfig('prepend_short', 'maxMinutes', +$any($event.target).value)">
+                        </div>
+                      </div>
+                    </div>
+                  }
+                </div>
+
+                <!-- Rule 3: Binge-Listen (Agrupar por Podcast) -->
+                <div class="rule-card" [class.enabled]="isRuleEnabled('group_by_podcast')">
+                  <div class="rule-main">
+                    <div class="rule-info">
+                      <span class="rule-name">Agrupar por Podcast (Maratón)</span>
+                      <span class="rule-desc">Mantiene juntos todos los episodios del mismo podcast en la cola para escucharlos seguidos.</span>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" [checked]="isRuleEnabled('group_by_podcast')" (change)="toggleRule('group_by_podcast')" [disabled]="isRuleEnabled('round_robin')">
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Rule 4: Alternar podcasts (Shuffling por Show) -->
+                <div class="rule-card" [class.enabled]="isRuleEnabled('round_robin')">
+                  <div class="rule-main">
+                    <div class="rule-info">
+                      <span class="rule-name">Alternar Podcasts (Variedad)</span>
+                      <span class="rule-desc">Distribuye los episodios de forma que nunca escuches dos episodios seguidos del mismo podcast.</span>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" [checked]="isRuleEnabled('round_robin')" (change)="toggleRule('round_robin')" [disabled]="isRuleEnabled('group_by_podcast')">
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Rule 5: Ordenar por duración -->
+                <div class="rule-card" [class.enabled]="isRuleEnabled('sort_by_duration')">
+                  <div class="rule-main">
+                    <div class="rule-info">
+                      <span class="rule-name">Priorizar por duración</span>
+                      <span class="rule-desc">Ordena los episodios de tu cola en base a su duración.</span>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" [checked]="isRuleEnabled('sort_by_duration')" (change)="toggleRule('sort_by_duration')">
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                  @if (isRuleEnabled('sort_by_duration')) {
+                    <div class="rule-config animate-fade-in">
+                      <label>Orden:</label>
+                      <select [value]="getRuleConfig('sort_by_duration', 'order') || 'shortest_first'" (change)="updateRuleConfig('sort_by_duration', 'order', $any($event.target).value)">
+                        <option value="shortest_first">Episodios más cortos primero (Rápidos)</option>
+                        <option value="longest_first">Episodios más largos primero (Maratón)</option>
+                      </select>
+                    </div>
+                  }
+                </div>
+
+                <!-- Rule 6: Ordenar por fecha de publicación -->
+                <div class="rule-card" [class.enabled]="isRuleEnabled('sort_by_date')">
+                  <div class="rule-main">
+                    <div class="rule-info">
+                      <span class="rule-name">Ordenar por fecha de publicación</span>
+                      <span class="rule-desc">Ordena cronológicamente los episodios de la cola.</span>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" [checked]="isRuleEnabled('sort_by_date')" (change)="toggleRule('sort_by_date')">
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                  @if (isRuleEnabled('sort_by_date')) {
+                    <div class="rule-config animate-fade-in">
+                      <label>Criterio cronológico:</label>
+                      <select [value]="getRuleConfig('sort_by_date', 'order') || 'newest_first'" (change)="updateRuleConfig('sort_by_date', 'order', $any($event.target).value)">
+                        <option value="newest_first">Más recientes primero (Últimas novedades)</option>
+                        <option value="oldest_first">Más antiguos primero (Orden cronológico)</option>
+                      </select>
+                    </div>
+                  }
+                </div>
+              </div>
+
+              <div class="filters-footer">
+                <label class="auto-apply-checkbox">
+                  <input type="checkbox" [checked]="autoApplyRules()" (change)="toggleAutoApply()">
+                  <span class="checkbox-text">Aplicar reglas automáticamente al añadir episodios</span>
+                </label>
+                <button class="btn-apply-now" (click)="applyRulesNow()" [class.is-applying]="isApplyingRules()">
+                  @if (isApplyingRules()) {
+                    <span class="spinner"></span>
+                    <span>Aplicando...</span>
+                  } @else {
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+                    <span>Aplicar y Organizar Cola</span>
+                  }
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      }
 
       @if (pl.isEmpty()) {
         <!-- Empty state -->
@@ -218,6 +393,302 @@ import { ExportService } from '../../core/services/export.service';
     }
     .btn-clear:hover { background: rgba(239,68,68,0.1); color: var(--error); border-color: rgba(239,68,68,0.2); }
 
+    /* ── Smart Automated Filters ── */
+    .smart-filters-container {
+      margin-bottom: var(--space-lg);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.03) 0%, rgba(255, 255, 255, 0.01) 100%);
+      box-shadow: 0 4px 30px rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      transition: all var(--transition-medium);
+    }
+    
+    .filters-header {
+      padding: var(--space-md) var(--space-xl);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+      background: rgba(255, 255, 255, 0.02);
+      transition: background var(--transition-fast);
+    }
+    .filters-header:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+    
+    .filters-title {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      color: var(--text-primary);
+    }
+    .filters-title svg {
+      color: var(--accent);
+    }
+    .filters-title h3 {
+      font-size: var(--font-md);
+      font-weight: 700;
+      margin: 0;
+      letter-spacing: -0.01em;
+    }
+    
+    .filters-status {
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+    }
+    .badge-active {
+      background: var(--accent-dim);
+      color: var(--accent);
+      padding: 2px 10px;
+      font-size: var(--font-xs);
+      font-weight: 700;
+      border-radius: var(--radius-full);
+      border: 1px solid rgba(0, 212, 170, 0.2);
+    }
+    .badge-inactive {
+      background: rgba(255, 255, 255, 0.05);
+      color: var(--text-muted);
+      padding: 2px 10px;
+      font-size: var(--font-xs);
+      font-weight: 600;
+      border-radius: var(--radius-full);
+    }
+    
+    .arrow {
+      font-size: 10px;
+      color: var(--text-muted);
+      transition: transform var(--transition-fast);
+      display: inline-block;
+    }
+    .arrow.open {
+      transform: rotate(180deg);
+      color: var(--accent);
+    }
+    
+    .filters-body {
+      padding: var(--space-xl);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      animation: fadeIn var(--transition-medium) ease;
+    }
+    
+    .filters-subtitle {
+      font-size: var(--font-sm);
+      color: var(--text-secondary);
+      margin-bottom: var(--space-lg);
+      line-height: 1.5;
+    }
+    
+    .rules-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: var(--space-md);
+      margin-bottom: var(--space-xl);
+    }
+    
+    .rule-card {
+      background: rgba(255, 255, 255, 0.02);
+      border: 1px solid rgba(255, 255, 255, 0.04);
+      border-radius: var(--radius-lg);
+      padding: var(--space-md);
+      transition: all var(--transition-fast);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-md);
+    }
+    .rule-card:hover {
+      background: rgba(255, 255, 255, 0.03);
+      border-color: rgba(255, 255, 255, 0.08);
+    }
+    .rule-card.enabled {
+      background: rgba(0, 212, 170, 0.01);
+      border-color: rgba(0, 212, 170, 0.15);
+    }
+    
+    .rule-main {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--space-md);
+    }
+    
+    .rule-info {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .rule-name {
+      font-size: var(--font-sm);
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+    .rule-card.enabled .rule-name {
+      color: var(--accent);
+    }
+    .rule-desc {
+      font-size: var(--font-xs);
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
+    
+    /* Toggle switch */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(255, 255, 255, 0.1);
+      transition: .3s;
+      border-radius: var(--radius-full);
+      border: 1px solid rgba(255, 255, 255, 0.05);
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: var(--text-secondary);
+      transition: .3s;
+      border-radius: 50%;
+    }
+    input:checked + .slider {
+      background-color: var(--accent-dim);
+      border-color: rgba(0, 212, 170, 0.3);
+    }
+    input:checked + .slider:before {
+      transform: translateX(18px);
+      background-color: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+    }
+    input:disabled + .slider {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+    
+    .rule-config {
+      padding: var(--space-sm) var(--space-md);
+      background: rgba(255, 255, 255, 0.02);
+      border-radius: var(--radius-md);
+      border-left: 2px solid var(--accent);
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .rule-config label {
+      font-size: var(--font-xs);
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .rule-config select, .rule-config input {
+      background: var(--bg-primary);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      padding: var(--space-xs) var(--space-sm);
+      font-size: var(--font-xs);
+      outline: none;
+      transition: border-color var(--transition-fast);
+      width: 100%;
+    }
+    .rule-config select:focus, .rule-config input:focus {
+      border-color: var(--accent);
+    }
+    
+    .config-row {
+      display: flex;
+      gap: var(--space-md);
+    }
+    .config-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    
+    .filters-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: var(--space-md);
+      padding-top: var(--space-lg);
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    
+    .auto-apply-checkbox {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      cursor: pointer;
+      user-select: none;
+    }
+    .auto-apply-checkbox input {
+      accent-color: var(--accent);
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    }
+    .checkbox-text {
+      font-size: var(--font-xs);
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+    
+    .btn-apply-now {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      background: var(--accent);
+      color: var(--bg-primary);
+      border: none;
+      padding: var(--space-sm) var(--space-lg);
+      border-radius: var(--radius-full);
+      font-size: var(--font-xs);
+      font-weight: 700;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      min-height: var(--touch-min);
+    }
+    .btn-apply-now:hover {
+      background: var(--accent-hover);
+      box-shadow: 0 4px 12px rgba(0, 212, 170, 0.3);
+      transform: translateY(-1px);
+    }
+    .btn-apply-now.is-applying {
+      opacity: 0.8;
+      cursor: not-allowed;
+    }
+    
+    /* Spinner for applying states */
+    .spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(0, 0, 0, 0.2);
+      border-top-color: rgba(0, 0, 0, 0.8);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
     /* ── Drag hint ── */
     .drag-hint {
       display: flex; align-items: center; gap: var(--space-sm);
@@ -378,16 +849,69 @@ import { ExportService } from '../../core/services/export.service';
     }
   `,
 })
-export class PlaylistComponent {
+export class PlaylistComponent implements OnInit {
   draggingIndex = signal<number>(-1);
   dragOverIndex = signal<number>(-1);
   showConfirm = signal(false);
 
-  constructor(
-    public pl: PlaylistService,
-    public player: AudioPlayerService,
-    public exportService: ExportService,
-  ) {}
+  // Smart Rules State
+  showFiltersPanel = signal(false);
+  subscriptions = signal<any[]>([]);
+
+  // Services injected
+  public pl = inject(PlaylistService);
+  public player = inject(AudioPlayerService);
+  public exportService = inject(ExportService);
+  private api = inject(ApiService);
+
+  // Computed properties
+  activeRulesCount = computed(() => this.pl.rules().filter(r => r.enabled).length);
+  autoApplyRules = computed(() => this.pl.autoApplyRules());
+  isApplyingRules = computed(() => this.pl.isApplyingRules());
+
+  ngOnInit() {
+    this.loadSubscriptions();
+  }
+
+  async loadSubscriptions() {
+    try {
+      const res = await this.api.getSubscriptions();
+      if (res && res.success && Array.isArray(res.data)) {
+        this.subscriptions.set(res.data);
+      }
+    } catch (err) {
+      console.error('[PlaylistComponent] Error fetching subscriptions:', err);
+    }
+  }
+
+  // Smart filters helpers
+  isRuleEnabled(ruleId: string): boolean {
+    return this.pl.rules().find(r => r.id === ruleId)?.enabled || false;
+  }
+
+  getRuleConfig(ruleId: string, key: string): any {
+    return this.pl.rules().find(r => r.id === ruleId)?.config?.[key];
+  }
+
+  toggleRule(ruleId: string): void {
+    this.pl.toggleRule(ruleId);
+  }
+
+  updateRuleConfig(ruleId: string, key: string, value: any): void {
+    this.pl.updateRuleConfig(ruleId, key, value);
+  }
+
+  toggleAutoApply(): void {
+    this.pl.toggleAutoApply();
+  }
+
+  applyRulesNow(): void {
+    this.pl.applyRulesNow();
+  }
+
+  toggleFiltersPanel(): void {
+    this.showFiltersPanel.set(!this.showFiltersPanel());
+  }
 
   playEpisode(episode: PlayerEpisode): void {
     if (this.player.currentEpisode()?._id === episode._id) {
