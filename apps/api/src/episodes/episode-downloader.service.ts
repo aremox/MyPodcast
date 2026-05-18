@@ -5,6 +5,7 @@ import { Episode, EpisodeDocument } from './schemas/episode.schema';
 import * as fs from 'fs';
 import * as path from 'path';
 import axios from 'axios';
+import { cleanIvooxUrl } from './ivoox.utils';
 
 @Injectable()
 export class EpisodeDownloaderService {
@@ -84,12 +85,13 @@ export class EpisodeDownloaderService {
         throw new Error(`Episode has no audio URL`);
       }
 
-      this.logger.log(`[Downloader] Starting download for episode "${episode.title}" from: ${episode.audioUrl}`);
+      const downloadUrl = cleanIvooxUrl(episode.audioUrl);
+      this.logger.log(`[Downloader] Starting download for episode "${episode.title}" from: ${downloadUrl}`);
       
       const writer = fs.createWriteStream(tempPath);
       const response = await axios({
         method: 'get',
-        url: episode.audioUrl,
+        url: downloadUrl,
         responseType: 'stream',
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',

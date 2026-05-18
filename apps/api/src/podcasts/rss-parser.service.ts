@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 import Parser = require('rss-parser');
+import { cleanIvooxUrl } from '../episodes/ivoox.utils';
 
 export interface ParsedFeed {
   title: string;
@@ -55,7 +56,7 @@ export class RssParserService {
       const episodes: ParsedEpisode[] = (feed.items || []).map((item) => ({
         title: item.title || 'Sin título',
         description: this.cleanDescription(item.contentSnippet || item.content || ''),
-        audioUrl: item.enclosure?.url || '',
+        audioUrl: cleanIvooxUrl(item.enclosure?.url || ''),
         imageUrl: this.extractImageUrl(item),
         duration: item['itunesDuration'] || '00:00',
         durationSeconds: this.parseDuration(item['itunesDuration'] || '0'),

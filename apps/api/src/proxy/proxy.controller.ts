@@ -4,6 +4,7 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { EpisodesService } from '../episodes/episodes.service';
+import { cleanIvooxUrl } from '../episodes/ivoox.utils';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -71,7 +72,8 @@ export class ProxyController {
         headers['Range'] = req.headers.range;
       }
 
-      const response = await axios.get(episode.audioUrl, {
+      const downloadUrl = cleanIvooxUrl(episode.audioUrl);
+      const response = await axios.get(downloadUrl, {
         headers,
         responseType: 'stream',
         timeout: 30000,
