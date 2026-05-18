@@ -4,6 +4,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { EpisodesService } from '../episodes/episodes.service';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Controller('proxy')
 export class ProxyController {
@@ -45,6 +47,15 @@ export class ProxyController {
       const episode = await this.episodesService.findById(episodeId);
       if (!episode || !episode.audioUrl) {
         return res.status(404).json({ error: 'Audio no encontrado' });
+      }
+
+      // Check if we have a fully downloaded local copy of the episode's audio
+      const localFilePath = path.join(process.cwd(), 'downloads', `${episodeId}.mp3`);
+      if (fs.existsSync(localFilePath)) {
+        this.logger.log(`Serving downloaded audio file locally for episode ${episodeId}`);
+        // Express res.sendFile automatically handles byte-range requests, 206 Partial Content, seeking, etc.
+        // It is highly robust and performs beautifully.
+        return res.sendFile(localFilePath);
       }
 
       const headers: Record<string, string> = {

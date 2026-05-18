@@ -5,6 +5,7 @@ import { Subscription, SubscriptionDocument } from './schemas/subscription.schem
 import { Favorite, FavoriteDocument } from './schemas/favorite.schema';
 import { PlayHistory, PlayHistoryDocument } from './schemas/play-history.schema';
 import { SyncConfig, SyncConfigDocument } from './schemas/sync-config.schema';
+import { EpisodeDownloaderService } from '../episodes/episode-downloader.service';
 
 @Injectable()
 export class LibraryService {
@@ -15,6 +16,7 @@ export class LibraryService {
     @InjectModel(Favorite.name) private favoriteModel: Model<FavoriteDocument>,
     @InjectModel(PlayHistory.name) private playHistoryModel: Model<PlayHistoryDocument>,
     @InjectModel(SyncConfig.name) private syncConfigModel: Model<SyncConfigDocument>,
+    private episodeDownloaderService: EpisodeDownloaderService,
   ) {}
 
   // ===== SUBSCRIPTIONS =====
@@ -198,6 +200,11 @@ export class LibraryService {
       { new: true, upsert: true }
     ).exec();
 
+    // Trigger downloads for new episodes in the queue
+    if (update.queue && Array.isArray(update.queue)) {
+      this.episodeDownloaderService.triggerDownloads(update.queue);
+    }
+
     return this.getSyncConfig(userId);
   }
 
@@ -219,6 +226,12 @@ export class LibraryService {
     ).exec();
 
     this.logger.log(`[Queue] Update complete. New queue length in DB: ${result.queue.length}`);
+
+    // Trigger downloads for the updated queue
+    if (episodeIds && Array.isArray(episodeIds)) {
+      this.episodeDownloaderService.triggerDownloads(episodeIds);
+    }
+
     return result;
   }
 
@@ -298,5 +311,8 @@ export class LibraryService {
     }));
 
     await this.syncConfigModel.bulkWrite(ops);
+
+    // Trigger background downloads for the added episodes
+    this.episodeDownloaderService.triggerDownloads(episodeIds);
   }
 }
