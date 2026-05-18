@@ -83,7 +83,30 @@ function log(message: string, level: 'INFO' | 'ERROR' | 'SYNC' = 'INFO') {
   }
 }
 
-function notify(title: string, message: string) {
+async function notify(title: string, message: string) {
+  const localConfig = getLocalConfig();
+  if (localConfig.targetUsbSerial) {
+    try {
+      const drives = await UsbScanner.getRemovableDrives();
+      const isConnected = drives.some(d => d.serialNumber === localConfig.targetUsbSerial);
+      if (!isConnected) {
+        log(`[Notificación Omitida] "${title}" no se mostró porque el USB (${localConfig.targetUsbSerial}) no está conectado.`, 'INFO');
+        return;
+      }
+    } catch (err) {
+      log(`Error al comprobar estado del USB para notificación: ${err}`, 'ERROR');
+    }
+  } else {
+    // Si no hay USB configurado, omitimos las notificaciones que no sean de configuración/emparejamiento
+    const isPairingOrSetup = title.toLowerCase().includes('sesión') || 
+                             title.toLowerCase().includes('vinc') || 
+                             title.toLowerCase().includes('error');
+    if (!isPairingOrSetup) {
+      log(`[Notificación Omitida] "${title}" no se mostró porque no hay ningún USB configurado.`, 'INFO');
+      return;
+    }
+  }
+
   const notif = new Notification({
     title,
     body: message,
