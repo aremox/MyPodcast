@@ -418,8 +418,9 @@ export class LibraryComponent implements OnInit {
   async loadPodcasts() {
     this.loading.set(true);
     try {
-      const res = await this.api.getPodcasts();
-      this.podcasts.set(res.data || []);
+      const res = await this.api.getSubscriptions();
+      const podcastsList = (res.data || []).map((sub: any) => sub.podcastId).filter(Boolean);
+      this.podcasts.set(podcastsList);
     } catch (e) {
       console.error('Error loading podcasts:', e);
     } finally {
@@ -457,7 +458,7 @@ export class LibraryComponent implements OnInit {
 
     this.deleting.set(true);
     try {
-      await this.api.unsubscribeFromPodcast(podcast._id);
+      await this.api.removeSubscription(podcast._id);
 
       // Animate removal
       this.podcastToDelete.set(null);

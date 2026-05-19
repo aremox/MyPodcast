@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, UseGuards, Request } from '@nestjs/common';
 import { PodcastsService } from './podcasts.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -20,8 +20,9 @@ export class PodcastsController {
   }
 
   @Post('subscribe')
-  async subscribe(@Body() body: { url: string }) {
-    const podcast = await this.podcastsService.subscribe(body.url);
+  async subscribe(@Request() req: any, @Body() body: { url: string }) {
+    const userId = req.user?.userId || req.user?.sub || req.user?.id;
+    const podcast = await this.podcastsService.subscribe(body.url, userId);
     return { success: true, data: podcast, message: `Suscrito a ${podcast.title}` };
   }
 
