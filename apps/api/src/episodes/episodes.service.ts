@@ -66,38 +66,42 @@ export class EpisodesService {
     const newEpisodeIds: string[] = [];
 
     for (const ep of parsedEpisodes) {
-      // First, try to find the episode to see if it's really new
-      const existing = await this.episodeModel.findOne({ guid: ep.guid }).select('_id').exec();
-      
-      if (!existing) {
-        // If it doesn't exist, create it
-        const newEpisode = await this.episodeModel.create({
-          podcastId: new Types.ObjectId(podcastId),
-          title: ep.title,
-          description: ep.description,
-          audioUrl: ep.audioUrl,
-          imageUrl: ep.imageUrl,
-          duration: ep.duration,
-          durationSeconds: ep.durationSeconds,
-          publishedAt: ep.publishedAt,
-          guid: ep.guid,
-          ivooxUrl: ep.ivooxUrl,
-          fileSize: ep.fileSize,
-        });
-        newEpisodeIds.push(newEpisode._id.toString());
-      } else {
-        // If it exists, update it (optional, to keep metadata fresh)
-        await this.episodeModel.updateOne(
-          { _id: existing._id },
-          {
-            $set: {
-              audioUrl: ep.audioUrl,
-              duration: ep.duration,
-              durationSeconds: ep.durationSeconds,
-              imageUrl: ep.imageUrl,
+      try {
+        // First, try to find the episode to see if it's really new
+        const existing = await this.episodeModel.findOne({ guid: ep.guid }).select('_id').exec();
+        
+        if (!existing) {
+          // If it doesn't exist, create it
+          const newEpisode = await this.episodeModel.create({
+            podcastId: new Types.ObjectId(podcastId),
+            title: ep.title,
+            description: ep.description,
+            audioUrl: ep.audioUrl,
+            imageUrl: ep.imageUrl,
+            duration: ep.duration,
+            durationSeconds: ep.durationSeconds,
+            publishedAt: ep.publishedAt,
+            guid: ep.guid,
+            ivooxUrl: ep.ivooxUrl,
+            fileSize: ep.fileSize,
+          });
+          newEpisodeIds.push(newEpisode._id.toString());
+        } else {
+          // If it exists, update it (optional, to keep metadata fresh)
+          await this.episodeModel.updateOne(
+            { _id: existing._id },
+            {
+              $set: {
+                audioUrl: ep.audioUrl,
+                duration: ep.duration,
+                durationSeconds: ep.durationSeconds,
+                imageUrl: ep.imageUrl,
+              }
             }
-          }
-        ).exec();
+          ).exec();
+        }
+      } catch (err: any) {
+        this.logger.error(`Error processing episode "${ep.title}" (GUID: ${ep.guid}): ${err.message}`);
       }
     }
 
