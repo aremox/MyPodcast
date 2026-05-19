@@ -394,6 +394,7 @@ async function fetchConfigAndSync() {
         await reportUsbStorageSpace(config.targetUsbSerial, config.targetFolder, localConfig.jwtToken);
 
         const serverUrl = getServerUrl();
+        const speedLimit = Number(localConfig.downloadSpeedLimit || 0);
         const stats = await Syncer.startSync(drive.deviceId, config.targetFolder, localConfig.jwtToken, (msg) => {
           log(msg, 'SYNC');
           
@@ -407,7 +408,7 @@ async function fetchConfigAndSync() {
             pct = 100;
           }
           sendSyncStatus(true, msg, pct);
-        }, serverUrl);
+        }, serverUrl, speedLimit);
 
         // Rich native notification detailing downloaded and deleted files
         if (stats.downloaded > 0 || stats.deleted > 0) {
