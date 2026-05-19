@@ -567,11 +567,11 @@
         <!-- Download speed limit configuration -->
         <div class="info-item" style="grid-column: span 2; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px;">
           <div style="display: flex; flex-direction: column; gap: 2px;">
-            <span class="info-label">Límite de velocidad</span>
-            <span id="speed-limit-status" class="info-value">Sin límite</span>
+            <span class="info-label">L&iacute;mite de velocidad</span>
+            <span id="speed-limit-status" class="info-value">Sin l&iacute;mite</span>
           </div>
           <select id="speed-limit-select" class="speed-limit-select">
-            <option value="0">Sin límite</option>
+            <option value="0">Sin l&iacute;mite</option>
             <option value="512">512 KB/s</option>
             <option value="1024">1 MB/s</option>
             <option value="2048">2 MB/s</option>
@@ -719,7 +719,7 @@
         if (select) {
           select.value = String(config.downloadSpeedLimit);
           if (config.downloadSpeedLimit === 0) {
-            status.textContent = 'Sin límite';
+            status.textContent = 'Sin limite';
           } else if (config.downloadSpeedLimit < 1024) {
             status.textContent = `${config.downloadSpeedLimit} KB/s`;
           } else {
@@ -833,16 +833,16 @@
     const speedLimitSelect = document.getElementById('speed-limit-select');
     speedLimitSelect.addEventListener('change', async () => {
       const limit = parseInt(speedLimitSelect.value);
-      appendLog(`[Config] Guardando nuevo límite de velocidad: ${limit > 0 ? limit + ' KB/s' : 'Sin límite'}...`);
+      appendLog(`[Config] Guardando nuevo limite de velocidad: ${limit > 0 ? limit + ' KB/s' : 'Sin limite'}...`);
       try {
         const success = await window.electronAPI.setSpeedLimit(limit);
         if (success) {
-          appendLog('[SUCCESS] Límite de velocidad guardado correctamente.');
+          appendLog('[SUCCESS] Limite de velocidad guardado correctamente.');
         } else {
-          appendLog('[ERROR] No se pudo guardar el límite de velocidad.');
+          appendLog('[ERROR] No se pudo guardar el limite de velocidad.');
         }
       } catch (err) {
-        appendLog('[ERROR] Error al cambiar límite de velocidad: ' + err);
+        appendLog('[ERROR] Error al cambiar limite de velocidad: ' + err);
       }
     });
 
