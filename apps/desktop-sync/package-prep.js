@@ -10,6 +10,12 @@ try {
   fs.copyFileSync(builderSrc, builderDest);
   console.log('[Prep] Copied electron-builder.json successfully.');
 
+  // Copy installer.nsh
+  const nshSrc = path.join(__dirname, 'installer.nsh');
+  const nshDest = path.resolve(__dirname, '../../dist/apps/desktop-sync/installer.nsh');
+  fs.copyFileSync(nshSrc, nshDest);
+  console.log('[Prep] Copied installer.nsh successfully.');
+
   // Read root package.json for electron and tslib versions
   const rootPkgPath = path.resolve(__dirname, '../../package.json');
   const rootPkg = JSON.parse(fs.readFileSync(rootPkgPath, 'utf8'));
