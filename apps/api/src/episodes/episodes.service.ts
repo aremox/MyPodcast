@@ -14,21 +14,22 @@ export class EpisodesService {
 
   async findByPodcast(podcastId: string, page = 1, limit = 50): Promise<{ episodes: EpisodeDocument[]; total: number }> {
     const skip = (page - 1) * limit;
+    const objectId = new Types.ObjectId(podcastId);
     const [episodes, total] = await Promise.all([
       this.episodeModel
-        .find({ podcastId })
+        .find({ podcastId: objectId })
         .sort({ publishedAt: -1 })
         .skip(skip)
         .limit(limit)
         .exec(),
-      this.episodeModel.countDocuments({ podcastId }).exec(),
+      this.episodeModel.countDocuments({ podcastId: objectId }).exec(),
     ]);
     return { episodes, total };
   }
 
   async findAllIdsByPodcast(podcastId: string): Promise<string[]> {
     const episodes = await this.episodeModel
-      .find({ podcastId })
+      .find({ podcastId: new Types.ObjectId(podcastId) })
       .select('_id')
       .exec();
     return episodes.map(e => e._id.toString());
@@ -53,7 +54,7 @@ export class EpisodesService {
   }
 
   async countByPodcast(podcastId: string): Promise<number> {
-    return this.episodeModel.countDocuments({ podcastId }).exec();
+    return this.episodeModel.countDocuments({ podcastId: new Types.ObjectId(podcastId) }).exec();
   }
 
   /**
@@ -104,7 +105,7 @@ export class EpisodesService {
   }
 
   async deleteByPodcast(podcastId: string): Promise<void> {
-    await this.episodeModel.deleteMany({ podcastId }).exec();
+    await this.episodeModel.deleteMany({ podcastId: new Types.ObjectId(podcastId) }).exec();
   }
 
   async search(query: string, podcastId?: string): Promise<EpisodeDocument[]> {
@@ -112,7 +113,7 @@ export class EpisodesService {
       $text: { $search: query },
     };
     if (podcastId) {
-      filter.podcastId = podcastId;
+      filter.podcastId = new Types.ObjectId(podcastId);
     }
 
     return this.episodeModel

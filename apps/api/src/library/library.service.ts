@@ -21,36 +21,36 @@ export class LibraryService {
 
   // ===== SUBSCRIPTIONS =====
   async getUserSubscriptions(userId: string) {
-    return this.subscriptionModel.find({ userId }).populate('podcastId').exec();
+    return this.subscriptionModel.find({ userId: new Types.ObjectId(userId) }).populate('podcastId').exec();
   }
 
   async subscribe(userId: string, podcastId: string) {
     return this.subscriptionModel.findOneAndUpdate(
-      { userId, podcastId },
-      { userId, podcastId },
+      { userId: new Types.ObjectId(userId), podcastId: new Types.ObjectId(podcastId) },
+      { userId: new Types.ObjectId(userId), podcastId: new Types.ObjectId(podcastId) },
       { upsert: true, new: true }
     ).exec();
   }
 
   async unsubscribe(userId: string, podcastId: string) {
-    return this.subscriptionModel.deleteOne({ userId, podcastId }).exec();
+    return this.subscriptionModel.deleteOne({ userId: new Types.ObjectId(userId), podcastId: new Types.ObjectId(podcastId) }).exec();
   }
 
   // ===== FAVORITES =====
   async getUserFavorites(userId: string) {
-    return this.favoriteModel.find({ userId }).populate('episodeId').exec();
+    return this.favoriteModel.find({ userId: new Types.ObjectId(userId) }).populate('episodeId').exec();
   }
 
   async addFavorite(userId: string, episodeId: string) {
     return this.favoriteModel.findOneAndUpdate(
-      { userId, episodeId },
-      { userId, episodeId },
+      { userId: new Types.ObjectId(userId), episodeId: new Types.ObjectId(episodeId) },
+      { userId: new Types.ObjectId(userId), episodeId: new Types.ObjectId(episodeId) },
       { upsert: true, new: true }
     ).exec();
   }
 
   async removeFavorite(userId: string, episodeId: string) {
-    return this.favoriteModel.deleteOne({ userId, episodeId }).exec();
+    return this.favoriteModel.deleteOne({ userId: new Types.ObjectId(userId), episodeId: new Types.ObjectId(episodeId) }).exec();
   }
 
   // ===== HISTORY / PROGRESS =====
@@ -67,39 +67,51 @@ export class LibraryService {
       }
     }
     return this.playHistoryModel.findOneAndUpdate(
-      { userId, episodeId },
-      { userId, episodeId, podcastId, progress, completed, lastPlayedAt: new Date() },
+      { userId: new Types.ObjectId(userId), episodeId: new Types.ObjectId(episodeId) },
+      { 
+        userId: new Types.ObjectId(userId), 
+        episodeId: new Types.ObjectId(episodeId), 
+        podcastId: new Types.ObjectId(podcastId), 
+        progress, 
+        completed, 
+        lastPlayedAt: new Date() 
+      },
       { upsert: true, new: true }
     ).exec();
   }
 
   async getHistory(userId: string, page: number, limit: number) {
     const skip = (page - 1) * limit;
+    const objectId = new Types.ObjectId(userId);
     const [history, total] = await Promise.all([
-      this.playHistoryModel.find({ userId })
+      this.playHistoryModel.find({ userId: objectId })
         .sort({ lastPlayedAt: -1 })
         .skip(skip)
         .limit(limit)
         .populate('episodeId')
         .exec(),
-      this.playHistoryModel.countDocuments({ userId }).exec(),
+      this.playHistoryModel.countDocuments({ userId: objectId }).exec(),
     ]);
     return { history, total };
   }
 
   async getInProgressEpisodes(userId: string) {
-    return this.playHistoryModel.find({ userId, completed: false })
+    return this.playHistoryModel.find({ userId: new Types.ObjectId(userId), completed: false })
       .sort({ lastPlayedAt: -1 })
       .populate('episodeId')
       .exec();
   }
 
   async getEpisodeProgress(userId: string, episodeId: string) {
-    return this.playHistoryModel.findOne({ userId, episodeId }).exec();
+    return this.playHistoryModel.findOne({ userId: new Types.ObjectId(userId), episodeId: new Types.ObjectId(episodeId) }).exec();
   }
 
   async getPodcastProgress(userId: string, podcastId: string) {
-    const history = await this.playHistoryModel.find({ userId, podcastId, completed: true }).exec();
+    const history = await this.playHistoryModel.find({ 
+      userId: new Types.ObjectId(userId), 
+      podcastId: new Types.ObjectId(podcastId), 
+      completed: true 
+    }).exec();
     return history.map(h => h.episodeId.toString());
   }
 
@@ -118,14 +130,24 @@ export class LibraryService {
 
       const ops = episodeIds.map(id => ({
         updateOne: {
-          filter: { userId, episodeId: id },
-          update: { userId, episodeId: id, podcastId, progress: 100, completed: true, lastPlayedAt: new Date() },
+          filter: { userId: new Types.ObjectId(userId), episodeId: new Types.ObjectId(id) },
+          update: { 
+            userId: new Types.ObjectId(userId), 
+            episodeId: new Types.ObjectId(id), 
+            podcastId: new Types.ObjectId(podcastId), 
+            progress: 100, 
+            completed: true, 
+            lastPlayedAt: new Date() 
+          },
           upsert: true
         }
       }));
-      return this.playHistoryModel.bulkWrite(ops);
+      return this.playHistoryModel.bulkWrite(ops as any);
     } else {
-      return this.playHistoryModel.deleteMany({ userId, podcastId }).exec();
+      return this.playHistoryModel.deleteMany({ 
+        userId: new Types.ObjectId(userId), 
+        podcastId: new Types.ObjectId(podcastId) 
+      }).exec();
     }
   }
 
@@ -285,7 +307,7 @@ export class LibraryService {
   
   /** Get all user IDs subscribed to a podcast */
   async getSubscribedUserIds(podcastId: string): Promise<string[]> {
-    const subs = await this.subscriptionModel.find({ podcastId }).exec();
+    const subs = await this.subscriptionModel.find({ podcastId: new Types.ObjectId(podcastId) }).exec();
     return subs.map(s => s.userId.toString());
   }
 
