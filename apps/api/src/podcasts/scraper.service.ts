@@ -23,6 +23,38 @@ export class ScraperService {
     try {
       this.logger.log(`Scraping iVoox page: ${ivooxUrl}`);
 
+      // Support for episode URLs: if the URL represents an episode (contains '_rf_')
+      if (ivooxUrl.includes('_rf_')) {
+        this.logger.log(`Detected iVoox episode URL: ${ivooxUrl}. Resolving to parent podcast...`);
+        const epResponse = await axios.get(ivooxUrl, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Accept-Language': 'es-ES,es;q=0.9',
+          },
+          timeout: 15000,
+        });
+        const $ep = cheerio.load(epResponse.data);
+        
+        let parentPath = '';
+        $ep('a[href*="_sq_f"]').each((_, el) => {
+          const $el = $ep(el);
+          // Exclude header components to avoid picking up trending podcasts like "V9 - Fórmula 1"
+          if ($el.closest('#header-wrapper, .bg-lightest, header').length > 0) {
+            return true; // continue
+          }
+          parentPath = $el.attr('href') || '';
+          if (parentPath) return false; // break loop on first match
+        });
+
+        if (parentPath) {
+          const parentUrl = parentPath.startsWith('http') ? parentPath : `https://www.ivoox.com${parentPath}`;
+          this.logger.log(`Successfully resolved episode URL to parent podcast: ${parentUrl}`);
+          ivooxUrl = parentUrl;
+        } else {
+          this.logger.warn(`Could not resolve parent podcast URL from episode page: ${ivooxUrl}`);
+        }
+      }
+
       const response = await axios.get(ivooxUrl, {
         headers: {
           'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
