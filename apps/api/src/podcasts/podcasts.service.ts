@@ -36,7 +36,7 @@ export class PodcastsService {
    * 2. Parse the RSS feed
    * 3. Save podcast + episodes to DB
    */
-  async subscribe(url: string): Promise<PodcastDocument> {
+  async subscribe(url: string, userId?: string): Promise<PodcastDocument> {
     let rssFeedUrl: string;
     let ivooxUrl: string;
     let ivooxId: string;
@@ -62,6 +62,9 @@ export class PodcastsService {
     // Check if already subscribed
     const existing = await this.podcastModel.findOne({ ivooxId }).exec();
     if (existing) {
+      if (userId) {
+        await this.libraryService.subscribe(userId, existing._id.toString());
+      }
       return existing;
     }
 
@@ -86,6 +89,11 @@ export class PodcastsService {
     // Save episodes
     if (feed.episodes.length > 0) {
       await this.episodesService.upsertMany(podcast._id.toString(), feed.episodes);
+    }
+
+    // Subscribe user if userId is provided
+    if (userId) {
+      await this.libraryService.subscribe(userId, podcast._id.toString());
     }
 
     this.logger.log(`Subscribed to podcast: ${feed.title} (${feed.episodes.length} episodes)`);

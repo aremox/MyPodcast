@@ -158,7 +158,7 @@ export class LibraryController {
     
     this.logger.log(`[QueueSync] Updating queue for user ${userId} with ${ids.length} items`);
     
-    await this.libraryService.updateSyncConfig(userId, { queue: ids as any });
+    await this.libraryService.updateQueue(userId, ids);
     return { success: true };
   }
 
