@@ -27,6 +27,21 @@ export class EpisodesService implements OnModuleInit {
     } catch (err: any) {
       this.logger.error(`Database BSON types migration failed: ${err.message}`);
     }
+
+    this.logger.log('Starting cleanup of orphaned episodes...');
+    try {
+      const podcasts = await this.episodeModel.db.collection('podcasts').find({}, { projection: { _id: 1 } }).toArray();
+      const activePodcastIds = podcasts.map(p => p._id);
+      const activePodcastIdStrings = podcasts.map(p => p._id.toString());
+      
+      const deleteResult = await this.episodeModel.deleteMany({
+        podcastId: { $nin: [...activePodcastIds, ...activePodcastIdStrings] }
+      }).exec();
+      
+      this.logger.log(`Cleaned up ${deleteResult.deletedCount || 0} orphaned episodes from database.`);
+    } catch (err: any) {
+      this.logger.error(`Failed to clean up orphaned episodes: ${err.message}`);
+    }
   }
 
   async findByPodcast(podcastId: string, page = 1, limit = 50): Promise<{ episodes: EpisodeDocument[]; total: number }> {
@@ -127,6 +142,7 @@ export class EpisodesService implements OnModuleInit {
             { _id: existing._id },
             {
               $set: {
+                podcastId: new Types.ObjectId(podcastId), // Reclaim orphaned episode!
                 audioUrl: ep.audioUrl,
                 duration: ep.duration,
                 durationSeconds: ep.durationSeconds,
