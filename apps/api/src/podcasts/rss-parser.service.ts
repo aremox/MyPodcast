@@ -83,6 +83,7 @@ export class RssParserService {
 
   private extractImageUrl(item: any): string {
     if (item.itunesImage?.href) return item.itunesImage.href;
+    if (item.itunesImage?.$?.href) return item.itunesImage.$.href;
     if (item.itunesImage && typeof item.itunesImage === 'string') return item.itunesImage;
     if (item['itunes:image']?.$?.href) return item['itunes:image'].$.href;
     return '';
@@ -90,6 +91,7 @@ export class RssParserService {
 
   private extractFeedImageUrl(feed: any): string {
     if (feed.itunesImage?.href) return feed.itunesImage.href;
+    if (feed.itunesImage?.$?.href) return feed.itunesImage.$.href;
     if (feed.itunesImage && typeof feed.itunesImage === 'string') return feed.itunesImage;
     if (feed.image?.url) return feed.image.url;
     return '';
