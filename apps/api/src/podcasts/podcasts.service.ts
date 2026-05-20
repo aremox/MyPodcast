@@ -1,4 +1,4 @@
-import { Injectable, Logger, NotFoundException, BadRequestException, Inject, forwardRef } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, BadRequestException, Inject, forwardRef, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Podcast, PodcastDocument } from './schemas/podcast.schema';
@@ -8,7 +8,7 @@ import { EpisodesService } from '../episodes/episodes.service';
 import { LibraryService } from '../library/library.service';
 
 @Injectable()
-export class PodcastsService {
+export class PodcastsService implements OnModuleInit {
   private readonly logger = new Logger(PodcastsService.name);
 
   constructor(
@@ -19,6 +19,33 @@ export class PodcastsService {
     @Inject(forwardRef(() => LibraryService))
     private libraryService: LibraryService,
   ) {}
+
+  async onModuleInit() {
+    this.logger.log('Starting PodcastsService onModuleInit...');
+    try {
+      const emptyImagePodcasts = await this.podcastModel.find({
+        $or: [
+          { imageUrl: '' },
+          { imageUrl: { $exists: false } },
+          { imageUrl: null }
+        ]
+      }).exec();
+
+      if (emptyImagePodcasts.length > 0) {
+        this.logger.log(`Found ${emptyImagePodcasts.length} podcasts with empty/missing imageUrl. Triggering automatic refresh...`);
+        for (const podcast of emptyImagePodcasts) {
+          try {
+            await this.refreshFeed(podcast._id.toString());
+            this.logger.log(`Automatically refreshed cover image for podcast: ${podcast.title}`);
+          } catch (err: any) {
+            this.logger.error(`Failed to automatically refresh podcast ${podcast.title} image: ${err.message}`);
+          }
+        }
+      }
+    } catch (err: any) {
+      this.logger.error(`Error in PodcastsService onModuleInit: ${err.message}`);
+    }
+  }
 
   async findAll(): Promise<PodcastDocument[]> {
     return this.podcastModel.find().sort({ title: 1 }).exec();
