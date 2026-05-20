@@ -1,35 +1,64 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Episode, EpisodeDocument } from './schemas/episode.schema';
 import { ParsedEpisode } from '../podcasts/rss-parser.service';
 
 @Injectable()
-export class EpisodesService {
+export class EpisodesService implements OnModuleInit {
   private readonly logger = new Logger(EpisodesService.name);
 
   constructor(
     @InjectModel(Episode.name) private episodeModel: Model<EpisodeDocument>,
   ) {}
 
+  async onModuleInit() {
+    this.logger.log('Starting migration to ensure all episodes have ObjectId podcastId...');
+    try {
+      const result = await this.episodeModel.updateMany(
+        { 
+          podcastId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } 
+        },
+        [
+          { $set: { podcastId: { $toObjectId: '$podcastId' } } }
+        ]
+      ).exec();
+      this.logger.log(`BSON types migration completed for episodes! Matched & modified: ${result.modifiedCount || 0} documents.`);
+    } catch (err: any) {
+      this.logger.error(`Database BSON types migration failed: ${err.message}`);
+    }
+  }
+
   async findByPodcast(podcastId: string, page = 1, limit = 50): Promise<{ episodes: EpisodeDocument[]; total: number }> {
     const skip = (page - 1) * limit;
     const objectId = new Types.ObjectId(podcastId);
+    const filter = {
+      $or: [
+        { podcastId: objectId },
+        { podcastId: podcastId }
+      ]
+    };
     const [episodes, total] = await Promise.all([
       this.episodeModel
-        .find({ podcastId: objectId })
+        .find(filter)
         .sort({ publishedAt: -1 })
         .skip(skip)
         .limit(limit)
         .exec(),
-      this.episodeModel.countDocuments({ podcastId: objectId }).exec(),
+      this.episodeModel.countDocuments(filter).exec(),
     ]);
     return { episodes, total };
   }
 
   async findAllIdsByPodcast(podcastId: string): Promise<string[]> {
+    const objectId = new Types.ObjectId(podcastId);
     const episodes = await this.episodeModel
-      .find({ podcastId: new Types.ObjectId(podcastId) })
+      .find({
+        $or: [
+          { podcastId: objectId },
+          { podcastId: podcastId }
+        ]
+      })
       .select('_id')
       .exec();
     return episodes.map(e => e._id.toString());
@@ -54,7 +83,13 @@ export class EpisodesService {
   }
 
   async countByPodcast(podcastId: string): Promise<number> {
-    return this.episodeModel.countDocuments({ podcastId: new Types.ObjectId(podcastId) }).exec();
+    const objectId = new Types.ObjectId(podcastId);
+    return this.episodeModel.countDocuments({
+      $or: [
+        { podcastId: objectId },
+        { podcastId: podcastId }
+      ]
+    }).exec();
   }
 
   /**
@@ -109,7 +144,13 @@ export class EpisodesService {
   }
 
   async deleteByPodcast(podcastId: string): Promise<void> {
-    await this.episodeModel.deleteMany({ podcastId: new Types.ObjectId(podcastId) }).exec();
+    const objectId = new Types.ObjectId(podcastId);
+    await this.episodeModel.deleteMany({
+      $or: [
+        { podcastId: objectId },
+        { podcastId: podcastId }
+      ]
+    }).exec();
   }
 
   async search(query: string, podcastId?: string): Promise<EpisodeDocument[]> {
@@ -117,7 +158,11 @@ export class EpisodesService {
       $text: { $search: query },
     };
     if (podcastId) {
-      filter.podcastId = new Types.ObjectId(podcastId);
+      const objectId = new Types.ObjectId(podcastId);
+      filter.$or = [
+        { podcastId: objectId },
+        { podcastId: podcastId }
+      ];
     }
 
     return this.episodeModel

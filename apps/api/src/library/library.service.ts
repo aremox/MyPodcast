@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Subscription, SubscriptionDocument } from './schemas/subscription.schema';
@@ -8,7 +8,7 @@ import { SyncConfig, SyncConfigDocument } from './schemas/sync-config.schema';
 import { EpisodeDownloaderService } from '../episodes/episode-downloader.service';
 
 @Injectable()
-export class LibraryService {
+export class LibraryService implements OnModuleInit {
   private readonly logger = new Logger(LibraryService.name);
 
   constructor(
@@ -18,6 +18,23 @@ export class LibraryService {
     @InjectModel(SyncConfig.name) private syncConfigModel: Model<SyncConfigDocument>,
     private episodeDownloaderService: EpisodeDownloaderService,
   ) {}
+
+  async onModuleInit() {
+    this.logger.log('Starting migration to ensure all play histories have ObjectId podcastId...');
+    try {
+      const result = await this.playHistoryModel.updateMany(
+        { 
+          podcastId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } 
+        },
+        [
+          { $set: { podcastId: { $toObjectId: '$podcastId' } } }
+        ]
+      ).exec();
+      this.logger.log(`BSON types migration completed for play histories! Matched & modified: ${result.modifiedCount || 0} documents.`);
+    } catch (err: any) {
+      this.logger.error(`Database BSON types migration failed for play histories: ${err.message}`);
+    }
+  }
 
   // ===== SUBSCRIPTIONS =====
   async getUserSubscriptions(userId: string) {
@@ -107,9 +124,13 @@ export class LibraryService {
   }
 
   async getPodcastProgress(userId: string, podcastId: string) {
+    const objectId = new Types.ObjectId(podcastId);
     const history = await this.playHistoryModel.find({ 
       userId: new Types.ObjectId(userId), 
-      podcastId: new Types.ObjectId(podcastId), 
+      $or: [
+        { podcastId: objectId },
+        { podcastId: podcastId }
+      ], 
       completed: true 
     }).exec();
     return history.map(h => h.episodeId.toString());
@@ -144,9 +165,13 @@ export class LibraryService {
       }));
       return this.playHistoryModel.bulkWrite(ops as any);
     } else {
+      const objectId = new Types.ObjectId(podcastId);
       return this.playHistoryModel.deleteMany({ 
         userId: new Types.ObjectId(userId), 
-        podcastId: new Types.ObjectId(podcastId) 
+        $or: [
+          { podcastId: objectId },
+          { podcastId: podcastId }
+        ] 
       }).exec();
     }
   }
