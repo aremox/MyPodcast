@@ -20,137 +20,364 @@ export class LibraryService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    this.logger.log('Starting comprehensive BSON types migration for library collections...');
+    this.logger.log('Starting comprehensive BSON types deduplication and migration for library collections...');
 
-    // 1. Migrate subscriptions
+    // 1. Migrate & deduplicate subscriptions
     try {
-      this.logger.log('[Migration] Checking subscriptions for string userIds...');
-      const subUserRes = await this.subscriptionModel.updateMany(
-        { userId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } },
-        [ { $set: { userId: { $toObjectId: '$userId' } } } ]
-      ).exec();
-      this.logger.log(`[Migration] Subscriptions (userId): migrated ${subUserRes.modifiedCount || 0} documents.`);
+      this.logger.log('[Migration] Fetching all subscriptions to detect and merge duplicate user-podcast records...');
+      const allSubs = await this.subscriptionModel.find({}).exec();
+      const subGroups = new Map<string, any[]>();
+      for (const sub of allSubs) {
+        if (!sub.userId || !sub.podcastId) continue;
+        const uStr = sub.userId instanceof Types.ObjectId ? sub.userId.toHexString() : String(sub.userId);
+        const pStr = sub.podcastId instanceof Types.ObjectId ? sub.podcastId.toHexString() : String(sub.podcastId);
+        const key = `${uStr}_${pStr}`;
+        if (!subGroups.has(key)) {
+          subGroups.set(key, []);
+        }
+        subGroups.get(key)!.push(sub);
+      }
+
+      let subNeedsFixCount = 0;
+      let subMergedCount = 0;
+
+      for (const [key, docs] of subGroups.entries()) {
+        const [userIdStr, podcastIdStr] = key.split('_');
+        const userObj = new Types.ObjectId(userIdStr);
+        const podcastObj = new Types.ObjectId(podcastIdStr);
+
+        if (docs.length === 1) {
+          const doc = docs[0];
+          const needsFix = typeof doc.userId === 'string' || typeof doc.podcastId === 'string';
+          if (needsFix) {
+            await this.subscriptionModel.updateOne(
+              { _id: doc._id },
+              { $set: { userId: userObj, podcastId: podcastObj } }
+            ).exec();
+            subNeedsFixCount++;
+          }
+          continue;
+        }
+
+        // If duplicate subscriptions
+        this.logger.warn(`[Migration] Duplicate subscriptions found for user ${userIdStr} and podcast ${podcastIdStr}. Merging...`);
+        let primaryDoc = docs.find(d => d.userId instanceof Types.ObjectId && d.podcastId instanceof Types.ObjectId);
+        if (!primaryDoc) {
+          primaryDoc = docs[0];
+        }
+
+        // Merge fields
+        let notifications = false;
+        for (const doc of docs) {
+          if (doc.notifications === true) {
+            notifications = true;
+          }
+        }
+
+        await this.subscriptionModel.updateOne(
+          { _id: primaryDoc._id },
+          { $set: { userId: userObj, podcastId: podcastObj, notifications } }
+        ).exec();
+
+        // Delete others
+        const otherIds = docs.filter(d => d._id.toString() !== primaryDoc!._id.toString()).map(d => d._id);
+        await this.subscriptionModel.deleteMany({ _id: { $in: otherIds } }).exec();
+        subMergedCount++;
+      }
+      this.logger.log(`[Migration] Subscriptions check complete. Fixed types: ${subNeedsFixCount}, Merged/Deduplicated: ${subMergedCount}`);
     } catch (err: any) {
-      this.logger.warn(`[Migration] Subscriptions (userId) migration warning: ${err.message}`);
+      this.logger.error(`[Migration] Subscriptions migration/merge error: ${err.message}`, err.stack);
     }
 
+    // 2. Migrate & deduplicate favorites
     try {
-      this.logger.log('[Migration] Checking subscriptions for string podcastIds...');
-      const subPodcastRes = await this.subscriptionModel.updateMany(
-        { podcastId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } },
-        [ { $set: { podcastId: { $toObjectId: '$podcastId' } } } ]
-      ).exec();
-      this.logger.log(`[Migration] Subscriptions (podcastId): migrated ${subPodcastRes.modifiedCount || 0} documents.`);
+      this.logger.log('[Migration] Fetching all favorites to detect and merge duplicate user-episode records...');
+      const allFavs = await this.favoriteModel.find({}).exec();
+      const favGroups = new Map<string, any[]>();
+      for (const fav of allFavs) {
+        if (!fav.userId || !fav.episodeId) continue;
+        const uStr = fav.userId instanceof Types.ObjectId ? fav.userId.toHexString() : String(fav.userId);
+        const eStr = fav.episodeId instanceof Types.ObjectId ? fav.episodeId.toHexString() : String(fav.episodeId);
+        const key = `${uStr}_${eStr}`;
+        if (!favGroups.has(key)) {
+          favGroups.set(key, []);
+        }
+        favGroups.get(key)!.push(fav);
+      }
+
+      let favNeedsFixCount = 0;
+      let favMergedCount = 0;
+
+      for (const [key, docs] of favGroups.entries()) {
+        const [userIdStr, episodeIdStr] = key.split('_');
+        const userObj = new Types.ObjectId(userIdStr);
+        const episodeObj = new Types.ObjectId(episodeIdStr);
+
+        if (docs.length === 1) {
+          const doc = docs[0];
+          const needsFix = typeof doc.userId === 'string' || typeof doc.episodeId === 'string';
+          if (needsFix) {
+            await this.favoriteModel.updateOne(
+              { _id: doc._id },
+              { $set: { userId: userObj, episodeId: episodeObj } }
+            ).exec();
+            favNeedsFixCount++;
+          }
+          continue;
+        }
+
+        this.logger.warn(`[Migration] Duplicate favorites found for user ${userIdStr} and episode ${episodeIdStr}. Merging...`);
+        let primaryDoc = docs.find(d => d.userId instanceof Types.ObjectId && d.episodeId instanceof Types.ObjectId);
+        if (!primaryDoc) {
+          primaryDoc = docs[0];
+        }
+
+        await this.favoriteModel.updateOne(
+          { _id: primaryDoc._id },
+          { $set: { userId: userObj, episodeId: episodeObj } }
+        ).exec();
+
+        // Delete others
+        const otherIds = docs.filter(d => d._id.toString() !== primaryDoc!._id.toString()).map(d => d._id);
+        await this.favoriteModel.deleteMany({ _id: { $in: otherIds } }).exec();
+        favMergedCount++;
+      }
+      this.logger.log(`[Migration] Favorites check complete. Fixed types: ${favNeedsFixCount}, Merged/Deduplicated: ${favMergedCount}`);
     } catch (err: any) {
-      this.logger.warn(`[Migration] Subscriptions (podcastId) migration warning: ${err.message}`);
+      this.logger.error(`[Migration] Favorites migration/merge error: ${err.message}`, err.stack);
     }
 
-    // 2. Migrate favorites
+    // 3. Migrate & deduplicate play histories
     try {
-      this.logger.log('[Migration] Checking favorites for string userIds...');
-      const favUserRes = await this.favoriteModel.updateMany(
-        { userId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } },
-        [ { $set: { userId: { $toObjectId: '$userId' } } } ]
-      ).exec();
-      this.logger.log(`[Migration] Favorites (userId): migrated ${favUserRes.modifiedCount || 0} documents.`);
+      this.logger.log('[Migration] Fetching all play histories to detect and merge duplicate user-episode records...');
+      const allHistories = await this.playHistoryModel.find({}).exec();
+      const historyGroups = new Map<string, any[]>();
+      for (const h of allHistories) {
+        if (!h.userId || !h.episodeId) continue;
+        const uStr = h.userId instanceof Types.ObjectId ? h.userId.toHexString() : String(h.userId);
+        const eStr = h.episodeId instanceof Types.ObjectId ? h.episodeId.toHexString() : String(h.episodeId);
+        const key = `${uStr}_${eStr}`;
+        if (!historyGroups.has(key)) {
+          historyGroups.set(key, []);
+        }
+        historyGroups.get(key)!.push(h);
+      }
+
+      let historyNeedsFixCount = 0;
+      let historyMergedCount = 0;
+
+      for (const [key, docs] of historyGroups.entries()) {
+        const [userIdStr, episodeIdStr] = key.split('_');
+        const userObj = new Types.ObjectId(userIdStr);
+        const episodeObj = new Types.ObjectId(episodeIdStr);
+
+        if (docs.length === 1) {
+          const doc = docs[0];
+          const needsFix = typeof doc.userId === 'string' || typeof doc.episodeId === 'string' || (doc.podcastId && typeof doc.podcastId === 'string');
+          if (needsFix) {
+            const pObj = doc.podcastId ? (doc.podcastId instanceof Types.ObjectId ? doc.podcastId : new Types.ObjectId(String(doc.podcastId))) : undefined;
+            await this.playHistoryModel.updateOne(
+              { _id: doc._id },
+              { $set: { userId: userObj, episodeId: episodeObj, podcastId: pObj } }
+            ).exec();
+            historyNeedsFixCount++;
+          }
+          continue;
+        }
+
+        this.logger.warn(`[Migration] Duplicate play histories found for user ${userIdStr} and episode ${episodeIdStr}. Merging...`);
+        let primaryDoc = docs.find(d => d.userId instanceof Types.ObjectId && d.episodeId instanceof Types.ObjectId);
+        if (!primaryDoc) {
+          primaryDoc = docs[0];
+        }
+
+        // Merge fields
+        let maxProgress = 0;
+        let completed = false;
+        let latestPlayed = primaryDoc.lastPlayedAt || new Date(0);
+        let podcastObj: Types.ObjectId | undefined = undefined;
+
+        for (const doc of docs) {
+          if (doc.progress > maxProgress) {
+            maxProgress = doc.progress;
+          }
+          if (doc.completed === true) {
+            completed = true;
+          }
+          if (doc.lastPlayedAt && doc.lastPlayedAt > latestPlayed) {
+            latestPlayed = doc.lastPlayedAt;
+          }
+          if (doc.podcastId && !podcastObj) {
+            podcastObj = doc.podcastId instanceof Types.ObjectId ? doc.podcastId : new Types.ObjectId(String(doc.podcastId));
+          }
+        }
+
+        await this.playHistoryModel.updateOne(
+          { _id: primaryDoc._id },
+          { 
+            $set: { 
+              userId: userObj, 
+              episodeId: episodeObj, 
+              podcastId: podcastObj,
+              progress: maxProgress,
+              completed,
+              lastPlayedAt: latestPlayed
+            } 
+          }
+        ).exec();
+
+        // Delete others
+        const otherIds = docs.filter(d => d._id.toString() !== primaryDoc!._id.toString()).map(d => d._id);
+        await this.playHistoryModel.deleteMany({ _id: { $in: otherIds } }).exec();
+        historyMergedCount++;
+      }
+      this.logger.log(`[Migration] Play histories check complete. Fixed types: ${historyNeedsFixCount}, Merged/Deduplicated: ${historyMergedCount}`);
     } catch (err: any) {
-      this.logger.warn(`[Migration] Favorites (userId) migration warning: ${err.message}`);
+      this.logger.error(`[Migration] Play histories migration/merge error: ${err.message}`, err.stack);
     }
 
+    // 4. Migrate & deduplicate sync configs (recovering lost queues!)
     try {
-      this.logger.log('[Migration] Checking favorites for string episodeIds...');
-      const favEpisodeRes = await this.favoriteModel.updateMany(
-        { episodeId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } },
-        [ { $set: { episodeId: { $toObjectId: '$episodeId' } } } ]
-      ).exec();
-      this.logger.log(`[Migration] Favorites (episodeId): migrated ${favEpisodeRes.modifiedCount || 0} documents.`);
-    } catch (err: any) {
-      this.logger.warn(`[Migration] Favorites (episodeId) migration warning: ${err.message}`);
-    }
+      this.logger.log('[Migration] Fetching all sync configs to detect and merge duplicate user records...');
+      const allConfigs = await this.syncConfigModel.find({}).exec();
+      const configGroups = new Map<string, any[]>();
+      for (const config of allConfigs) {
+        if (!config.userId) continue;
+        const key = config.userId instanceof Types.ObjectId ? config.userId.toHexString() : String(config.userId);
+        if (!configGroups.has(key)) {
+          configGroups.set(key, []);
+        }
+        configGroups.get(key)!.push(config);
+      }
 
-    // 3. Migrate play histories
-    try {
-      this.logger.log('[Migration] Checking play histories for string userIds...');
-      const playUserRes = await this.playHistoryModel.updateMany(
-        { userId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } },
-        [ { $set: { userId: { $toObjectId: '$userId' } } } ]
-      ).exec();
-      this.logger.log(`[Migration] Play histories (userId): migrated ${playUserRes.modifiedCount || 0} documents.`);
-    } catch (err: any) {
-      this.logger.warn(`[Migration] Play histories (userId) migration warning: ${err.message}`);
-    }
+      let configNeedsFixCount = 0;
+      let configMergedCount = 0;
 
-    try {
-      this.logger.log('[Migration] Checking play histories for string episodeIds...');
-      const playEpisodeRes = await this.playHistoryModel.updateMany(
-        { episodeId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } },
-        [ { $set: { episodeId: { $toObjectId: '$episodeId' } } } ]
-      ).exec();
-      this.logger.log(`[Migration] Play histories (episodeId): migrated ${playEpisodeRes.modifiedCount || 0} documents.`);
-    } catch (err: any) {
-      this.logger.warn(`[Migration] Play histories (episodeId) migration warning: ${err.message}`);
-    }
+      for (const [userIdStr, docs] of configGroups.entries()) {
+        const userObj = new Types.ObjectId(userIdStr);
 
-    try {
-      this.logger.log('[Migration] Checking play histories for string podcastIds...');
-      const playPodcastRes = await this.playHistoryModel.updateMany(
-        { podcastId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } },
-        [ { $set: { podcastId: { $toObjectId: '$podcastId' } } } ]
-      ).exec();
-      this.logger.log(`[Migration] Play histories (podcastId): migrated ${playPodcastRes.modifiedCount || 0} documents.`);
-    } catch (err: any) {
-      this.logger.warn(`[Migration] Play histories (podcastId) migration warning: ${err.message}`);
-    }
+        if (docs.length === 1) {
+          const doc = docs[0];
+          // If the only document has a string userId, update it to ObjectId
+          if (typeof doc.userId === 'string') {
+            this.logger.log(`[Migration] Converting single sync config userId to ObjectId for user: ${userIdStr}`);
+            
+            // Clean up any string items in queue
+            const cleanedQueue = (doc.queue || []).map((q: any) => 
+              q instanceof Types.ObjectId ? q : new Types.ObjectId(String(q))
+            );
 
-    // 4. Migrate sync configs
-    try {
-      this.logger.log('[Migration] Checking sync configs for string userIds or queue arrays...');
-      const syncConfigRes = await this.syncConfigModel.updateMany(
-        { 
-          $or: [
-            { userId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } },
-            { queue: { $elemMatch: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } } }
-          ]
-        },
-        [
-          {
-            $set: {
-              userId: {
-                $cond: {
-                  if: { $eq: [ { $type: '$userId' }, 'string' ] },
-                  then: { $toObjectId: '$userId' },
-                  else: '$userId'
-                }
-              },
-              queue: {
-                $cond: {
-                  if: { $isArray: '$queue' },
-                  then: {
-                    $map: {
-                      input: '$queue',
-                      as: 'item',
-                      in: {
-                        $cond: {
-                          if: { $eq: [ { $type: '$$item' }, 'string' ] },
-                          then: { $toObjectId: '$$item' },
-                          else: '$$item'
-                        }
-                      }
-                    }
-                  },
-                  else: '$queue'
-                }
+            await this.syncConfigModel.updateOne(
+              { _id: doc._id },
+              { $set: { userId: userObj, queue: cleanedQueue } }
+            ).exec();
+            configNeedsFixCount++;
+          } else {
+            // Even if it's already an ObjectId, make sure the queue has ObjectIds
+            const queueNeedsFix = doc.queue && doc.queue.some((q: any) => typeof q === 'string');
+            if (queueNeedsFix) {
+              this.logger.log(`[Migration] Converting string queue elements to ObjectId for user: ${userIdStr}`);
+              const cleanedQueue = (doc.queue || []).map((q: any) => 
+                q instanceof Types.ObjectId ? q : new Types.ObjectId(String(q))
+              );
+              await this.syncConfigModel.updateOne(
+                { _id: doc._id },
+                { $set: { queue: cleanedQueue } }
+              ).exec();
+              configNeedsFixCount++;
+            }
+          }
+          continue;
+        }
+
+        // If we reach here, we have duplicates (docs.length > 1)
+        this.logger.warn(`[Migration] Detected duplicate sync configs for user: ${userIdStr}. Merging ${docs.length} documents...`);
+        
+        let primaryDoc = docs.find(d => d.userId instanceof Types.ObjectId);
+        if (!primaryDoc) {
+          primaryDoc = docs[0];
+        }
+
+        // Merge fields
+        const mergedQueueSet = new Set<string>();
+        let targetUsbSerial = '';
+        let targetFolder = 'Podcasts';
+        let syncInterval = 60;
+        let lastSyncAt: Date | undefined = undefined;
+        let usbTotalSpace: number | undefined = undefined;
+        let usbFreeSpace: number | undefined = undefined;
+        let usbPodcastsSpace: number | undefined = undefined;
+        let usbOtherSpace: number | undefined = undefined;
+        let usbFormat: string | undefined = undefined;
+        let pairingCode: string | undefined = undefined;
+        let pairingCodeExpires: Date | undefined = undefined;
+
+        for (const doc of docs) {
+          if (doc.queue && Array.isArray(doc.queue)) {
+            for (const q of doc.queue) {
+              if (q) {
+                const qStr = q instanceof Types.ObjectId ? q.toHexString() : String(q);
+                mergedQueueSet.add(qStr);
               }
             }
           }
-        ]
-      ).exec();
-      this.logger.log(`[Migration] Sync configs: migrated ${syncConfigRes.modifiedCount || 0} documents.`);
+          if (doc.targetUsbSerial && !targetUsbSerial) targetUsbSerial = doc.targetUsbSerial;
+          if (doc.targetFolder && (!targetFolder || targetFolder === 'Podcasts')) targetFolder = doc.targetFolder;
+          if (doc.syncInterval && doc.syncInterval !== 60) syncInterval = doc.syncInterval;
+          if (doc.lastSyncAt) {
+            if (!lastSyncAt || doc.lastSyncAt > lastSyncAt) {
+              lastSyncAt = doc.lastSyncAt;
+            }
+          }
+          if (doc.usbTotalSpace && !usbTotalSpace) usbTotalSpace = doc.usbTotalSpace;
+          if (doc.usbFreeSpace && !usbFreeSpace) usbFreeSpace = doc.usbFreeSpace;
+          if (doc.usbPodcastsSpace && !usbPodcastsSpace) usbPodcastsSpace = doc.usbPodcastsSpace;
+          if (doc.usbOtherSpace && !usbOtherSpace) usbOtherSpace = doc.usbOtherSpace;
+          if (doc.usbFormat && !usbFormat) usbFormat = doc.usbFormat;
+          if (doc.pairingCode && !pairingCode) {
+            pairingCode = doc.pairingCode;
+            pairingCodeExpires = doc.pairingCodeExpires;
+          }
+        }
+
+        const mergedQueue = Array.from(mergedQueueSet).map(id => new Types.ObjectId(id));
+
+        this.logger.log(`[Migration] User ${userIdStr} merged queue size: ${mergedQueue.length} (previous docs had lengths: ${docs.map(d => d.queue?.length || 0).join(', ')})`);
+
+        // Update the primary document
+        await this.syncConfigModel.updateOne(
+          { _id: primaryDoc._id },
+          {
+            $set: {
+              userId: userObj,
+              queue: mergedQueue,
+              targetUsbSerial,
+              targetFolder,
+              syncInterval,
+              lastSyncAt,
+              usbTotalSpace,
+              usbFreeSpace,
+              usbPodcastsSpace,
+              usbOtherSpace,
+              usbFormat,
+              pairingCode,
+              pairingCodeExpires
+            }
+          }
+        ).exec();
+
+        // Delete all OTHER duplicate documents
+        const otherDocIds = docs.filter(d => d._id.toString() !== primaryDoc!._id.toString()).map(d => d._id);
+        const delRes = await this.syncConfigModel.deleteMany({ _id: { $in: otherDocIds } }).exec();
+        this.logger.log(`[Migration] User ${userIdStr} duplicate cleanup: deleted ${delRes.deletedCount || 0} duplicate documents.`);
+        configMergedCount++;
+      }
+      this.logger.log(`[Migration] Sync configs check complete. Fixed types: ${configNeedsFixCount}, Merged/Deduplicated: ${configMergedCount}`);
     } catch (err: any) {
-      this.logger.warn(`[Migration] Sync configs migration warning: ${err.message}`);
+      this.logger.error(`[Migration] Sync configs migration/merge error: ${err.message}`, err.stack);
     }
 
-    this.logger.log('Comprehensive BSON types migration finished.');
+    this.logger.log('Comprehensive BSON types migration and deduplication finished.');
   }
 
   // ===== SUBSCRIPTIONS =====
