@@ -19,10 +19,10 @@ import { AudioPlayerService, PlayerEpisode } from '../../core/services/audio-pla
         <div class="list">
           @for (entry of history(); track entry._id) {
             <div class="item" (click)="play(entry)">
-              <img [src]="entry.episodeId?.podcastId?.imageUrl || ''" class="thumb" />
+              <img [src]="entry.podcastId?.imageUrl || entry.episodeId?.imageUrl || ''" class="thumb" [alt]="entry.podcastId?.title" />
               <div class="info">
                 <span class="title">{{ entry.episodeId?.title }}</span>
-                <span class="sub">{{ entry.episodeId?.podcastId?.title }}</span>
+                <span class="sub">{{ entry.podcastId?.title }}</span>
               </div>
               @if (entry.completed) { <span class="done">✓</span> }
             </div>
@@ -56,6 +56,7 @@ export class HistoryComponent implements OnInit {
   play(entry: any) {
     const ep = entry.episodeId;
     if (!ep) return;
-    this.player.play({ _id: ep._id, title: ep.title, audioUrl: ep.audioUrl, podcastId: ep.podcastId?._id, podcastTitle: ep.podcastId?.title, podcastImageUrl: ep.podcastId?.imageUrl });
+    const podcast = entry.podcastId;
+    this.player.play({ _id: ep._id, title: ep.title, audioUrl: ep.audioUrl, podcastId: podcast?._id, podcastTitle: podcast?.title, podcastImageUrl: podcast?.imageUrl });
   }
 }

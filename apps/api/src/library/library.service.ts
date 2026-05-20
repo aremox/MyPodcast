@@ -482,6 +482,7 @@ export class LibraryService implements OnModuleInit {
         .skip(skip)
         .limit(limit)
         .populate('episodeId')
+        .populate('podcastId', 'title imageUrl')
         .exec(),
       this.playHistoryModel.countDocuments(filter).exec(),
     ]);
