@@ -20,25 +20,148 @@ export class LibraryService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    this.logger.log('Starting migration to ensure all play histories have ObjectId podcastId...');
+    this.logger.log('Starting comprehensive BSON types migration for library collections...');
+
+    // 1. Migrate subscriptions
     try {
-      const result = await this.playHistoryModel.updateMany(
+      this.logger.log('[Migration] Checking subscriptions for string userIds...');
+      const subUserRes = await this.subscriptionModel.updateMany(
+        { userId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } },
+        [ { $set: { userId: { $toObjectId: '$userId' } } } ]
+      ).exec();
+      this.logger.log(`[Migration] Subscriptions (userId): migrated ${subUserRes.modifiedCount || 0} documents.`);
+    } catch (err: any) {
+      this.logger.warn(`[Migration] Subscriptions (userId) migration warning: ${err.message}`);
+    }
+
+    try {
+      this.logger.log('[Migration] Checking subscriptions for string podcastIds...');
+      const subPodcastRes = await this.subscriptionModel.updateMany(
+        { podcastId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } },
+        [ { $set: { podcastId: { $toObjectId: '$podcastId' } } } ]
+      ).exec();
+      this.logger.log(`[Migration] Subscriptions (podcastId): migrated ${subPodcastRes.modifiedCount || 0} documents.`);
+    } catch (err: any) {
+      this.logger.warn(`[Migration] Subscriptions (podcastId) migration warning: ${err.message}`);
+    }
+
+    // 2. Migrate favorites
+    try {
+      this.logger.log('[Migration] Checking favorites for string userIds...');
+      const favUserRes = await this.favoriteModel.updateMany(
+        { userId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } },
+        [ { $set: { userId: { $toObjectId: '$userId' } } } ]
+      ).exec();
+      this.logger.log(`[Migration] Favorites (userId): migrated ${favUserRes.modifiedCount || 0} documents.`);
+    } catch (err: any) {
+      this.logger.warn(`[Migration] Favorites (userId) migration warning: ${err.message}`);
+    }
+
+    try {
+      this.logger.log('[Migration] Checking favorites for string episodeIds...');
+      const favEpisodeRes = await this.favoriteModel.updateMany(
+        { episodeId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } },
+        [ { $set: { episodeId: { $toObjectId: '$episodeId' } } } ]
+      ).exec();
+      this.logger.log(`[Migration] Favorites (episodeId): migrated ${favEpisodeRes.modifiedCount || 0} documents.`);
+    } catch (err: any) {
+      this.logger.warn(`[Migration] Favorites (episodeId) migration warning: ${err.message}`);
+    }
+
+    // 3. Migrate play histories
+    try {
+      this.logger.log('[Migration] Checking play histories for string userIds...');
+      const playUserRes = await this.playHistoryModel.updateMany(
+        { userId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } },
+        [ { $set: { userId: { $toObjectId: '$userId' } } } ]
+      ).exec();
+      this.logger.log(`[Migration] Play histories (userId): migrated ${playUserRes.modifiedCount || 0} documents.`);
+    } catch (err: any) {
+      this.logger.warn(`[Migration] Play histories (userId) migration warning: ${err.message}`);
+    }
+
+    try {
+      this.logger.log('[Migration] Checking play histories for string episodeIds...');
+      const playEpisodeRes = await this.playHistoryModel.updateMany(
+        { episodeId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } },
+        [ { $set: { episodeId: { $toObjectId: '$episodeId' } } } ]
+      ).exec();
+      this.logger.log(`[Migration] Play histories (episodeId): migrated ${playEpisodeRes.modifiedCount || 0} documents.`);
+    } catch (err: any) {
+      this.logger.warn(`[Migration] Play histories (episodeId) migration warning: ${err.message}`);
+    }
+
+    try {
+      this.logger.log('[Migration] Checking play histories for string podcastIds...');
+      const playPodcastRes = await this.playHistoryModel.updateMany(
+        { podcastId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } },
+        [ { $set: { podcastId: { $toObjectId: '$podcastId' } } } ]
+      ).exec();
+      this.logger.log(`[Migration] Play histories (podcastId): migrated ${playPodcastRes.modifiedCount || 0} documents.`);
+    } catch (err: any) {
+      this.logger.warn(`[Migration] Play histories (podcastId) migration warning: ${err.message}`);
+    }
+
+    // 4. Migrate sync configs
+    try {
+      this.logger.log('[Migration] Checking sync configs for string userIds or queue arrays...');
+      const syncConfigRes = await this.syncConfigModel.updateMany(
         { 
-          podcastId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } 
+          $or: [
+            { userId: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } },
+            { queue: { $elemMatch: { $type: 'string', $regex: /^[0-9a-fA-F]{24}$/ } } }
+          ]
         },
         [
-          { $set: { podcastId: { $toObjectId: '$podcastId' } } }
+          {
+            $set: {
+              userId: {
+                $cond: {
+                  if: { $eq: [ { $type: '$userId' }, 'string' ] },
+                  then: { $toObjectId: '$userId' },
+                  else: '$userId'
+                }
+              },
+              queue: {
+                $cond: {
+                  if: { $isArray: '$queue' },
+                  then: {
+                    $map: {
+                      input: '$queue',
+                      as: 'item',
+                      in: {
+                        $cond: {
+                          if: { $eq: [ { $type: '$$item' }, 'string' ] },
+                          then: { $toObjectId: '$$item' },
+                          else: '$$item'
+                        }
+                      }
+                    }
+                  },
+                  else: '$queue'
+                }
+              }
+            }
+          }
         ]
       ).exec();
-      this.logger.log(`BSON types migration completed for play histories! Matched & modified: ${result.modifiedCount || 0} documents.`);
+      this.logger.log(`[Migration] Sync configs: migrated ${syncConfigRes.modifiedCount || 0} documents.`);
     } catch (err: any) {
-      this.logger.error(`Database BSON types migration failed for play histories: ${err.message}`);
+      this.logger.warn(`[Migration] Sync configs migration warning: ${err.message}`);
     }
+
+    this.logger.log('Comprehensive BSON types migration finished.');
   }
 
   // ===== SUBSCRIPTIONS =====
   async getUserSubscriptions(userId: string) {
-    return this.subscriptionModel.find({ userId: new Types.ObjectId(userId) }).populate('podcastId').exec();
+    const userObj = new Types.ObjectId(userId);
+    return this.subscriptionModel.find({ 
+      $or: [
+        { userId: userObj },
+        { userId: userId }
+      ]
+    }).populate('podcastId').exec();
   }
 
   async subscribe(userId: string, podcastId: string) {
@@ -50,12 +173,25 @@ export class LibraryService implements OnModuleInit {
   }
 
   async unsubscribe(userId: string, podcastId: string) {
-    return this.subscriptionModel.deleteOne({ userId: new Types.ObjectId(userId), podcastId: new Types.ObjectId(podcastId) }).exec();
+    const userObj = new Types.ObjectId(userId);
+    const podcastObj = new Types.ObjectId(podcastId);
+    return this.subscriptionModel.deleteOne({ 
+      $and: [
+        { $or: [ { userId: userObj }, { userId: userId } ] },
+        { $or: [ { podcastId: podcastObj }, { podcastId: podcastId } ] }
+      ]
+    }).exec();
   }
 
   // ===== FAVORITES =====
   async getUserFavorites(userId: string) {
-    return this.favoriteModel.find({ userId: new Types.ObjectId(userId) }).populate('episodeId').exec();
+    const userObj = new Types.ObjectId(userId);
+    return this.favoriteModel.find({ 
+      $or: [
+        { userId: userObj },
+        { userId: userId }
+      ]
+    }).populate('episodeId').exec();
   }
 
   async addFavorite(userId: string, episodeId: string) {
@@ -67,7 +203,14 @@ export class LibraryService implements OnModuleInit {
   }
 
   async removeFavorite(userId: string, episodeId: string) {
-    return this.favoriteModel.deleteOne({ userId: new Types.ObjectId(userId), episodeId: new Types.ObjectId(episodeId) }).exec();
+    const userObj = new Types.ObjectId(userId);
+    const episodeObj = new Types.ObjectId(episodeId);
+    return this.favoriteModel.deleteOne({ 
+      $and: [
+        { $or: [ { userId: userObj }, { userId: userId } ] },
+        { $or: [ { episodeId: episodeObj }, { episodeId: episodeId } ] }
+      ]
+    }).exec();
   }
 
   // ===== HISTORY / PROGRESS =====
@@ -100,36 +243,56 @@ export class LibraryService implements OnModuleInit {
   async getHistory(userId: string, page: number, limit: number) {
     const skip = (page - 1) * limit;
     const objectId = new Types.ObjectId(userId);
+    const filter = {
+      $or: [
+        { userId: objectId },
+        { userId: userId }
+      ]
+    };
     const [history, total] = await Promise.all([
-      this.playHistoryModel.find({ userId: objectId })
+      this.playHistoryModel.find(filter)
         .sort({ lastPlayedAt: -1 })
         .skip(skip)
         .limit(limit)
         .populate('episodeId')
         .exec(),
-      this.playHistoryModel.countDocuments({ userId: objectId }).exec(),
+      this.playHistoryModel.countDocuments(filter).exec(),
     ]);
     return { history, total };
   }
 
   async getInProgressEpisodes(userId: string) {
-    return this.playHistoryModel.find({ userId: new Types.ObjectId(userId), completed: false })
+    const objectId = new Types.ObjectId(userId);
+    return this.playHistoryModel.find({ 
+      $or: [
+        { userId: objectId },
+        { userId: userId }
+      ],
+      completed: false 
+    })
       .sort({ lastPlayedAt: -1 })
       .populate('episodeId')
       .exec();
   }
 
   async getEpisodeProgress(userId: string, episodeId: string) {
-    return this.playHistoryModel.findOne({ userId: new Types.ObjectId(userId), episodeId: new Types.ObjectId(episodeId) }).exec();
+    const userObj = new Types.ObjectId(userId);
+    const episodeObj = new Types.ObjectId(episodeId);
+    return this.playHistoryModel.findOne({ 
+      $and: [
+        { $or: [ { userId: userObj }, { userId: userId } ] },
+        { $or: [ { episodeId: episodeObj }, { episodeId: episodeId } ] }
+      ]
+    }).exec();
   }
 
   async getPodcastProgress(userId: string, podcastId: string) {
-    const objectId = new Types.ObjectId(podcastId);
+    const userObj = new Types.ObjectId(userId);
+    const podcastObj = new Types.ObjectId(podcastId);
     const history = await this.playHistoryModel.find({ 
-      userId: new Types.ObjectId(userId), 
-      $or: [
-        { podcastId: objectId },
-        { podcastId: podcastId }
+      $and: [
+        { $or: [ { userId: userObj }, { userId: userId } ] },
+        { $or: [ { podcastId: podcastObj }, { podcastId: podcastId } ] }
       ], 
       completed: true 
     }).exec();
@@ -137,12 +300,14 @@ export class LibraryService implements OnModuleInit {
   }
 
   async markAllAsCompleted(userId: string, podcastId: string, completed: boolean, episodeIds: string[]) {
+    const userObj = new Types.ObjectId(userId);
+    const podcastObj = new Types.ObjectId(podcastId);
     if (completed) {
       try {
         const objectIds = episodeIds.map(id => new Types.ObjectId(id));
         await this.syncConfigModel.updateOne(
-          { userId: new Types.ObjectId(userId) },
-          { $pull: { queue: { $in: objectIds } } }
+          { $or: [ { userId: userObj }, { userId: userId } ] },
+          { $pull: { queue: { $in: [...objectIds, ...episodeIds] } } }
         ).exec();
         this.logger.log(`[Queue] Removed all completed episodes for podcast ${podcastId} from user ${userId} queue`);
       } catch (err) {
@@ -151,7 +316,12 @@ export class LibraryService implements OnModuleInit {
 
       const ops = episodeIds.map(id => ({
         updateOne: {
-          filter: { userId: new Types.ObjectId(userId), episodeId: new Types.ObjectId(id) },
+          filter: { 
+            $and: [
+              { $or: [ { userId: userObj }, { userId: userId } ] },
+              { $or: [ { episodeId: new Types.ObjectId(id) }, { episodeId: id } ] }
+            ]
+          },
           update: { 
             userId: new Types.ObjectId(userId), 
             episodeId: new Types.ObjectId(id), 
@@ -165,12 +335,10 @@ export class LibraryService implements OnModuleInit {
       }));
       return this.playHistoryModel.bulkWrite(ops as any);
     } else {
-      const objectId = new Types.ObjectId(podcastId);
       return this.playHistoryModel.deleteMany({ 
-        userId: new Types.ObjectId(userId), 
-        $or: [
-          { podcastId: objectId },
-          { podcastId: podcastId }
+        $and: [
+          { $or: [ { userId: userObj }, { userId: userId } ] },
+          { $or: [ { podcastId: podcastObj }, { podcastId: podcastId } ] }
         ] 
       }).exec();
     }
@@ -179,7 +347,14 @@ export class LibraryService implements OnModuleInit {
   // ===== SYNC CONFIG =====
   async getSyncConfig(userId: string) {
     this.logger.log(`Fetching sync config for user: ${userId}`);
-    const config = await this.syncConfigModel.findOne({ userId: new Types.ObjectId(userId) })
+    const userObj = new Types.ObjectId(userId);
+    const filter = {
+      $or: [
+        { userId: userObj },
+        { userId: userId }
+      ]
+    };
+    const config = await this.syncConfigModel.findOne(filter)
       .populate({
         path: 'queue',
         populate: {
@@ -190,7 +365,7 @@ export class LibraryService implements OnModuleInit {
       .exec();
     
     // Strictly use the manual queue from SyncConfig
-    const fullConfig = await this.syncConfigModel.findOne({ userId: new Types.ObjectId(userId) })
+    const fullConfig = await this.syncConfigModel.findOne(filter)
       .populate({
         path: 'queue',
         populate: {
@@ -205,10 +380,14 @@ export class LibraryService implements OnModuleInit {
     // Detailed log for the response to the agent
     const episodeTitles = (effectiveQueue as any[]).map(e => e.title || e._id).join(', ');
     this.logger.log(`[AgentSync] Sending config to agent for user ${userId}:
-      - USB Serial: ${config.targetUsbSerial}
-      - Folder: ${config.targetFolder}
+      - USB Serial: ${config?.targetUsbSerial || ''}
+      - Folder: ${config?.targetFolder || 'Podcasts'}
       - Queue Count: ${effectiveQueue.length}
       - Items: [${episodeTitles}]`);
+
+    if (!config) {
+      return null;
+    }
 
     return {
       userId: config.userId,
@@ -332,7 +511,13 @@ export class LibraryService implements OnModuleInit {
   
   /** Get all user IDs subscribed to a podcast */
   async getSubscribedUserIds(podcastId: string): Promise<string[]> {
-    const subs = await this.subscriptionModel.find({ podcastId: new Types.ObjectId(podcastId) }).exec();
+    const podcastObj = new Types.ObjectId(podcastId);
+    const subs = await this.subscriptionModel.find({ 
+      $or: [
+        { podcastId: podcastObj },
+        { podcastId: podcastId }
+      ]
+    }).exec();
     return subs.map(s => s.userId.toString());
   }
 
