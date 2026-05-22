@@ -353,12 +353,12 @@ export class PodcastDetailComponent implements OnInit {
     return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 
-  getProgressPct(durationSeconds: number, progressSeconds: number): number {
+  getProgressPct(durationSeconds: number | undefined, progressSeconds: number): number {
     if (!durationSeconds || durationSeconds <= 0) return 0;
     return Math.min(100, Math.round((progressSeconds / durationSeconds) * 100));
   }
 
-  formatRemaining(durationSeconds: number, progressSeconds: number): string {
+  formatRemaining(durationSeconds: number | undefined, progressSeconds: number): string {
     if (!durationSeconds || durationSeconds <= 0) return '';
     const remaining = Math.max(0, durationSeconds - progressSeconds);
     const h = Math.floor(remaining / 3600);
