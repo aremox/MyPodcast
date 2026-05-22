@@ -115,6 +115,13 @@ export class LibraryController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('podcast/:podcastId/in-progress')
+  async getPodcastInProgress(@Request() req: any, @Param('podcastId') podcastId: string) {
+    const progressMap = await this.libraryService.getPodcastInProgress(req.user.userId, podcastId);
+    return { success: true, data: progressMap };
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('podcast/:podcastId/mark-all')
   async markAllPodcastProgress(
     @Request() req: any,

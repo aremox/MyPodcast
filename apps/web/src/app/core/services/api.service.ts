@@ -123,6 +123,12 @@ export class ApiService {
     );
   }
 
+  getPodcastInProgress(podcastId: string) {
+    return firstValueFrom(
+      this.http.get<any>(`${this.BASE_URL}/library/podcast/${podcastId}/in-progress`),
+    );
+  }
+
   markAllPodcastProgress(podcastId: string, completed: boolean) {
     return firstValueFrom(
       this.http.post<any>(`${this.BASE_URL}/library/podcast/${podcastId}/mark-all`, { completed }),
