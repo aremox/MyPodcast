@@ -23,6 +23,7 @@ export class AudioPlayerService {
   private audio = new Audio();
   private progressInterval: any;
   private saveInterval: any;
+  private pendingSeek: number | null = null; // pending seek position for race-condition-safe restore
 
   // Signals
   readonly currentEpisode = signal<PlayerEpisode | null>(null);
@@ -59,16 +60,18 @@ export class AudioPlayerService {
     if (!isSameEpisode) {
       this.currentEpisode.set(episode);
       this.isLoading.set(true);
+      this.pendingSeek = null;
 
       // Build authenticated audio URL with JWT as query param
       // (native <audio> cannot send Authorization headers)
       this.loadAudioWithAuth(episode._id);
 
-      // Try to restore progress
+      // Try to restore progress from server (cross-device)
       try {
         const res = await this.api.getEpisodeProgress(episode._id);
         if (res?.data?.progress && !res.data.completed) {
-          this.audio.currentTime = res.data.progress;
+          // Store as pending seek — will be applied on loadedmetadata (race-condition-safe)
+          this.pendingSeek = res.data.progress;
         }
       } catch {}
     }
@@ -160,6 +163,12 @@ export class AudioPlayerService {
     this.audio.addEventListener('loadedmetadata', () => {
       this.duration.set(this.audio.duration);
       this.isLoading.set(false);
+      // Apply pending seek (race-condition-safe position restore)
+      if (this.pendingSeek !== null && this.pendingSeek > 0) {
+        this.audio.currentTime = this.pendingSeek;
+        this.currentTime.set(this.pendingSeek);
+        this.pendingSeek = null;
+      }
     });
 
     this.audio.addEventListener('canplay', () => {
@@ -256,6 +265,35 @@ export class AudioPlayerService {
       const speed = parseFloat(savedSpeed) as PlaybackSpeed;
       this.speed.set(speed);
       this.audio.playbackRate = speed;
+    }
+
+    // Restore last playing episode and auto-resume
+    const raw = localStorage.getItem('playerState');
+    if (!raw) return;
+    try {
+      const state = JSON.parse(raw) as { episodeId: string; progress: number; episode: PlayerEpisode };
+      if (!state?.episode?._id) return;
+
+      const ep = state.episode;
+      this.currentEpisode.set(ep);
+      this.isLoading.set(true);
+      this.pendingSeek = state.progress || 0;
+      this.loadAudioWithAuth(ep._id);
+
+      // Auto-play after a short delay to let the browser load enough audio
+      setTimeout(async () => {
+        try {
+          await this.audio.play();
+          this.isPlaying.set(true);
+          this.startProgressTracking();
+        } catch (e) {
+          // Autoplay blocked by browser policy — user will see the episode loaded but paused
+          this.isPlaying.set(false);
+          this.isLoading.set(false);
+        }
+      }, 800);
+    } catch {
+      localStorage.removeItem('playerState');
     }
   }
 

@@ -73,8 +73,17 @@ import { PlaylistService } from '../../core/services/playlist.service';
                   <div class="ep-meta">
                     <span>{{ formatDate(episode.publishedAt) }}</span>
                     <span>·</span>
-                    <span>{{ episode.duration }}</span>
+                    @if (episodeProgress()[episode._id]; as prog) {
+                      <span class="ep-in-progress">Quedan {{ formatRemaining(episode.durationSeconds, prog.progress) }}</span>
+                    } @else {
+                      <span>{{ episode.duration }}</span>
+                    }
                   </div>
+                  @if (episodeProgress()[episode._id]; as prog) {
+                    <div class="ep-progress-bar">
+                      <div class="ep-progress-fill" [style.width.%]="getProgressPct(episode.durationSeconds, prog.progress)"></div>
+                    </div>
+                  }
                 </div>
               </div>
 
@@ -187,6 +196,9 @@ import { PlaylistService } from '../../core/services/playlist.service';
     .ep-info { flex: 1; min-width: 0; }
     .ep-title { font-size: var(--font-md); font-weight: 500; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
     .ep-meta { display: flex; gap: var(--space-sm); color: var(--text-muted); font-size: var(--font-xs); margin-top: 2px; }
+    .ep-in-progress { color: var(--accent); font-weight: 600; }
+    .ep-progress-bar { height: 2px; background: rgba(255,255,255,0.08); border-radius: 2px; margin-top: 6px; overflow: hidden; }
+    .ep-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
 
     /* Buttons */
     .btn-queue, .btn-played, .btn-download {
@@ -231,6 +243,7 @@ export class PodcastDetailComponent implements OnInit {
   podcast = signal<any>(null);
   episodes = signal<any[]>([]);
   completedEpisodes = signal<Set<string>>(new Set());
+  episodeProgress = signal<Record<string, { progress: number }>>({});
   loading = signal(true);
   refreshing = signal(false);
   descExpanded = signal(false);
@@ -253,15 +266,19 @@ export class PodcastDetailComponent implements OnInit {
   async loadPodcast() {
     this.loading.set(true);
     try {
-      const [podRes, epRes, progRes] = await Promise.all([
+      const [podRes, epRes, progRes, inProgRes] = await Promise.all([
         this.api.getPodcast(this.id()),
         this.api.getEpisodes(this.id(), 1, 50),
         this.api.getPodcastProgress(this.id()),
+        this.api.getPodcastInProgress(this.id()),
       ]);
       this.podcast.set(podRes.data);
       this.episodes.set(epRes.data || []);
       if (progRes.data) {
         this.completedEpisodes.set(new Set(progRes.data));
+      }
+      if (inProgRes.data) {
+        this.episodeProgress.set(inProgRes.data);
       }
       this.hasMore.set((epRes.data?.length || 0) < (epRes.total || 0));
     } catch (e) {
@@ -334,6 +351,21 @@ export class PodcastDetailComponent implements OnInit {
   formatDate(dateStr: string): string {
     const d = new Date(dateStr);
     return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  getProgressPct(durationSeconds: number, progressSeconds: number): number {
+    if (!durationSeconds || durationSeconds <= 0) return 0;
+    return Math.min(100, Math.round((progressSeconds / durationSeconds) * 100));
+  }
+
+  formatRemaining(durationSeconds: number, progressSeconds: number): string {
+    if (!durationSeconds || durationSeconds <= 0) return '';
+    const remaining = Math.max(0, durationSeconds - progressSeconds);
+    const h = Math.floor(remaining / 3600);
+    const m = Math.floor((remaining % 3600) / 60);
+    if (h > 0) return `${h}h ${m}min`;
+    if (m > 0) return `${m} min`;
+    return 'menos de 1 min';
   }
 
   async togglePlayed(episode: any) {

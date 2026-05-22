@@ -500,7 +500,28 @@ export class LibraryService implements OnModuleInit {
     })
       .sort({ lastPlayedAt: -1 })
       .populate('episodeId')
+      .populate('podcastId', 'title imageUrl')
       .exec();
+  }
+
+  async getPodcastInProgress(userId: string, podcastId: string) {
+    const userObj = new Types.ObjectId(userId);
+    const podcastObj = new Types.ObjectId(podcastId);
+    const records = await this.playHistoryModel.find({
+      $and: [
+        { $or: [{ userId: userObj }, { userId: userId }] },
+        { $or: [{ podcastId: podcastObj }, { podcastId: podcastId }] },
+      ],
+      completed: false,
+      progress: { $gt: 0 },
+    }).exec();
+
+    // Return a map: episodeId -> { progress (seconds) }
+    const result: Record<string, { progress: number }> = {};
+    for (const r of records) {
+      result[r.episodeId.toString()] = { progress: r.progress };
+    }
+    return result;
   }
 
   async getEpisodeProgress(userId: string, episodeId: string) {
