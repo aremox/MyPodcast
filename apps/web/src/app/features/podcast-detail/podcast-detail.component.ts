@@ -74,7 +74,7 @@ import { PlaylistService } from '../../core/services/playlist.service';
                     <span>{{ formatDate(episode.publishedAt) }}</span>
                     <span>·</span>
                     @if (episodeProgress()[episode._id]; as prog) {
-                      <span class="ep-in-progress">Quedan {{ formatRemaining(episode.durationSeconds, prog.progress) }}</span>
+                      <span class="ep-in-progress">Quedan {{ formatRemaining(episode.durationSeconds, prog.progress) }} de {{ episode.duration }}</span>
                     } @else {
                       <span>{{ episode.duration }}</span>
                     }
