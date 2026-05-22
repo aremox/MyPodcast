@@ -96,6 +96,7 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       font-family: var(--font-display);
       font-weight: 700;
       font-size: var(--font-xl);
+      flex-shrink: 0;
     }
     .brand-icon { font-size: 1.5rem; }
     .brand:hover { color: var(--accent); }
@@ -106,11 +107,14 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       justify-content: center;
       flex: 1;
       margin-left: 0;
+      min-width: 0;
     }
 
     .nav-links {
       display: flex;
       gap: var(--space-xs);
+      flex-wrap: nowrap;
+      align-items: center;
     }
     .nav-link {
       display: flex;
@@ -124,6 +128,7 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       transition: all var(--transition-fast);
       min-height: var(--touch-min);
       position: relative;
+      white-space: nowrap;
     }
     .nav-link:hover {
       color: var(--text-primary);
@@ -153,8 +158,7 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       display: flex;
       align-items: center;
       gap: var(--space-md);
-      position: absolute;
-      right: var(--space-lg);
+      flex-shrink: 0;
     }
     .username {
       color: var(--text-secondary);
@@ -185,11 +189,69 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       cursor: pointer;
     }
 
+    /* ── Tesla / tablet medium (900–1279px): icon-only nav to prevent overlap ── */
+    @media (min-width: 769px) and (max-width: 1279px) {
+      .navbar {
+        height: 76px;
+        padding: 0 var(--space-xl);
+      }
+      .brand-text { font-size: var(--font-lg); }
+      .nav-links {
+        gap: 4px;
+      }
+      .nav-link {
+        /* Show only icon, label hidden — prevents collision on Tesla 1200px wide */
+        padding: 14px;
+        border-radius: var(--radius-lg);
+        min-height: 52px;
+        min-width: 52px;
+        justify-content: center;
+        gap: 0;
+      }
+      .nav-link span:not(.queue-badge) {
+        display: none;
+      }
+      .nav-link svg {
+        width: 24px;
+        height: 24px;
+      }
+      .queue-badge {
+        position: absolute;
+        top: 6px;
+        right: 6px;
+        min-width: 20px;
+        height: 20px;
+        font-size: 11px;
+      }
+      .username { display: none; }
+      .btn-logout {
+        width: 52px;
+        height: 52px;
+      }
+      .btn-logout svg {
+        width: 22px;
+        height: 22px;
+      }
+    }
+
+    /* ── Tesla large (1280px+): show labels but bigger targets ── */
+    @media (min-width: 1280px) and (max-width: 1600px) {
+      .navbar { height: 72px; }
+      .nav-link {
+        padding: 10px 14px;
+        min-height: 48px;
+        font-size: var(--font-sm);
+      }
+      .nav-link svg { width: 22px; height: 22px; }
+      .btn-logout { width: 44px; height: 44px; }
+    }
+
     /* Mobile Responsive Styles */
     @media (max-width: 768px) {
       .menu-toggle {
         display: block;
       }
+      .nav-user { position: static; }
       .nav-content {
         display: flex;
         flex-direction: column;
@@ -222,7 +284,10 @@ import { PlaylistService } from '../../../core/services/playlist.service';
         width: 100%;
         padding: var(--space-md);
         border-radius: var(--radius-md);
+        min-height: 52px;
+        font-size: var(--font-md);
       }
+      .nav-link svg { width: 22px; height: 22px; }
       .nav-user {
         position: static;
         width: 100%;
