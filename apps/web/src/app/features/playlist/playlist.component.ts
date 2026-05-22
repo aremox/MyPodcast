@@ -281,7 +281,12 @@ import { ApiService } from '../../core/services/api.service';
               <div class="ep-info" (click)="playEpisode(episode)">
                 <span class="ep-title">{{ episode.title }}</span>
                 <span class="ep-podcast">{{ episode.podcastTitle }}</span>
-                @if (episode.duration) {
+                @if (episodeProgress()[episode._id]; as prog) {
+                  <span class="ep-in-progress">Quedan {{ formatRemaining(episode.durationSeconds, prog.progress) }}</span>
+                  <div class="ep-progress-bar">
+                    <div class="ep-progress-fill" [style.width.%]="getProgressPct(episode.durationSeconds, prog.progress)"></div>
+                  </div>
+                } @else if (episode.duration) {
                   <span class="ep-duration">{{ episode.duration }}</span>
                 }
               </div>
@@ -753,6 +758,9 @@ import { ApiService } from '../../core/services/api.service';
     .is-playing .ep-title { color: var(--accent); }
     .ep-podcast { display: block; font-size: var(--font-xs); color: var(--text-muted); margin-top: 2px; }
     .ep-duration { display: inline-block; font-size: var(--font-xs); color: var(--text-muted); margin-top: 2px; }
+    .ep-in-progress { display: inline-block; font-size: var(--font-xs); color: var(--accent); font-weight: 600; margin-top: 2px; }
+    .ep-progress-bar { height: 2px; background: rgba(255,255,255,0.08); border-radius: 2px; margin-top: 5px; overflow: hidden; }
+    .ep-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
 
     /* ── Action buttons ── */
     .btn-play-ep, .btn-remove {
@@ -869,8 +877,27 @@ export class PlaylistComponent implements OnInit {
   autoApplyRules = computed(() => this.pl.autoApplyRules());
   isApplyingRules = computed(() => this.pl.isApplyingRules());
 
+  episodeProgress = signal<Record<string, { progress: number }>>({});
+
   ngOnInit() {
     this.loadSubscriptions();
+    this.loadInProgress();
+  }
+
+  async loadInProgress() {
+    try {
+      const res = await this.api.getInProgress();
+      const map: Record<string, { progress: number }> = {};
+      for (const entry of (res.data || [])) {
+        const epId = entry.episodeId?._id ?? entry.episodeId;
+        if (epId && entry.progress > 0) {
+          map[epId.toString()] = { progress: entry.progress };
+        }
+      }
+      this.episodeProgress.set(map);
+    } catch (err) {
+      console.error('[PlaylistComponent] Error fetching in-progress episodes:', err);
+    }
   }
 
   async loadSubscriptions() {
@@ -972,5 +999,20 @@ export class PlaylistComponent implements OnInit {
   onDragEnd(): void {
     this.draggingIndex.set(-1);
     this.dragOverIndex.set(-1);
+  }
+
+  getProgressPct(durationSeconds: number, progressSeconds: number): number {
+    if (!durationSeconds || durationSeconds <= 0) return 0;
+    return Math.min(100, Math.round((progressSeconds / durationSeconds) * 100));
+  }
+
+  formatRemaining(durationSeconds: number, progressSeconds: number): string {
+    if (!durationSeconds || durationSeconds <= 0) return '';
+    const remaining = Math.max(0, durationSeconds - progressSeconds);
+    const h = Math.floor(remaining / 3600);
+    const m = Math.floor((remaining % 3600) / 60);
+    if (h > 0) return `${h}h ${m}min`;
+    if (m > 0) return `${m} min`;
+    return 'menos de 1 min';
   }
 }
