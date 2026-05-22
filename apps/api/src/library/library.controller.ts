@@ -83,10 +83,27 @@ export class LibraryController {
     @Request() req: any,
     @Body() body: { episodeId: string; podcastId: string; progress: number; completed: boolean },
   ) {
+    let podcastId = body.podcastId;
+    // Fallback: if podcastId is missing or invalid, try to recover it from the episode
+    if (!podcastId || podcastId.length !== 24) {
+      try {
+        const ep = await this.episodesService.findById(body.episodeId);
+        if (ep && ep.podcastId) {
+          podcastId = ep.podcastId.toString();
+        }
+      } catch (e) {
+        this.logger.error(`Could not recover podcastId for episode ${body.episodeId}`);
+      }
+    }
+
+    if (!podcastId || podcastId.length !== 24) {
+      return { success: false, message: 'Invalid or missing podcastId' };
+    }
+
     const entry = await this.libraryService.updateProgress(
       req.user.userId,
       body.episodeId,
-      body.podcastId,
+      podcastId,
       body.progress,
       body.completed,
     );
