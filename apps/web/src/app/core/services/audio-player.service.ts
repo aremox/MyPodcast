@@ -45,6 +45,10 @@ export class AudioPlayerService {
 
   readonly formattedCurrentTime = computed(() => this.formatTime(this.currentTime()));
   readonly formattedDuration = computed(() => this.formatTime(this.duration()));
+  readonly formattedRemaining = computed(() => {
+    const remaining = Math.max(0, this.duration() - this.currentTime());
+    return this.formatTime(remaining);
+  });
 
   constructor(private api: ApiService, private auth: AuthService) {
     // Use inject to avoid circular DI; PlaylistService depends on nothing

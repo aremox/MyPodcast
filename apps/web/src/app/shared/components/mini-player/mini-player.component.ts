@@ -8,26 +8,152 @@ import { PlaylistService } from '../../../core/services/playlist.service';
   imports: [RouterLink],
   template: `
     @if (player.currentEpisode(); as episode) {
-      <div class="mini-player">
-        <!-- Interactive Waveform Progress Visualizer -->
-        <div class="waveform-container" 
-             (mousemove)="onMouseMove($event)" 
-             (mouseleave)="onMouseLeave()" 
-             (click)="onWaveformClick($event)"
-             title="Haz clic para saltar en la reproducción">
-          
-          <canvas #waveformCanvas class="waveform-canvas"></canvas>
-          
-          @if (showTooltip()) {
-            <div class="waveform-tooltip" [style.left.px]="tooltipLeft()">
-              {{ tooltipText() }}
-            </div>
-          }
+
+      <!-- ══════════════════════════════════════════════
+           EXPANDED FULL-SCREEN PLAYER
+      ══════════════════════════════════════════════ -->
+      <div class="expanded-player" [class.is-open]="isExpanded()" (click)="onExpandedBackdropClick($event)">
+        <div class="expanded-inner" (click)="$event.stopPropagation()">
+
+          <!-- Blurred background art -->
+          <div class="expanded-bg">
+            <img [src]="episode.podcastImageUrl || episode.imageUrl || '/assets/placeholder.png'" alt="" class="expanded-bg-img"/>
+            <div class="expanded-bg-overlay"></div>
+          </div>
+
+          <!-- Top bar: collapse button + queue info -->
+          <div class="expanded-topbar">
+            <button class="exp-btn-icon" (click)="isExpanded.set(false)" aria-label="Contraer reproductor" title="Cerrar">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            <span class="exp-queue-label">
+              @if (pl.count() > 0) { {{ pl.currentIndex() + 1 }}/{{ pl.count() }} en cola }
+            </span>
+            <button class="exp-btn-icon" (click)="router.navigate(['/playlist']); isExpanded.set(false)" aria-label="Ver cola" title="Ver cola">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
+                <line x1="8" y1="18" x2="21" y2="18"/>
+                <polygon points="3 6 3 18 5.5 12" fill="currentColor" stroke="none"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Large artwork -->
+          <div class="expanded-art-wrap">
+            <img
+              [src]="episode.podcastImageUrl || episode.imageUrl || '/assets/placeholder.png'"
+              [alt]="episode.title"
+              class="expanded-art"
+              [class.is-playing]="player.isPlaying()"
+            />
+          </div>
+
+          <!-- Episode info -->
+          <div class="expanded-info">
+            <span class="expanded-title">{{ episode.title }}</span>
+            <span class="expanded-podcast">{{ episode.podcastTitle }}</span>
+          </div>
+
+          <!-- Waveform progress -->
+          <div class="expanded-waveform-wrap"
+               (mousemove)="onMouseMove($event)"
+               (mouseleave)="onMouseLeave()"
+               (click)="onWaveformClick($event)"
+               title="Haz clic para saltar">
+            <canvas #waveformCanvas class="waveform-canvas"></canvas>
+            @if (showTooltip()) {
+              <div class="waveform-tooltip" [style.left.px]="tooltipLeft()">{{ tooltipText() }}</div>
+            }
+          </div>
+
+          <!-- Time display -->
+          <div class="expanded-time">
+            <span>{{ player.formattedCurrentTime() }}</span>
+            <span>-{{ player.formattedRemaining() }}</span>
+          </div>
+
+          <!-- Big controls -->
+          <div class="expanded-controls">
+            <!-- Prev -->
+            <button class="exp-ctrl exp-ctrl-nav" (click)="player.playPrev()" [disabled]="!pl.hasPrev()" aria-label="Anterior">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="19 20 9 12 19 4"/><rect x="5" y="4" width="2" height="16" rx="1"/>
+              </svg>
+            </button>
+
+            <!-- -15s -->
+            <button class="exp-ctrl exp-ctrl-seek" (click)="player.seekRelative(-15)" aria-label="Retroceder 15s">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 4v6h6"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/>
+                <text x="12" y="16" text-anchor="middle" fill="currentColor" stroke="none" font-size="6.5" font-weight="bold">15</text>
+              </svg>
+            </button>
+
+            <!-- Play/Pause -->
+            <button class="exp-ctrl exp-ctrl-play" (click)="player.togglePlay()" [attr.aria-label]="player.isPlaying() ? 'Pausar' : 'Reproducir'">
+              @if (player.isLoading()) {
+                <div class="spinner-lg"></div>
+              } @else if (player.isPlaying()) {
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+              } @else {
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+              }
+            </button>
+
+            <!-- +30s -->
+            <button class="exp-ctrl exp-ctrl-seek" (click)="player.seekRelative(30)" aria-label="Avanzar 30s">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+                <text x="12" y="16" text-anchor="middle" fill="currentColor" stroke="none" font-size="6.5" font-weight="bold">30</text>
+              </svg>
+            </button>
+
+            <!-- Next -->
+            <button class="exp-ctrl exp-ctrl-nav" (click)="player.playNext()" [disabled]="!pl.hasNext()" aria-label="Siguiente">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="currentColor">
+                <polygon points="5 4 15 12 5 20"/><rect x="17" y="4" width="2" height="16" rx="1"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Speed selector -->
+          <div class="expanded-speed-row">
+            @for (s of speeds; track s) {
+              <button
+                class="exp-speed-pill"
+                [class.active]="player.speed() === s"
+                (click)="player.setSpeed(s)">
+                {{ s }}x
+              </button>
+            }
+          </div>
+
         </div>
+      </div>
+
+      <!-- ══════════════════════════════════════════════
+           MINI BAR (always visible at bottom)
+      ══════════════════════════════════════════════ -->
+      <div class="mini-player">
+        <!-- Waveform (hidden when expanded — shared canvas is in expanded view) -->
+        @if (!isExpanded()) {
+          <div class="waveform-container"
+               (mousemove)="onMouseMove($event)"
+               (mouseleave)="onMouseLeave()"
+               (click)="onWaveformClick($event)"
+               title="Haz clic para saltar en la reproducción">
+            <canvas #waveformCanvas class="waveform-canvas"></canvas>
+            @if (showTooltip()) {
+              <div class="waveform-tooltip" [style.left.px]="tooltipLeft()">{{ tooltipText() }}</div>
+            }
+          </div>
+        }
 
         <div class="player-content">
-          <!-- Episode info — click to go to playlist -->
-          <a routerLink="/playlist" class="episode-info">
+          <!-- Episode info — click opens expanded player -->
+          <button class="episode-info" (click)="isExpanded.set(true)" aria-label="Ver reproductor completo">
             <img
               [src]="episode.podcastImageUrl || episode.imageUrl || '/assets/placeholder.png'"
               [alt]="episode.title"
@@ -37,11 +163,10 @@ import { PlaylistService } from '../../../core/services/playlist.service';
               <span class="episode-title">{{ episode.title }}</span>
               <span class="podcast-title">{{ episode.podcastTitle }}</span>
             </div>
-          </a>
+          </button>
 
           <!-- Controls -->
           <div class="player-controls">
-            <!-- Prev (only if playlist has prev) -->
             @if (pl.hasPrev()) {
               <button class="ctrl-btn ctrl-nav" (click)="player.playPrev()" aria-label="Episodio anterior" title="Anterior">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -74,7 +199,6 @@ import { PlaylistService } from '../../../core/services/playlist.service';
               </svg>
             </button>
 
-            <!-- Next (only if playlist has next) -->
             @if (pl.hasNext()) {
               <button class="ctrl-btn ctrl-nav" (click)="player.playNext()" aria-label="Siguiente episodio" title="Siguiente">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
@@ -83,28 +207,21 @@ import { PlaylistService } from '../../../core/services/playlist.service';
               </button>
             }
 
-            <!-- Speed Control Dropdown Container -->
             <div class="speed-control-container">
-              <button class="ctrl-btn speed-btn" (click)="toggleSpeedMenu($event)" aria-label="Cambiar velocidad de reproducción" [title]="'Velocidad: ' + player.speed() + 'x'">
+              <button class="ctrl-btn speed-btn" (click)="toggleSpeedMenu($event)" aria-label="Velocidad" [title]="'Velocidad: ' + player.speed() + 'x'">
                 {{ player.speed() }}x
               </button>
-              
               @if (showSpeedMenu()) {
                 <div class="speed-menu">
                   @for (s of speeds; track s) {
-                    <button 
-                      class="speed-option" 
-                      [class.active]="player.speed() === s" 
-                      (click)="selectSpeed(s, $event)">
-                      {{ s }}x
-                    </button>
+                    <button class="speed-option" [class.active]="player.speed() === s" (click)="selectSpeed(s, $event)">{{ s }}x</button>
                   }
                 </div>
               }
             </div>
           </div>
 
-          <!-- Time + queue info -->
+          <!-- Right: time + expand button -->
           <div class="right-info">
             <span class="time-display">{{ player.formattedCurrentTime() }} / {{ player.formattedDuration() }}</span>
             @if (pl.count() > 0) {
@@ -116,12 +233,240 @@ import { PlaylistService } from '../../../core/services/playlist.service';
                 {{ pl.currentIndex() + 1 }}/{{ pl.count() }}
               </a>
             }
+            <!-- Expand button -->
+            <button class="btn-expand" (click)="isExpanded.set(true)" aria-label="Ampliar reproductor" title="Ampliar">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <polyline points="18 15 12 9 6 15"/>
+              </svg>
+            </button>
           </div>
         </div>
       </div>
     }
   `,
   styles: `
+    /* ══════════════════════════════════════════
+       EXPANDED PLAYER
+    ══════════════════════════════════════════ */
+    .expanded-player {
+      position: fixed;
+      inset: 0;
+      z-index: calc(var(--z-mini-player) + 10);
+      display: flex;
+      align-items: flex-end;
+      pointer-events: none;
+      /* backdrop click area */
+    }
+    .expanded-player.is-open { pointer-events: all; }
+
+    .expanded-inner {
+      position: relative;
+      width: 100%;
+      max-width: 720px;
+      margin: 0 auto;
+      background: var(--bg-elevated);
+      border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 0 var(--space-xl) var(--space-2xl);
+      /* Slide-up animation */
+      transform: translateY(100%);
+      transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+      max-height: 92vh;
+    }
+    .expanded-player.is-open .expanded-inner {
+      transform: translateY(0);
+    }
+
+    /* Blurred background */
+    .expanded-bg {
+      position: absolute;
+      inset: 0;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .expanded-bg-img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      filter: blur(60px) saturate(1.8);
+      transform: scale(1.2);
+      opacity: 0.35;
+    }
+    .expanded-bg-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to bottom, rgba(10,10,14,0.6) 0%, rgba(10,10,14,0.92) 60%);
+    }
+
+    /* All inner content above bg */
+    .expanded-topbar, .expanded-art-wrap, .expanded-info,
+    .expanded-waveform-wrap, .expanded-time, .expanded-controls,
+    .expanded-speed-row { position: relative; z-index: 1; }
+
+    /* Top bar */
+    .expanded-topbar {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-lg) 0 var(--space-md);
+    }
+    .exp-btn-icon {
+      display: flex; align-items: center; justify-content: center;
+      width: 44px; height: 44px;
+      border-radius: var(--radius-full);
+      color: var(--text-secondary);
+      transition: all var(--transition-fast);
+    }
+    .exp-btn-icon:hover { color: var(--text-primary); background: rgba(255,255,255,0.08); }
+    .exp-queue-label {
+      font-size: var(--font-xs);
+      color: var(--text-muted);
+      font-weight: 500;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+    }
+
+    /* Artwork */
+    .expanded-art-wrap {
+      margin: var(--space-md) 0 var(--space-xl);
+    }
+    .expanded-art {
+      width: min(280px, 60vw);
+      height: min(280px, 60vw);
+      border-radius: var(--radius-xl);
+      object-fit: cover;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.06);
+      transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .expanded-art.is-playing {
+      transform: scale(1.04);
+      box-shadow: 0 32px 80px rgba(0,0,0,0.7), 0 0 40px rgba(0,212,170,0.12);
+    }
+
+    /* Episode info */
+    .expanded-info {
+      width: 100%;
+      text-align: center;
+      margin-bottom: var(--space-lg);
+      padding: 0 var(--space-md);
+    }
+    .expanded-title {
+      display: block;
+      font-size: var(--font-lg);
+      font-weight: 700;
+      color: var(--text-primary);
+      line-height: 1.3;
+      margin-bottom: 6px;
+      /* Multi-line with limit */
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .expanded-podcast {
+      display: block;
+      font-size: var(--font-sm);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    /* Waveform in expanded */
+    .expanded-waveform-wrap {
+      width: 100%;
+      height: 56px;
+      cursor: pointer;
+      position: relative;
+      margin-bottom: var(--space-sm);
+    }
+
+    /* Time display */
+    .expanded-time {
+      width: 100%;
+      display: flex;
+      justify-content: space-between;
+      padding: 0 2px;
+      margin-bottom: var(--space-xl);
+    }
+    .expanded-time span { font-size: var(--font-xs); color: var(--text-muted); font-weight: 500; }
+
+    /* Big controls */
+    .expanded-controls {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-lg);
+      width: 100%;
+      margin-bottom: var(--space-xl);
+    }
+    .exp-ctrl {
+      display: flex; align-items: center; justify-content: center;
+      border-radius: var(--radius-full);
+      transition: all var(--transition-fast);
+      color: var(--text-primary);
+    }
+    .exp-ctrl:disabled { opacity: 0.3; pointer-events: none; }
+    .exp-ctrl-nav {
+      width: 52px; height: 52px;
+      color: var(--text-secondary);
+    }
+    .exp-ctrl-nav:hover { color: var(--accent); background: var(--accent-dim); }
+    .exp-ctrl-seek {
+      width: 60px; height: 60px;
+    }
+    .exp-ctrl-seek:hover { background: rgba(255,255,255,0.08); }
+    .exp-ctrl-play {
+      width: 80px; height: 80px;
+      background: var(--accent);
+      color: var(--bg-primary);
+      box-shadow: 0 8px 32px rgba(0,212,170,0.4);
+    }
+    .exp-ctrl-play:hover {
+      background: var(--accent-hover);
+      transform: scale(1.06);
+      box-shadow: 0 12px 40px rgba(0,212,170,0.5);
+    }
+    .exp-ctrl-play:active { transform: scale(0.96); }
+
+    /* Speed pills */
+    .expanded-speed-row {
+      display: flex;
+      gap: var(--space-sm);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .exp-speed-pill {
+      padding: 8px 16px;
+      border-radius: var(--radius-full);
+      font-size: var(--font-xs);
+      font-weight: 600;
+      color: var(--text-muted);
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: all var(--transition-fast);
+      min-height: 40px;
+    }
+    .exp-speed-pill:hover { color: var(--text-primary); border-color: rgba(255,255,255,0.25); }
+    .exp-speed-pill.active {
+      background: var(--accent);
+      color: var(--bg-primary);
+      border-color: var(--accent);
+      box-shadow: 0 4px 12px rgba(0,212,170,0.3);
+    }
+
+    /* Spinner large */
+    .spinner-lg {
+      width: 32px; height: 32px;
+      border: 3px solid rgba(0,0,0,0.2);
+      border-top-color: var(--bg-primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* ══════════════════════════════════════════
+       MINI BAR
+    ══════════════════════════════════════════ */
     .mini-player {
       position: fixed;
       bottom: 0; left: 0; right: 0;
@@ -178,15 +523,19 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       gap: var(--space-md);
     }
 
-    /* Episode info */
+    /* Episode info — now a button */
     .episode-info {
       display: flex;
       align-items: center;
       gap: var(--space-md);
       flex: 1;
       min-width: 0;
-      text-decoration: none;
+      background: none;
+      border: none;
+      cursor: pointer;
       color: inherit;
+      text-align: left;
+      padding: 0;
     }
     .episode-info:hover .episode-title { color: var(--accent); }
     .episode-art {
@@ -228,10 +577,8 @@ import { PlaylistService } from '../../../core/services/playlist.service';
     }
     .play-btn:hover { background: var(--accent-hover); transform: scale(1.05); }
 
-    /* Speed Control Styles */
-    .speed-control-container {
-      position: relative;
-    }
+    /* Speed Control */
+    .speed-control-container { position: relative; }
     .speed-btn {
       font-size: var(--font-xs);
       font-weight: 600;
@@ -241,11 +588,7 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       min-width: 38px; min-height: 38px;
       border-radius: var(--radius-full);
     }
-    .speed-btn:hover {
-      color: var(--accent);
-      border-color: rgba(var(--accent), 0.3);
-      background: rgba(255,255,255,0.05);
-    }
+    .speed-btn:hover { color: var(--accent); background: rgba(255,255,255,0.05); }
     .speed-menu {
       position: absolute;
       bottom: 100%;
@@ -255,7 +598,7 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       background: var(--bg-elevated);
       border: 1px solid rgba(255,255,255,0.08);
       border-radius: var(--radius-md);
-      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.5);
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5);
       backdrop-filter: blur(20px);
       display: flex;
       flex-direction: column;
@@ -281,15 +624,8 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       border: none;
       cursor: pointer;
     }
-    .speed-option:hover {
-      background: rgba(255,255,255,0.08);
-      color: var(--text-primary);
-    }
-    .speed-option.active {
-      background: var(--accent);
-      color: var(--bg-primary);
-      font-weight: 700;
-    }
+    .speed-option:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+    .speed-option.active { background: var(--accent); color: var(--bg-primary); font-weight: 700; }
 
     /* Right info */
     .right-info {
@@ -305,6 +641,16 @@ import { PlaylistService } from '../../../core/services/playlist.service';
     }
     .queue-info:hover { color: var(--accent); }
 
+    /* Expand button */
+    .btn-expand {
+      display: flex; align-items: center; justify-content: center;
+      width: 32px; height: 32px;
+      border-radius: var(--radius-full);
+      color: var(--text-muted);
+      transition: all var(--transition-fast);
+    }
+    .btn-expand:hover { color: var(--accent); background: var(--accent-dim); }
+
     /* Spinner */
     .spinner {
       width: 20px; height: 20px;
@@ -315,7 +661,7 @@ import { PlaylistService } from '../../../core/services/playlist.service';
     }
     @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Tesla / medium screens (769–1279px): bigger everything ── */
+    /* ── Tesla / medium screens (769–1279px) ── */
     @media (min-width: 769px) and (max-width: 1279px) {
       .waveform-container { height: 56px; }
       .waveform-canvas { height: 44px; }
@@ -327,29 +673,32 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       .episode-title { font-size: var(--font-md); max-width: 400px; }
       .podcast-title { font-size: var(--font-sm); }
       .player-controls { gap: var(--space-md); }
-      .ctrl-btn {
-        min-width: 52px; min-height: 52px;
-      }
+      .ctrl-btn { min-width: 52px; min-height: 52px; }
       .ctrl-btn svg { width: 24px; height: 24px; }
       .play-btn { width: 56px; height: 56px; }
       .play-btn svg { width: 28px; height: 28px; }
-      .speed-btn {
-        width: 48px; height: 48px;
-        min-width: 48px; min-height: 48px;
-        font-size: var(--font-sm);
-      }
-      .speed-option {
-        font-size: var(--font-sm);
-        padding: 8px 16px;
-      }
+      .speed-btn { width: 48px; height: 48px; min-width: 48px; min-height: 48px; font-size: var(--font-sm); }
+      .speed-option { font-size: var(--font-sm); padding: 8px 16px; }
       .time-display { font-size: var(--font-sm); }
-      .queue-info { font-size: var(--font-xs); }
+      .btn-expand { width: 44px; height: 44px; }
+      .btn-expand svg { width: 22px; height: 22px; }
+      /* Expanded player bigger on Tesla */
+      .expanded-art { width: min(320px, 50vw); height: min(320px, 50vw); }
+      .expanded-title { font-size: var(--font-xl); }
+      .exp-ctrl-play { width: 96px; height: 96px; }
+      .exp-ctrl-play svg { width: 44px; height: 44px; }
+      .exp-ctrl-seek { width: 72px; height: 72px; }
+      .exp-ctrl-seek svg { width: 34px; height: 34px; }
+      .exp-ctrl-nav { width: 64px; height: 64px; }
+      .exp-ctrl-nav svg { width: 32px; height: 32px; }
+      .exp-speed-pill { padding: 10px 20px; font-size: var(--font-sm); min-height: 48px; }
     }
   `,
 })
 export class MiniPlayerComponent {
   @ViewChild('waveformCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
 
+  readonly isExpanded = signal(false);
   readonly showSpeedMenu = signal(false);
   readonly speeds: PlaybackSpeed[] = [0.5, 0.75, 1, 1.25, 1.3, 1.5, 1.75, 2];
 
@@ -362,20 +711,25 @@ export class MiniPlayerComponent {
   constructor(
     public player: AudioPlayerService,
     public pl: PlaylistService,
-    private router: Router,
+    public router: Router,
   ) {
     // Redraw waveform whenever progress, buffer or active episode changes
     effect(() => {
-      // Accessing signals to track dependencies
       this.player.currentEpisode();
       this.player.progress();
       this.player.buffered();
-      
-      // Request redraw on the next frame to avoid DOM rendering lags
-      requestAnimationFrame(() => {
-        this.drawWaveform();
-      });
+      requestAnimationFrame(() => { this.drawWaveform(); });
     });
+  }
+
+  onExpandedBackdropClick(event: MouseEvent): void {
+    // Close if clicking the dark backdrop (not the inner panel)
+    this.isExpanded.set(false);
+  }
+
+  @HostListener('document:keydown.escape')
+  onEscape(): void {
+    if (this.isExpanded()) this.isExpanded.set(false);
   }
 
   bufferedPercent(): number {
@@ -386,23 +740,15 @@ export class MiniPlayerComponent {
   generateEpisodeWaveform(id: string, count: number): number[] {
     const heights: number[] = [];
     let seed = 0;
-    for (let i = 0; i < id.length; i++) {
-      seed += id.charCodeAt(i);
-    }
-    
+    for (let i = 0; i < id.length; i++) { seed += id.charCodeAt(i); }
     for (let i = 0; i < count; i++) {
-      // Create high/low wave overlays
       const wave1 = Math.sin((i / count) * Math.PI * 6 + seed);
       const wave2 = Math.cos((i / count) * Math.PI * 18 - seed);
       const wave3 = Math.sin((i / count) * Math.PI * 36 + seed * 2);
-      
       let val = Math.abs(wave1 * 0.5 + wave2 * 0.3 + wave3 * 0.2);
-      
-      // Symmetrical envelope shape
       const envelope = Math.sin((i / count) * Math.PI);
       val = val * 0.85 + 0.15;
       val = val * envelope;
-      
       heights.push(Math.max(0.12, Math.min(0.9, val)));
     }
     return heights;
@@ -414,7 +760,6 @@ export class MiniPlayerComponent {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Canvas sizes & high-DPI scaling
     const rect = canvas.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
 
@@ -427,13 +772,12 @@ export class MiniPlayerComponent {
 
     const width = rect.width;
     const height = rect.height;
-
     ctx.clearRect(0, 0, width, height);
 
     const episode = this.player.currentEpisode();
     if (!episode) return;
 
-    const barCount = 140; // Dense premium waveform bars
+    const barCount = 140;
     const heights = this.generateEpisodeWaveform(episode._id, barCount);
 
     const progress = this.player.progress();
@@ -443,35 +787,25 @@ export class MiniPlayerComponent {
     const barWidth = 3;
     const gap = 2;
     const totalBarWidth = barWidth + gap;
-
     const maxBars = Math.floor(width / totalBarWidth);
 
     for (let i = 0; i < maxBars; i++) {
       const idx = Math.floor(i * (barCount / maxBars));
       const val = heights[idx] || 0.12;
-
-      // Vertical sizing and symmetry
       const barHeight = val * height * 0.85;
       const x = i * totalBarWidth;
       const y = (height - barHeight) / 2;
-
       const barPct = (i / maxBars) * 100;
 
-      // Color selection
-      let color = 'rgba(255, 255, 255, 0.14)'; // Unplayed background
-
+      let color = 'rgba(255, 255, 255, 0.14)';
       if (barPct <= progress) {
-        // Played zone: Gradient (Purple to Pink)
         const grad = ctx.createLinearGradient(x, y, x, y + barHeight);
-        grad.addColorStop(0, '#a855f7'); // Violet-500
-        grad.addColorStop(1, '#ec4899'); // Pink-500
+        grad.addColorStop(0, '#a855f7');
+        grad.addColorStop(1, '#ec4899');
         color = grad as any;
       } else if (barPct <= buffered) {
-        // Buffered zone
         color = 'rgba(255, 255, 255, 0.32)';
       }
-
-      // Hover preview highlight state
       if (this.showTooltip() && barPct <= hoverPct && barPct > progress) {
         color = 'rgba(168, 85, 247, 0.45)';
       }
@@ -497,9 +831,7 @@ export class MiniPlayerComponent {
   }
 
   @HostListener('window:resize')
-  onResize(): void {
-    this.drawWaveform();
-  }
+  onResize(): void { this.drawWaveform(); }
 
   onMouseMove(event: MouseEvent): void {
     if (!this.canvasRef) return;
@@ -507,16 +839,13 @@ export class MiniPlayerComponent {
     const rect = canvas.getBoundingClientRect();
     const mouseX = event.clientX - rect.left;
     const pct = Math.max(0, Math.min(100, (mouseX / rect.width) * 100));
-
     this.hoverPercent.set(pct);
     this.showTooltip.set(true);
-
     const duration = this.player.duration();
     if (duration > 0) {
       const hoverTime = (pct / 100) * duration;
       this.tooltipText.set(this.player.formatTime(hoverTime));
     }
-
     this.tooltipLeft.set(mouseX);
     this.drawWaveform();
   }
@@ -548,9 +877,5 @@ export class MiniPlayerComponent {
   }
 
   @HostListener('document:click')
-  onDocumentClick(): void {
-    this.showSpeedMenu.set(false);
-  }
+  onDocumentClick(): void { this.showSpeedMenu.set(false); }
 }
-
-
