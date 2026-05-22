@@ -62,18 +62,19 @@ export class AudioPlayerService {
       this.isLoading.set(true);
       this.pendingSeek = null;
 
-      // Build authenticated audio URL with JWT as query param
-      // (native <audio> cannot send Authorization headers)
-      this.loadAudioWithAuth(episode._id);
-
-      // Try to restore progress from server (cross-device)
+      // Fetch saved position BEFORE loading audio to avoid race condition:
+      // if we set audio.src first, loadedmetadata can fire before the API
+      // responds and pendingSeek would still be null → seek would be lost.
       try {
         const res = await this.api.getEpisodeProgress(episode._id);
         if (res?.data?.progress && !res.data.completed) {
-          // Store as pending seek — will be applied on loadedmetadata (race-condition-safe)
           this.pendingSeek = res.data.progress;
         }
       } catch {}
+
+      // Now load audio — loadedmetadata will fire AFTER pendingSeek is set
+      // (applies to direct play, queue playback, and cross-device resume)
+      this.loadAudioWithAuth(episode._id);
     }
 
     try {
