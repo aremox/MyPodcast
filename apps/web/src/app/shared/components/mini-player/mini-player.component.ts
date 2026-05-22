@@ -314,6 +314,37 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       animation: spin 0.8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Tesla / medium screens (769–1279px): bigger everything ── */
+    @media (min-width: 769px) and (max-width: 1279px) {
+      .waveform-container { height: 56px; }
+      .waveform-canvas { height: 44px; }
+      .player-content {
+        height: 88px;
+        padding: var(--space-md) var(--space-xl);
+      }
+      .episode-art { width: 60px; height: 60px; }
+      .episode-title { font-size: var(--font-md); max-width: 400px; }
+      .podcast-title { font-size: var(--font-sm); }
+      .player-controls { gap: var(--space-md); }
+      .ctrl-btn {
+        min-width: 52px; min-height: 52px;
+      }
+      .ctrl-btn svg { width: 24px; height: 24px; }
+      .play-btn { width: 56px; height: 56px; }
+      .play-btn svg { width: 28px; height: 28px; }
+      .speed-btn {
+        width: 48px; height: 48px;
+        min-width: 48px; min-height: 48px;
+        font-size: var(--font-sm);
+      }
+      .speed-option {
+        font-size: var(--font-sm);
+        padding: 8px 16px;
+      }
+      .time-display { font-size: var(--font-sm); }
+      .queue-info { font-size: var(--font-xs); }
+    }
   `,
 })
 export class MiniPlayerComponent {
