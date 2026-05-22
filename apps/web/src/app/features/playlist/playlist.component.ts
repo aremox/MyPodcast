@@ -282,7 +282,7 @@ import { ApiService } from '../../core/services/api.service';
                 <span class="ep-title">{{ episode.title }}</span>
                 <span class="ep-podcast">{{ episode.podcastTitle }}</span>
                 @if (episodeProgress()[episode._id]; as prog) {
-                  <span class="ep-in-progress">Quedan {{ formatRemaining(episode.durationSeconds, prog.progress) }}</span>
+                  <span class="ep-in-progress">Quedan {{ formatRemaining(episode.durationSeconds, prog.progress) }} de {{ episode.duration }}</span>
                   <div class="ep-progress-bar">
                     <div class="ep-progress-fill" [style.width.%]="getProgressPct(episode.durationSeconds, prog.progress)"></div>
                   </div>
