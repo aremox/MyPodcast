@@ -1,4 +1,4 @@
-import { Component, HostListener, signal, ViewChild, ElementRef, effect } from '@angular/core';
+import { Component, HostListener, signal, ViewChildren, QueryList, ElementRef, effect } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AudioPlayerService, PlaybackSpeed } from '../../../core/services/audio-player.service';
 import { PlaylistService } from '../../../core/services/playlist.service';
@@ -696,7 +696,7 @@ import { PlaylistService } from '../../../core/services/playlist.service';
   `,
 })
 export class MiniPlayerComponent {
-  @ViewChild('waveformCanvas') canvasRef!: ElementRef<HTMLCanvasElement>;
+  @ViewChildren('waveformCanvas') canvasRefs!: QueryList<ElementRef<HTMLCanvasElement>>;
 
   readonly isExpanded = signal(false);
   readonly showSpeedMenu = signal(false);
@@ -755,64 +755,66 @@ export class MiniPlayerComponent {
   }
 
   drawWaveform(): void {
-    if (!this.canvasRef) return;
-    const canvas = this.canvasRef.nativeElement;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const rect = canvas.getBoundingClientRect();
-    if (rect.width === 0 || rect.height === 0) return;
-
-    const dpr = window.devicePixelRatio || 1;
-    if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
-      canvas.width = rect.width * dpr;
-      canvas.height = rect.height * dpr;
-      ctx.scale(dpr, dpr);
-    }
-
-    const width = rect.width;
-    const height = rect.height;
-    ctx.clearRect(0, 0, width, height);
+    if (!this.canvasRefs || this.canvasRefs.length === 0) return;
 
     const episode = this.player.currentEpisode();
     if (!episode) return;
 
     const barCount = 140;
     const heights = this.generateEpisodeWaveform(episode._id, barCount);
-
     const progress = this.player.progress();
     const buffered = this.bufferedPercent();
     const hoverPct = this.hoverPercent();
 
-    const barWidth = 3;
-    const gap = 2;
-    const totalBarWidth = barWidth + gap;
-    const maxBars = Math.floor(width / totalBarWidth);
+    this.canvasRefs.forEach(canvasRef => {
+      const canvas = canvasRef.nativeElement;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
 
-    for (let i = 0; i < maxBars; i++) {
-      const idx = Math.floor(i * (barCount / maxBars));
-      const val = heights[idx] || 0.12;
-      const barHeight = val * height * 0.85;
-      const x = i * totalBarWidth;
-      const y = (height - barHeight) / 2;
-      const barPct = (i / maxBars) * 100;
+      const rect = canvas.getBoundingClientRect();
+      if (rect.width === 0 || rect.height === 0) return;
 
-      let color = 'rgba(255, 255, 255, 0.14)';
-      if (barPct <= progress) {
-        const grad = ctx.createLinearGradient(x, y, x, y + barHeight);
-        grad.addColorStop(0, '#a855f7');
-        grad.addColorStop(1, '#ec4899');
-        color = grad as any;
-      } else if (barPct <= buffered) {
-        color = 'rgba(255, 255, 255, 0.32)';
-      }
-      if (this.showTooltip() && barPct <= hoverPct && barPct > progress) {
-        color = 'rgba(168, 85, 247, 0.45)';
+      const dpr = window.devicePixelRatio || 1;
+      if (canvas.width !== rect.width * dpr || canvas.height !== rect.height * dpr) {
+        canvas.width = rect.width * dpr;
+        canvas.height = rect.height * dpr;
+        ctx.scale(dpr, dpr);
       }
 
-      ctx.fillStyle = color as any;
-      this.drawRoundedRect(ctx, x, y, barWidth, barHeight, 1.5);
-    }
+      const width = rect.width;
+      const height = rect.height;
+      ctx.clearRect(0, 0, width, height);
+
+      const barWidth = 3;
+      const gap = 2;
+      const totalBarWidth = barWidth + gap;
+      const maxBars = Math.floor(width / totalBarWidth);
+
+      for (let i = 0; i < maxBars; i++) {
+        const idx = Math.floor(i * (barCount / maxBars));
+        const val = heights[idx] || 0.12;
+        const barHeight = val * height * 0.85;
+        const x = i * totalBarWidth;
+        const y = (height - barHeight) / 2;
+        const barPct = (i / maxBars) * 100;
+
+        let color = 'rgba(255, 255, 255, 0.14)';
+        if (barPct <= progress) {
+          const grad = ctx.createLinearGradient(x, y, x, y + barHeight);
+          grad.addColorStop(0, '#a855f7');
+          grad.addColorStop(1, '#ec4899');
+          color = grad as any;
+        } else if (barPct <= buffered) {
+          color = 'rgba(255, 255, 255, 0.32)';
+        }
+        if (this.showTooltip() && barPct <= hoverPct && barPct > progress) {
+          color = 'rgba(168, 85, 247, 0.45)';
+        }
+
+        ctx.fillStyle = color as any;
+        this.drawRoundedRect(ctx, x, y, barWidth, barHeight, 1.5);
+      }
+    });
   }
 
   drawRoundedRect(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number): void {
@@ -834,9 +836,8 @@ export class MiniPlayerComponent {
   onResize(): void { this.drawWaveform(); }
 
   onMouseMove(event: MouseEvent): void {
-    if (!this.canvasRef) return;
-    const canvas = this.canvasRef.nativeElement;
-    const rect = canvas.getBoundingClientRect();
+    const el = event.currentTarget as HTMLElement;
+    const rect = el.getBoundingClientRect();
     const mouseX = event.clientX - rect.left;
     const pct = Math.max(0, Math.min(100, (mouseX / rect.width) * 100));
     this.hoverPercent.set(pct);
@@ -857,9 +858,8 @@ export class MiniPlayerComponent {
   }
 
   onWaveformClick(event: MouseEvent): void {
-    if (!this.canvasRef) return;
-    const canvas = this.canvasRef.nativeElement;
-    const rect = canvas.getBoundingClientRect();
+    const el = event.currentTarget as HTMLElement;
+    const rect = el.getBoundingClientRect();
     const mouseX = event.clientX - rect.left;
     const pct = Math.max(0, Math.min(100, (mouseX / rect.width) * 100));
     this.player.seekToPercent(pct);
