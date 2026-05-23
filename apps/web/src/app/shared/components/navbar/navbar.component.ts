@@ -12,6 +12,14 @@ import { PlaylistService } from '../../../core/services/playlist.service';
         <a routerLink="/library" class="brand" (click)="mobileMenuOpen.set(false)">
           <span class="brand-icon">🎧</span>
           <span class="brand-text">MyPodcast</span>
+          <span class="tesla-mode-icon" title="Modo Tesla Activado">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <path d="M12 18v-4"/>
+              <path d="M8 14h8"/>
+            </svg>
+          </span>
         </a>
       </div>
 
@@ -108,6 +116,14 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       flex: 1;
       margin-left: 0;
       min-width: 0;
+    }
+
+    .tesla-mode-icon {
+      display: none;
+      color: var(--accent);
+      background: rgba(0, 212, 170, 0.1);
+      padding: 4px;
+      border-radius: var(--radius-sm);
     }
 
     .nav-links {
@@ -232,6 +248,9 @@ import { PlaylistService } from '../../../core/services/playlist.service';
         width: 22px;
         height: 22px;
       }
+      .tesla-mode-icon {
+        display: flex;
+      }
     }
 
     /* ── Tesla large (1280px+): show labels but bigger targets ── */
@@ -244,6 +263,7 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       }
       .nav-link svg { width: 22px; height: 22px; }
       .btn-logout { width: 44px; height: 44px; }
+      .tesla-mode-icon { display: flex; }
     }
 
     /* Mobile Responsive Styles */
