@@ -33,7 +33,10 @@ try {
   distPkg.description = 'MyPodcast Synchronization Agent';
   distPkg.author = 'Aremox';
   distPkg.dependencies = {
-    tslib: tslibVersion
+    ...(distPkg.dependencies || {}),
+    tslib: tslibVersion,
+    'electron-updater': rootPkg.dependencies['electron-updater'] || rootPkg.devDependencies['electron-updater'],
+    'electron-log': rootPkg.dependencies['electron-log'] || rootPkg.devDependencies['electron-log']
   };
   distPkg.devDependencies = {
     electron: electronVersion
