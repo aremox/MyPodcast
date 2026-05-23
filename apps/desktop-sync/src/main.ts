@@ -1,4 +1,6 @@
 import { app, BrowserWindow, ipcMain, Tray, Menu, Notification, shell } from 'electron';
+import { autoUpdater } from 'electron-updater';
+import eLog from 'electron-log';
 import { UsbScanner } from './usb-scanner';
 import { Syncer } from './syncer';
 import * as path from 'path';
@@ -555,6 +557,38 @@ app.whenReady().then(() => {
     }
     fetchConfigAndSync();
   });
+
+  // --- Auto Updater Initialization ---
+  eLog.transports.file.level = "info";
+  autoUpdater.logger = eLog;
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('update-available', (info) => {
+    log(`Actualización disponible detectada: v${info.version}. Descargando en segundo plano...`);
+  });
+
+  autoUpdater.on('update-downloaded', (info) => {
+    log(`Actualización v${info.version} descargada. Instalando y reiniciando en segundo plano...`);
+    notify('Actualización Descargada', `La versión ${info.version} ha sido descargada. La aplicación se reiniciará automáticamente para instalarla.`);
+    
+    // Wait briefly for notification to show, then quit and install silently
+    setTimeout(() => {
+      autoUpdater.quitAndInstall(true, true);
+    }, 4000);
+  });
+
+  autoUpdater.on('error', (err) => {
+    log(`Error en actualización automática: ${err}`, 'ERROR');
+  });
+
+  // Check for updates on startup
+  autoUpdater.checkForUpdatesAndNotify().catch(err => log(`Failed to check for updates: ${err}`, 'ERROR'));
+
+  // And check every 4 hours
+  setInterval(() => {
+    autoUpdater.checkForUpdatesAndNotify().catch(err => log(`Failed to check for updates: ${err}`, 'ERROR'));
+  }, 4 * 60 * 60 * 1000);
 });
 
 app.on('activate', () => {
