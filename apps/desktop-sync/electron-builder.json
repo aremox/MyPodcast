@@ -4,6 +4,13 @@
   "directories": {
     "output": "../../release/desktop-sync"
   },
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "aremox",
+      "repo": "MyPodcast"
+    }
+  ],
   "files": [
     "**/*"
   ],
