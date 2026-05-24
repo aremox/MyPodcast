@@ -298,7 +298,7 @@ import { ApiService } from '../../core/services/api.service';
     .new-episodes-bubble {
       position: absolute;
       top: 8px; right: 8px;
-      background-color: var(--primary);
+      background-color: var(--error);
       color: white;
       font-size: 0.75rem;
       font-weight: 700;
