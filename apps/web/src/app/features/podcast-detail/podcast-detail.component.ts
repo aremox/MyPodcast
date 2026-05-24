@@ -281,6 +281,13 @@ export class PodcastDetailComponent implements OnInit {
         this.episodeProgress.set(inProgRes.data);
       }
       this.hasMore.set((epRes.data?.length || 0) < (epRes.total || 0));
+
+      // Mark podcast as viewed to clear the 'new episodes' bubble
+      try {
+        await this.api.markPodcastAsViewed(this.id());
+      } catch (err) {
+        console.warn('Could not mark podcast as viewed', err);
+      }
     } catch (e) {
       console.error('Error loading podcast:', e);
     } finally {

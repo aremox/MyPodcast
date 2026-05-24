@@ -37,6 +37,13 @@ export class LibraryController {
     return { success: true, message: 'Suscripción eliminada' };
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Post('subscriptions/:podcastId/view')
+  async markAsViewed(@Request() req: any, @Param('podcastId') podcastId: string) {
+    const sub = await this.libraryService.markPodcastAsViewed(req.user.userId, podcastId);
+    return { success: true, data: sub };
+  }
+
   // ===== FAVORITES =====
 
   @UseGuards(JwtAuthGuard)

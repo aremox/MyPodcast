@@ -87,6 +87,9 @@ import { ApiService } from '../../core/services/api.service';
                 <div class="podcast-card edit-card">
                   <div class="card-img-wrapper">
                     <img [src]="podcast.imageUrl || '/assets/placeholder.png'" [alt]="podcast.title" class="card-img" loading="lazy" />
+                    @if (podcast.newEpisodesCount > 0) {
+                      <div class="new-episodes-bubble">{{ podcast.newEpisodesCount }}</div>
+                    }
                     <div class="card-overlay">
                       <span class="episode-count">{{ podcast.episodeCount }} ep.</span>
                     </div>
@@ -106,6 +109,9 @@ import { ApiService } from '../../core/services/api.service';
                 <a [routerLink]="['/podcast', podcast._id]" class="podcast-card" [style.animation-delay]="($index * 50) + 'ms'">
                   <div class="card-img-wrapper">
                     <img [src]="podcast.imageUrl || '/assets/placeholder.png'" [alt]="podcast.title" class="card-img" loading="lazy" />
+                    @if (podcast.newEpisodesCount > 0) {
+                      <div class="new-episodes-bubble">{{ podcast.newEpisodesCount }}</div>
+                    }
                     <div class="card-overlay">
                       <span class="episode-count">{{ podcast.episodeCount }} ep.</span>
                     </div>
@@ -288,6 +294,28 @@ import { ApiService } from '../../core/services/api.service';
     .card-img-wrapper {
       position: relative; border-radius: var(--radius-md);
       overflow: hidden; aspect-ratio: 1;
+    }
+    .new-episodes-bubble {
+      position: absolute;
+      top: 8px; right: 8px;
+      background-color: var(--primary);
+      color: white;
+      font-size: 0.75rem;
+      font-weight: 700;
+      min-width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 12px;
+      padding: 0 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      z-index: 10;
+      animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    @keyframes popIn {
+      0% { transform: scale(0); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
     }
     .card-img { width: 100%; height: 100%; object-fit: cover; transition: filter var(--transition-normal); }
     .card-overlay {
