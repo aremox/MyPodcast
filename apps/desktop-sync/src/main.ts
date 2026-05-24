@@ -512,6 +512,7 @@ function setupTray() {
     { type: 'separator' },
     { label: 'Mostrar Panel de Control', click: () => { mainWindow?.show(); } },
     { label: 'Sincronizar Ahora', click: () => { fetchConfigAndSync(); } },
+    { label: 'Abrir Web', click: () => { shell.openExternal(getServerUrl()); } },
     { type: 'separator' },
     { label: 'Salir', click: () => {
         (app as any).isQuiting = true;
