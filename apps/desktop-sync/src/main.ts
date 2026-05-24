@@ -574,17 +574,27 @@ app.whenReady().then(() => {
   });
 
   // --- Auto Updater Initialization ---
-  eLog.transports.file.level = "info";
-  autoUpdater.logger = eLog;
+  autoUpdater.logger = {
+    info: (msg: string) => log(`[Updater] ${msg}`, 'INFO'),
+    warn: (msg: string) => log(`[Updater] ${msg}`, 'INFO'),
+    error: (msg: string) => log(`[Updater] ${msg}`, 'ERROR'),
+    debug: (msg: string) => log(`[Updater] ${msg}`, 'INFO'),
+  } as any;
+  
   autoUpdater.autoDownload = true;
   autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on('checking-for-update', () => {
+    log('Buscando actualizaciones en el servidor...', 'INFO');
+  });
 
   autoUpdater.on('update-available', (info) => {
     isManualUpdateCheck = false;
     log(`Actualización disponible detectada: v${info.version}. Descargando en segundo plano...`);
   });
 
-  autoUpdater.on('update-not-available', () => {
+  autoUpdater.on('update-not-available', (info) => {
+    log(`No se encontraron actualizaciones. Última versión remota: v${info?.version || 'Desconocida'}.`, 'INFO');
     if (isManualUpdateCheck) {
       notify('Actualización', 'Ya tienes la última versión instalada.');
       isManualUpdateCheck = false;
