@@ -65,6 +65,14 @@ export class EpisodesService implements OnModuleInit {
     return { episodes, total };
   }
 
+  async countNewEpisodesSince(podcastId: string, sinceDate: Date): Promise<number> {
+    const objectId = new Types.ObjectId(podcastId);
+    return this.episodeModel.countDocuments({
+      $or: [{ podcastId: objectId }, { podcastId }],
+      publishedAt: { $gt: sinceDate }
+    }).exec();
+  }
+
   async findAllIdsByPodcast(podcastId: string): Promise<string[]> {
     const objectId = new Types.ObjectId(podcastId);
     const episodes = await this.episodeModel

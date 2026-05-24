@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
 import { Subscription, SubscriptionDocument } from './schemas/subscription.schema';
@@ -6,6 +6,8 @@ import { Favorite, FavoriteDocument } from './schemas/favorite.schema';
 import { PlayHistory, PlayHistoryDocument } from './schemas/play-history.schema';
 import { SyncConfig, SyncConfigDocument } from './schemas/sync-config.schema';
 import { EpisodeDownloaderService } from '../episodes/episode-downloader.service';
+
+import { EpisodesService } from '../episodes/episodes.service';
 
 @Injectable()
 export class LibraryService implements OnModuleInit {
@@ -17,6 +19,7 @@ export class LibraryService implements OnModuleInit {
     @InjectModel(PlayHistory.name) private playHistoryModel: Model<PlayHistoryDocument>,
     @InjectModel(SyncConfig.name) private syncConfigModel: Model<SyncConfigDocument>,
     private episodeDownloaderService: EpisodeDownloaderService,
+    @Inject(forwardRef(() => EpisodesService)) private episodesService: EpisodesService,
   ) {}
 
   async onModuleInit() {
@@ -383,12 +386,43 @@ export class LibraryService implements OnModuleInit {
   // ===== SUBSCRIPTIONS =====
   async getUserSubscriptions(userId: string) {
     const userObj = new Types.ObjectId(userId);
-    return this.subscriptionModel.find({ 
+    const subs = await this.subscriptionModel.find({ 
       $or: [
         { userId: userObj },
         { userId: userId }
       ]
-    }).populate('podcastId').exec();
+    }).populate('podcastId').lean().exec();
+
+    // Fetch new episodes count for each subscription
+    return Promise.all(subs.map(async (sub: any) => {
+      if (!sub.podcastId) return sub;
+      const podcastIdStr = sub.podcastId._id.toString();
+      const lastViewedAt = sub.lastViewedAt || new Date(0); // If missing, assume all are new
+      const newEpisodesCount = await this.episodesService.countNewEpisodesSince(podcastIdStr, lastViewedAt);
+      
+      return {
+        ...sub,
+        podcastId: {
+          ...sub.podcastId,
+          newEpisodesCount
+        }
+      };
+    }));
+  }
+
+  async markPodcastAsViewed(userId: string, podcastId: string) {
+    const userObj = new Types.ObjectId(userId);
+    const podcastObj = new Types.ObjectId(podcastId);
+    return this.subscriptionModel.findOneAndUpdate(
+      { 
+        $and: [
+          { $or: [{ userId: userObj }, { userId }] },
+          { $or: [{ podcastId: podcastObj }, { podcastId }] }
+        ]
+      },
+      { $set: { lastViewedAt: new Date() } },
+      { new: true }
+    ).exec();
   }
 
   async subscribe(userId: string, podcastId: string) {

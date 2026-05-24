@@ -13,6 +13,9 @@ export class Subscription {
 
   @Prop({ default: true })
   notifications: boolean;
+
+  @Prop({ default: Date.now })
+  lastViewedAt: Date;
 }
 
 export const SubscriptionSchema = SchemaFactory.createForClass(Subscription);

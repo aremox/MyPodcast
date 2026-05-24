@@ -65,6 +65,12 @@ export class ApiService {
     );
   }
 
+  markPodcastAsViewed(podcastId: string) {
+    return firstValueFrom(
+      this.http.post<any>(`${this.BASE_URL}/library/subscriptions/${podcastId}/view`, {}),
+    );
+  }
+
   removeSubscription(podcastId: string) {
     return firstValueFrom(
       this.http.delete<any>(`${this.BASE_URL}/library/subscriptions/${podcastId}`),
