@@ -32,6 +32,9 @@ try {
   // Augment metadata
   distPkg.description = 'MyPodcast Synchronization Agent';
   distPkg.author = 'Aremox';
+  if (process.env.APP_VERSION) {
+    distPkg.version = process.env.APP_VERSION;
+  }
   distPkg.dependencies = {
     ...(distPkg.dependencies || {}),
     tslib: tslibVersion,

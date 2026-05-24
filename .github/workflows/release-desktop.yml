@@ -28,4 +28,9 @@ jobs:
       - name: Build and Package
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx nx run desktop-sync:package
+        shell: bash
+        run: |
+          # Remove 'v' prefix if exists
+          export APP_VERSION=${GITHUB_REF_NAME#v}
+          echo "Building with version $APP_VERSION"
+          npx nx run desktop-sync:package
