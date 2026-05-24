@@ -8,7 +8,8 @@
     {
       "provider": "github",
       "owner": "aremox",
-      "repo": "MyPodcast"
+      "repo": "MyPodcast",
+      "releaseType": "release"
     }
   ],
   "files": [
