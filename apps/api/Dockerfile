@@ -14,6 +14,9 @@ RUN npx nx build api --configuration=production && \
 FROM node:22-alpine AS runner
 WORKDIR /app
 
+# Update global npm to fix vulnerabilities in bundled npm dependencies (like picomatch)
+RUN npm install -g npm@latest
+
 ENV NODE_ENV=production
 
 # Copy built output and generated package.json
