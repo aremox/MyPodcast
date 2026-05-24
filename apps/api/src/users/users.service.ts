@@ -18,7 +18,8 @@ export class UsersService implements OnModuleInit {
       const users = await this.userModel.find({}).exec();
       this.logger.log(`Running user roles migration. Total users: ${users.length}`);
       for (const user of users) {
-        if (user.username === 'testuser' || user.email === 'arenasmorante@gmail.com') {
+        const normalizedEmail = user.email?.toLowerCase().trim();
+        if (user.username === 'testuser' || normalizedEmail === 'arenasmorante@gmail.com') {
           await this.userModel.findByIdAndUpdate(user._id, { role: 'administrador' }).exec();
           this.logger.log(`Seeded user ${user.username} (${user.email}) role as administrador`);
         } else {
