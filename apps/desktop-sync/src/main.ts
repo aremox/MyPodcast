@@ -607,6 +607,7 @@ app.whenReady().then(() => {
     
     // Wait briefly for notification to show, then quit and install silently
     setTimeout(() => {
+      (app as any).isQuiting = true;
       autoUpdater.quitAndInstall(true, true);
     }, 4000);
   });
