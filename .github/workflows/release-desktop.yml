@@ -1,0 +1,42 @@
+name: Release Desktop App
+
+on:
+  push:
+    tags:
+      - 'v*' # Trigger on tags like v1.0.0, v2.0.0-stable, etc.
+
+permissions:
+  contents: write # Needed to create GitHub Releases
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and Package
+        run: npx nx run desktop-sync:package
+
+      - name: Publish to GitHub Releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          cd dist/release/desktop-sync
+          gh release create ${{ github.ref_name }} \
+            *.exe \
+            *.blockmap \
+            latest.yml \
+            --title "MyPodcastSync ${{ github.ref_name }}" \
+            --notes "Automated release of MyPodcastSync ${{ github.ref_name }}"
