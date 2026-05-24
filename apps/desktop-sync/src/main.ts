@@ -19,6 +19,7 @@ const ICON_PATH = path.join(__dirname, 'assets/icon.ico');
 let mainWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let isSyncing = false;
+let isManualUpdateCheck = false;
 let syncTimer: NodeJS.Timeout | null = null;
 let currentInterval = 60000;
 
@@ -513,6 +514,14 @@ function setupTray() {
     { label: 'Mostrar Panel de Control', click: () => { mainWindow?.show(); } },
     { label: 'Sincronizar Ahora', click: () => { fetchConfigAndSync(); } },
     { label: 'Abrir Web', click: () => { shell.openExternal(getServerUrl()); } },
+    { label: 'Buscar Actualizaciones', click: () => { 
+        isManualUpdateCheck = true;
+        autoUpdater.checkForUpdatesAndNotify().catch(err => {
+          log(`Failed to check for updates: ${err}`, 'ERROR');
+          isManualUpdateCheck = false;
+        });
+      }
+    },
     { type: 'separator' },
     { label: 'Salir', click: () => {
         (app as any).isQuiting = true;
@@ -566,7 +575,15 @@ app.whenReady().then(() => {
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on('update-available', (info) => {
+    isManualUpdateCheck = false;
     log(`Actualización disponible detectada: v${info.version}. Descargando en segundo plano...`);
+  });
+
+  autoUpdater.on('update-not-available', () => {
+    if (isManualUpdateCheck) {
+      notify('Actualización', 'Ya tienes la última versión instalada.');
+      isManualUpdateCheck = false;
+    }
   });
 
   autoUpdater.on('update-downloaded', (info) => {
