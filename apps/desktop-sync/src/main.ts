@@ -87,24 +87,29 @@ function log(message: string, level: 'INFO' | 'ERROR' | 'SYNC' = 'INFO') {
 }
 
 async function notify(title: string, message: string) {
-  const localConfig = getLocalConfig();
-  if (localConfig.targetUsbSerial) {
-    try {
-      const drives = await UsbScanner.getRemovableDrives();
-      const isConnected = drives.some(d => d.serialNumber === localConfig.targetUsbSerial);
-      if (!isConnected) {
-        log(`[Notificación Omitida] "${title}" no se mostró porque el USB (${localConfig.targetUsbSerial}) no está conectado.`, 'INFO');
-        return;
+  // Always show update and system-level notifications
+  const isSystemNotification = title.toLowerCase().includes('actualización') || 
+                               title.toLowerCase().includes('sesión') || 
+                               title.toLowerCase().includes('vinc') || 
+                               title.toLowerCase().includes('error') ||
+                               title === 'MyPodcast Sync' ||
+                               title === 'MyPodcast Desktop Agent';
+
+  if (!isSystemNotification) {
+    const localConfig = getLocalConfig();
+    if (localConfig.targetUsbSerial) {
+      try {
+        const drives = await UsbScanner.getRemovableDrives();
+        const isConnected = drives.some(d => d.serialNumber === localConfig.targetUsbSerial);
+        if (!isConnected) {
+          log(`[Notificación Omitida] "${title}" no se mostró porque el USB (${localConfig.targetUsbSerial}) no está conectado.`, 'INFO');
+          return;
+        }
+      } catch (err) {
+        log(`Error al comprobar estado del USB para notificación: ${err}`, 'ERROR');
       }
-    } catch (err) {
-      log(`Error al comprobar estado del USB para notificación: ${err}`, 'ERROR');
-    }
-  } else {
-    // Si no hay USB configurado, omitimos las notificaciones que no sean de configuración/emparejamiento
-    const isPairingOrSetup = title.toLowerCase().includes('sesión') || 
-                             title.toLowerCase().includes('vinc') || 
-                             title.toLowerCase().includes('error');
-    if (!isPairingOrSetup) {
+    } else {
+      // Si no hay USB configurado y no es del sistema, omitimos
       log(`[Notificación Omitida] "${title}" no se mostró porque no hay ningún USB configurado.`, 'INFO');
       return;
     }
