@@ -252,8 +252,8 @@ input:focus, textarea:focus, select:focus {
 }
 
 /* === TESLA SPECIFIC STYLES === */
-/* Targets desktop and Tesla landscape screens */
-@media screen and (min-width: 900px) {
+/* Targets Tesla screen resolutions (matches when the tesla-mode-icon is displayed in navbar) */
+@media screen and (min-width: 769px) and (max-width: 1600px) {
   body {
     background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSI2NCIgaGVpZ2h0PSI2NCIgZmlsbD0icmdiYSgyNTUsIDI1NSwgMjU1LCAwLjA4KSI+PHBhdGggZD0iTTMyLjAwMyA2NGw4Ljk5Mi01MC41N2M4LjU3IDAgMTEuMjc0Ljk0IDExLjY2NSA0Ljc3NiAwIDAgNS43NS0yLjE0NCA4LjY1LTYuNDk4LTExLjMxNi01LjI0NC0yMi42ODYtNS40OC0yMi42ODYtNS40OGwtNi42MzUgOC4wOC4wMTUtLjAwMS02LjYzNS04LjA4UzE0IDYuNDY0IDIuNjg0IDExLjcwN2MyLjg5NyA0LjM1NCA4LjY1IDYuNDk4IDguNjUgNi40OTguMzkzLTMuODM2IDMuMDkzLTQuNzc2IDExLjYwNi00Ljc4MkwzMi4wMDMgNjRNMzIgMy44OTNjOS4xNDctLjA3IDE5LjYxOCAxLjQxNSAzMC4zMzYgNi4wODcgMS40MzMtMi41NzggMS44LTMuNzE4IDEuOC0zLjcxOEM1Mi40MiAxLjYyNiA0MS40NDguMDQgMzIgMCAyMi41NS4wNCAxMS41NzggMS42MjYtLjEzNyA2LjI2MmMwIDAgLjUyMyAxLjQwNCAxLjggMy43MThDMTIuMzggNS4zMDggMjIuODUgMy44MjMgMzIgMy44OTMiLz48L3N2Zz4=");
     background-repeat: no-repeat;
