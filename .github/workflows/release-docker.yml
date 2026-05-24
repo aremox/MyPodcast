@@ -31,18 +31,50 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build and push API image
+      - name: Build API image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: apps/api/Dockerfile
-          push: true
-          tags: ${{ env.IMAGE_NAME_API }}:${{ github.ref_name }},${{ env.IMAGE_NAME_API }}:latest
+          load: true
+          tags: ${{ env.IMAGE_NAME_API }}:${{ github.ref_name }}
 
-      - name: Build and push Web image
+      - name: Run Trivy vulnerability scanner on API
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ env.IMAGE_NAME_API }}:${{ github.ref_name }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Build Web image
         uses: docker/build-push-action@v5
         with:
           context: .
           file: apps/web/Dockerfile
-          push: true
-          tags: ${{ env.IMAGE_NAME_WEB }}:${{ github.ref_name }},${{ env.IMAGE_NAME_WEB }}:latest
+          load: true
+          tags: ${{ env.IMAGE_NAME_WEB }}:${{ github.ref_name }}
+
+      - name: Run Trivy vulnerability scanner on Web
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: '${{ env.IMAGE_NAME_WEB }}:${{ github.ref_name }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+      - name: Push API image
+        run: |
+          docker tag ${{ env.IMAGE_NAME_API }}:${{ github.ref_name }} ${{ env.IMAGE_NAME_API }}:latest
+          docker push ${{ env.IMAGE_NAME_API }}:${{ github.ref_name }}
+          docker push ${{ env.IMAGE_NAME_API }}:latest
+
+      - name: Push Web image
+        run: |
+          docker tag ${{ env.IMAGE_NAME_WEB }}:${{ github.ref_name }} ${{ env.IMAGE_NAME_WEB }}:latest
+          docker push ${{ env.IMAGE_NAME_WEB }}:${{ github.ref_name }}
+          docker push ${{ env.IMAGE_NAME_WEB }}:latest
