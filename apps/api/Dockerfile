@@ -10,7 +10,7 @@ COPY . .
 RUN npx nx build api --configuration=production
 
 # === PRODUCTION STAGE ===
-FROM node:20-alpine AS runner
+FROM node:22-alpine AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production

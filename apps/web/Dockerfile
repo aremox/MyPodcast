@@ -10,7 +10,7 @@ COPY . .
 RUN npx nx build web --configuration=production
 
 # === PRODUCTION STAGE ===
-FROM nginx:1.27-alpine AS runner
+FROM nginx:alpine AS runner
 
 # Copy custom nginx config
 COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
