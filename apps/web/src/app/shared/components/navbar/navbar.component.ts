@@ -1,11 +1,14 @@
-import { Component, signal } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, signal, inject } from '@angular/core';
+import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PlaylistService } from '../../../core/services/playlist.service';
 
 @Component({
   selector: 'app-navbar',
   imports: [RouterLink, RouterLinkActive],
+  host: {
+    '(document:click)': 'onDocumentClick($event)'
+  },
   template: `
     <nav class="navbar">
       <div class="nav-brand">
@@ -64,23 +67,39 @@ import { PlaylistService } from '../../../core/services/playlist.service';
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
             <span>Historial</span>
           </a>
-          <a routerLink="/desktop-sync" routerLinkActive="active" class="nav-link" (click)="mobileMenuOpen.set(false)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-              <rect x="4" y="16" width="16" height="4" rx="1"/>
-            </svg>
-            <span>Sync USB</span>
-          </a>
+          
           @if (auth.isAdmin()) {
-            <a routerLink="/users" routerLinkActive="active" class="nav-link" (click)="mobileMenuOpen.set(false)">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-              </svg>
-              <span>Usuarios</span>
-            </a>
+            <div class="admin-dropdown-container">
+              <button class="nav-link admin-btn" (click)="adminMenuOpen.set(!adminMenuOpen())" [class.active]="isAdminRouteActive()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="3"/>
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                </svg>
+                <span>Admin</span>
+                <svg class="dropdown-chevron" [class.open]="adminMenuOpen()" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="6 9 12 15 18 9"/>
+                </svg>
+              </button>
+              
+              <div class="admin-dropdown-menu" [class.is-open]="adminMenuOpen()">
+                <a routerLink="/desktop-sync" routerLinkActive="active" class="dropdown-item" (click)="closeAdminMenu()">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                    <rect x="4" y="16" width="16" height="4" rx="1"/>
+                  </svg>
+                  <span>Sync USB</span>
+                </a>
+                <a routerLink="/users" routerLinkActive="active" class="dropdown-item" (click)="closeAdminMenu()">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                  </svg>
+                  <span>Usuarios</span>
+                </a>
+              </div>
+            </div>
           }
         </div>
         <div class="nav-user">
@@ -166,6 +185,73 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       background: var(--accent-dim);
     }
 
+    /* Admin Dropdown Styles */
+    .admin-dropdown-container {
+      position: relative;
+    }
+    .admin-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+    }
+    .dropdown-chevron {
+      transition: transform var(--transition-fast);
+      margin-left: 4px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .dropdown-chevron.open {
+      transform: rotate(180deg);
+    }
+    .admin-dropdown-menu {
+      position: absolute;
+      top: calc(100% + 8px);
+      right: 0;
+      background: rgba(26, 26, 26, 0.95);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(20px);
+      border-radius: var(--radius-lg);
+      padding: 6px;
+      min-width: 170px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-10px);
+      transition: all var(--transition-normal) cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: var(--shadow-xl);
+      z-index: 60;
+    }
+    .admin-dropdown-menu.is-open {
+      opacity: 1;
+      visibility: visible;
+      transform: translateY(0);
+    }
+    .dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      color: var(--text-secondary);
+      font-size: var(--font-sm);
+      font-weight: 500;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .dropdown-item:hover {
+      color: var(--text-primary);
+      background: rgba(255,255,255,0.05);
+    }
+    .dropdown-item.active {
+      color: var(--accent);
+      background: var(--accent-dim);
+    }
+
     /* Playlist link — subtle gradient pulse when queue not empty */
     .nav-link-playlist.active { color: var(--accent); }
     .queue-badge {
@@ -241,6 +327,9 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       .nav-link svg {
         width: 24px;
         height: 24px;
+      }
+      .dropdown-chevron {
+        display: none !important;
       }
       .queue-badge {
         position: absolute;
@@ -333,11 +422,61 @@ import { PlaylistService } from '../../../core/services/playlist.service';
         background: rgba(255,255,255,0.05);
       }
       .logout-text { display: inline; }
+
+      /* Mobile Dropdown styling */
+      .admin-dropdown-container {
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+      .admin-dropdown-menu {
+        position: relative;
+        top: 0;
+        right: 0;
+        width: 100%;
+        background: rgba(0, 0, 0, 0.15);
+        border: none;
+        border-radius: var(--radius-md);
+        margin-top: 4px;
+        padding: 4px;
+        box-shadow: none;
+        opacity: 1;
+        visibility: visible;
+        transform: none;
+        display: none;
+      }
+      .admin-dropdown-menu.is-open {
+        display: flex;
+      }
+      .dropdown-item {
+        width: 100%;
+        padding: var(--space-md);
+        font-size: var(--font-md);
+      }
     }
   `,
 })
 export class NavbarComponent {
   mobileMenuOpen = signal(false);
+  adminMenuOpen = signal(false);
+
+  private router = inject(Router);
 
   constructor(public auth: AuthService, public pl: PlaylistService) {}
+
+  isAdminRouteActive(): boolean {
+    return this.router.url.includes('/users') || this.router.url.includes('/desktop-sync');
+  }
+
+  closeAdminMenu(): void {
+    this.adminMenuOpen.set(false);
+    this.mobileMenuOpen.set(false);
+  }
+
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.admin-dropdown-container')) {
+      this.adminMenuOpen.set(false);
+    }
+  }
 }
