@@ -56,6 +56,7 @@ export const appRoutes: Route[] = [
       },
       {
         path: 'desktop-sync',
+        canActivate: [adminGuard],
         loadComponent: () =>
           import('./features/desktop-sync/desktop-sync.component').then(m => m.DesktopSyncComponent),
       },
