@@ -19,6 +19,9 @@ export class User {
 
   @Prop()
   refreshToken: string;
+
+  @Prop({ required: true, enum: ['administrador', 'usuario', 'bloqueado'], default: 'bloqueado' })
+  role: string;
 }
 
 export const UserSchema = SchemaFactory.createForClass(User);
