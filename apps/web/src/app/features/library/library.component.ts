@@ -329,7 +329,16 @@ import { ApiService } from '../../core/services/api.service';
       gap: var(--space-sm); color: #fff; font-size: var(--font-sm); font-weight: 600;
       opacity: 0; transition: opacity var(--transition-normal);
     }
-    .episode-count { font-size: var(--font-xs); color: var(--text-secondary); font-weight: 500; }
+    .episode-count { 
+      font-size: var(--font-xs); 
+      color: #ffffff; 
+      font-weight: 600; 
+      background: rgba(0, 0, 0, 0.7);
+      padding: 2px 8px;
+      border-radius: var(--radius-full);
+      backdrop-filter: blur(4px);
+      display: inline-block;
+    }
     .card-title {
       font-size: var(--font-sm); font-weight: 600; margin-top: var(--space-md);
       display: -webkit-box; -webkit-line-clamp: 2;
