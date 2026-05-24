@@ -9,7 +9,25 @@ permissions:
   contents: write # Needed to create GitHub Releases
 
 jobs:
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run Trivy vulnerability scanner on FS
+        uses: aquasecurity/trivy-action@master
+        with:
+          scan-type: 'fs'
+          scan-ref: '.'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
   build-and-release:
+    needs: security-scan
     runs-on: windows-latest
 
     steps:
