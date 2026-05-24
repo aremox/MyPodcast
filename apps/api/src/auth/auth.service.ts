@@ -21,6 +21,9 @@ export class AuthService {
     if (!isValid) {
       throw new UnauthorizedException('Credenciales inválidas');
     }
+    if (user.role === 'bloqueado') {
+      throw new UnauthorizedException('Tu cuenta está bloqueada o pendiente de aceptación');
+    }
     return user;
   }
 
@@ -34,6 +37,7 @@ export class AuthService {
         email: user.email,
         username: user.username,
         avatarUrl: user.avatarUrl,
+        role: user.role,
       },
     };
   }
@@ -46,6 +50,18 @@ export class AuthService {
 
   async register(email: string, username: string, password: string) {
     const user = await this.usersService.create(email, username, password);
+    if (user.role === 'bloqueado') {
+      return {
+        pending: true,
+        message: 'Registro completado. Tu cuenta está pendiente de aceptación por un administrador.',
+        user: {
+          _id: user._id,
+          email: user.email,
+          username: user.username,
+          role: user.role,
+        },
+      };
+    }
     const tokens = await this.generateTokens(user);
     await this.usersService.updateRefreshToken(user._id.toString(), tokens.refreshToken);
     return {
@@ -54,6 +70,7 @@ export class AuthService {
         _id: user._id,
         email: user.email,
         username: user.username,
+        role: user.role,
       },
     };
   }
@@ -62,6 +79,9 @@ export class AuthService {
     const user = await this.usersService.findByRefreshToken(userId, refreshToken);
     if (!user) {
       throw new UnauthorizedException('Refresh token inválido');
+    }
+    if (user.role === 'bloqueado') {
+      throw new UnauthorizedException('Tu cuenta está bloqueada o pendiente de aceptación');
     }
     const tokens = await this.generateTokens(user);
     await this.usersService.updateRefreshToken(user._id.toString(), tokens.refreshToken);
@@ -73,7 +93,7 @@ export class AuthService {
   }
 
   private async generateTokens(user: UserDocument) {
-    const payload = { sub: user._id, email: user.email };
+    const payload = { sub: user._id, email: user.email, role: user.role };
 
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(payload),

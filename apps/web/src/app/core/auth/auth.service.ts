@@ -7,6 +7,7 @@ interface AuthUser {
   email: string;
   username: string;
   avatarUrl?: string;
+  role: string;
 }
 
 interface AuthState {
@@ -23,6 +24,7 @@ export class AuthService {
   readonly user = computed(() => this.state().user);
   readonly isLoggedIn = computed(() => !!this.state().accessToken);
   readonly token = computed(() => this.state().accessToken);
+  readonly isAdmin = computed(() => this.state().user?.role === 'administrador');
 
   constructor(private http: HttpClient, private router: Router) {}
 

@@ -1,5 +1,6 @@
 import { Route } from '@angular/router';
 import { authGuard } from './core/auth/auth.guard';
+import { adminGuard } from './core/auth/admin.guard';
 
 export const appRoutes: Route[] = [
   {
@@ -57,6 +58,12 @@ export const appRoutes: Route[] = [
         path: 'desktop-sync',
         loadComponent: () =>
           import('./features/desktop-sync/desktop-sync.component').then(m => m.DesktopSyncComponent),
+      },
+      {
+        path: 'users',
+        canActivate: [adminGuard],
+        loadComponent: () =>
+          import('./features/users/users.component').then(m => m.UsersComponent),
       },
     ],
   },
