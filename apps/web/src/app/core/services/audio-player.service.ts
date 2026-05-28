@@ -191,9 +191,13 @@ export class AudioPlayerService {
     this.audio.addEventListener('ended', () => {
       this.isPlaying.set(false);
       this.stopProgressTracking();
+      const completedEp = this.currentEpisode();
       this.markCompleted();
       // Auto-play next episode in playlist
       const next = this.playlist?.next();
+      if (completedEp) {
+        this.playlist?.remove(completedEp._id);
+      }
       if (next) {
         this.play(next);
       }
