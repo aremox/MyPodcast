@@ -3,6 +3,7 @@ import { PlaylistService } from '../../core/services/playlist.service';
 import { AudioPlayerService, PlayerEpisode } from '../../core/services/audio-player.service';
 import { ExportService } from '../../core/services/export.service';
 import { ApiService } from '../../core/services/api.service';
+import { OfflineStorageService } from '../../core/services/offline-storage.service';
 
 @Component({
   selector: 'app-playlist',
@@ -186,6 +187,20 @@ import { ApiService } from '../../core/services/api.service';
                     </div>
                   }
                 </div>
+
+                <!-- Rule 7: Auto-descarga en Navegador -->
+                <div class="rule-card" [class.enabled]="isRuleEnabled('auto_download_browser')">
+                  <div class="rule-main">
+                    <div class="rule-info">
+                      <span class="rule-name">Auto-descarga en Navegador</span>
+                      <span class="rule-desc">Descarga de forma automática todos los episodios de tu cola para poder escucharlos sin conexión en este navegador.</span>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" [checked]="isRuleEnabled('auto_download_browser')" (change)="toggleRule('auto_download_browser')">
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                </div>
               </div>
 
               <div class="filters-footer">
@@ -281,14 +296,21 @@ import { ApiService } from '../../core/services/api.service';
               <div class="ep-info" (click)="playEpisode(episode)">
                 <span class="ep-title">{{ episode.title }}</span>
                 <span class="ep-podcast">{{ episode.podcastTitle }}</span>
-                @if (episodeProgress()[episode._id]; as prog) {
-                  <span class="ep-in-progress">Quedan {{ formatRemaining(episode.durationSeconds, prog.progress) }} de {{ episode.duration }}</span>
-                  <div class="ep-progress-bar">
-                    <div class="ep-progress-fill" [style.width.%]="getProgressPct(episode.durationSeconds, prog.progress)"></div>
-                  </div>
-                } @else if (episode.duration) {
-                  <span class="ep-duration">{{ episode.duration }}</span>
-                }
+                <div class="ep-meta-row">
+                  @if (episodeProgress()[episode._id]; as prog) {
+                    <span class="ep-in-progress">Quedan {{ formatRemaining(episode.durationSeconds, prog.progress) }} de {{ episode.duration }}</span>
+                    <div class="ep-progress-bar">
+                      <div class="ep-progress-fill" [style.width.%]="getProgressPct(episode.durationSeconds, prog.progress)"></div>
+                    </div>
+                  } @else if (episode.duration) {
+                    <span class="ep-duration">{{ episode.duration }}</span>
+                  }
+                  @if (offline.getState(episode._id) === 'downloading') {
+                    <span class="badge-dl downloading">Descargando {{ offline.downloadProgress()[episode._id] || 0 }}%</span>
+                  } @else if (offline.getState(episode._id) === 'downloaded') {
+                    <span class="badge-dl downloaded">✓ Disponible offline</span>
+                  }
+                </div>
               </div>
 
               <!-- Play button -->
@@ -757,10 +779,34 @@ import { ApiService } from '../../core/services/api.service';
     }
     .is-playing .ep-title { color: var(--accent); }
     .ep-podcast { display: block; font-size: var(--font-xs); color: var(--text-muted); margin-top: 2px; }
-    .ep-duration { display: inline-block; font-size: var(--font-xs); color: var(--text-muted); margin-top: 2px; }
-    .ep-in-progress { display: inline-block; font-size: var(--font-xs); color: var(--accent); font-weight: 600; margin-top: 2px; }
-    .ep-progress-bar { height: 2px; background: rgba(255,255,255,0.08); border-radius: 2px; margin-top: 5px; overflow: hidden; }
+    .ep-duration { display: inline-block; font-size: var(--font-xs); color: var(--text-muted); }
+    .ep-in-progress { display: inline-block; font-size: var(--font-xs); color: var(--accent); font-weight: 600; }
+    .ep-progress-bar { height: 2px; background: rgba(255,255,255,0.08); border-radius: 2px; margin-top: 5px; overflow: hidden; width: 100px; }
     .ep-progress-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width 0.3s; }
+    
+    .ep-meta-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      margin-top: 2px;
+      flex-wrap: wrap;
+    }
+    .badge-dl {
+      display: inline-flex;
+      align-items: center;
+      font-size: 10px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: var(--radius-sm);
+    }
+    .badge-dl.downloading {
+      background: rgba(255, 193, 7, 0.1);
+      color: #ffc107;
+    }
+    .badge-dl.downloaded {
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
 
     /* ── Action buttons ── */
     .btn-play-ep, .btn-remove {
@@ -871,6 +917,7 @@ export class PlaylistComponent implements OnInit {
   public player = inject(AudioPlayerService);
   public exportService = inject(ExportService);
   private api = inject(ApiService);
+  public offline = inject(OfflineStorageService);
 
   // Computed properties
   activeRulesCount = computed(() => this.pl.rules().filter(r => r.enabled).length);
