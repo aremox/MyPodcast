@@ -203,12 +203,7 @@ export class PlaylistService {
   // ── Smart Rules Implementation ──────────────────────────────────────────
 
   private loadRules(): SmartRule[] {
-    try {
-      const raw = localStorage.getItem('playlist_smart_rules');
-      if (raw) return JSON.parse(raw);
-    } catch {}
-    
-    return [
+    const templates: SmartRule[] = [
       {
         id: 'prioritize_unplayed',
         name: 'Priorizar no escuchados / Empezados',
@@ -263,6 +258,23 @@ export class PlaylistService {
         type: 'auto_download_browser'
       }
     ];
+
+    try {
+      const raw = localStorage.getItem('playlist_smart_rules');
+      if (raw) {
+        const saved: SmartRule[] = JSON.parse(raw);
+        const merged = [...saved];
+        for (const t of templates) {
+          if (!merged.some(r => r.id === t.id)) {
+            merged.push(t);
+          }
+        }
+        localStorage.setItem('playlist_smart_rules', JSON.stringify(merged));
+        return merged;
+      }
+    } catch {}
+    
+    return templates;
   }
 
   private loadAutoApply(): boolean {
