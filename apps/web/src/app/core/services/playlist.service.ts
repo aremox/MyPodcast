@@ -2,6 +2,7 @@ import { Injectable, signal, computed, inject } from '@angular/core';
 import { PlayerEpisode } from './audio-player.service';
 import { HttpClient } from '@angular/common/http';
 import { ApiService } from './api.service';
+import { OfflineStorageService } from './offline-storage.service';
 
 const STORAGE_KEY = 'playlist_queue';
 
@@ -10,7 +11,7 @@ export interface SmartRule {
   name: string;
   description: string;
   enabled: boolean;
-  type: 'prepend_short' | 'prioritize_unplayed' | 'group_by_podcast' | 'round_robin' | 'sort_by_duration' | 'sort_by_date';
+  type: 'prepend_short' | 'prioritize_unplayed' | 'group_by_podcast' | 'round_robin' | 'sort_by_duration' | 'sort_by_date' | 'auto_download_browser';
   config?: any;
 }
 
@@ -18,6 +19,7 @@ export interface SmartRule {
 export class PlaylistService {
   private http = inject(HttpClient);
   private api = inject(ApiService);
+  private offlineStorage = inject(OfflineStorageService);
   // Using relative path to match the rest of the app's architecture
   private readonly API_URL = '/api/library';
 
@@ -132,8 +134,24 @@ export class PlaylistService {
           console.error('%c[Playlist] Cloud sync ERROR ❌', 'color: #ff0000; font-weight: bold', err);
         }
       });
+
+      // If auto-download rule is enabled, download episodes in queue
+      const autoDownloadRule = this.rules().find(r => r.id === 'auto_download_browser' && r.enabled);
+      if (autoDownloadRule) {
+        this.triggerAutoDownloads();
+      }
     } catch (e) {
       console.error('[Playlist] Local save error:', e);
+    }
+  }
+
+  triggerAutoDownloads(): void {
+    const episodes = this.queue();
+    for (const ep of episodes) {
+      if (this.offlineStorage.getState(ep._id) === 'none') {
+        console.log(`[Playlist] Auto-downloading episode ${ep._id} (${ep.title}) in browser`);
+        this.offlineStorage.download(ep);
+      }
     }
   }
 
@@ -236,6 +254,13 @@ export class PlaylistService {
         enabled: false,
         type: 'sort_by_date',
         config: { order: 'newest_first' }
+      },
+      {
+        id: 'auto_download_browser',
+        name: 'Auto-descarga en Navegador',
+        description: 'Descarga automáticamente todos los episodios de la cola al almacenamiento local del navegador para escucharlos sin conexión.',
+        enabled: false,
+        type: 'auto_download_browser'
       }
     ];
   }
@@ -268,6 +293,13 @@ export class PlaylistService {
       localStorage.setItem('playlist_smart_rules', JSON.stringify(newList));
       return newList;
     });
+
+    if (ruleId === 'auto_download_browser') {
+      const rule = this.rules().find(r => r.id === 'auto_download_browser');
+      if (rule?.enabled) {
+        this.triggerAutoDownloads();
+      }
+    }
 
     if (this.autoApplyRules()) {
       this.applyRulesNow();
