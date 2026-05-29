@@ -323,6 +323,7 @@ export class PodcastDetailComponent implements OnInit {
       imageUrl: episode.imageUrl, duration: episode.duration,
       durationSeconds: episode.durationSeconds, podcastId: this.podcast()?._id,
       podcastTitle: this.podcast()?.title, podcastImageUrl: this.podcast()?.imageUrl,
+      publishedAt: episode.publishedAt,
     };
     this.player.play(ep);
   }
@@ -333,6 +334,7 @@ export class PodcastDetailComponent implements OnInit {
       imageUrl: episode.imageUrl, duration: episode.duration,
       durationSeconds: episode.durationSeconds, podcastId: this.podcast()?._id,
       podcastTitle: this.podcast()?.title, podcastImageUrl: this.podcast()?.imageUrl,
+      publishedAt: episode.publishedAt,
     };
     if (this.pl.isInQueue(episode._id)) {
       this.pl.remove(episode._id);
@@ -351,6 +353,7 @@ export class PodcastDetailComponent implements OnInit {
         imageUrl: episode.imageUrl, duration: episode.duration,
         podcastId: this.podcast()?._id, podcastTitle: this.podcast()?.title,
         podcastImageUrl: this.podcast()?.imageUrl,
+        publishedAt: episode.publishedAt,
       });
     }
   }

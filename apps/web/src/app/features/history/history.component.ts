@@ -62,7 +62,11 @@ export class HistoryComponent implements OnInit {
     const ep = entry.episodeId;
     if (!ep) return;
     const podcast = entry.podcastId;
-    this.player.play({ _id: ep._id, title: ep.title, audioUrl: ep.audioUrl, podcastId: podcast?._id, podcastTitle: podcast?.title, podcastImageUrl: podcast?.imageUrl });
+    this.player.play({ 
+      _id: ep._id, title: ep.title, audioUrl: ep.audioUrl, 
+      podcastId: podcast?._id, podcastTitle: podcast?.title, 
+      podcastImageUrl: podcast?.imageUrl, publishedAt: ep.publishedAt 
+    });
   }
 
   formatDate(dateStr: string | Date | undefined): string {

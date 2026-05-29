@@ -81,6 +81,7 @@ export class FavoritesComponent implements OnInit {
       _id: ep._id, title: ep.title, audioUrl: ep.audioUrl,
       podcastId: ep.podcastId?._id, podcastTitle: ep.podcastId?.title,
       podcastImageUrl: ep.podcastId?.imageUrl,
+      publishedAt: ep.publishedAt,
     };
     this.player.play(playerEp);
   }
