@@ -12,6 +12,9 @@ export class EpisodeDownloaderService {
   private readonly logger = new Logger(EpisodeDownloaderService.name);
   private readonly downloadsDir = path.join(process.cwd(), 'downloads');
   private readonly activeDownloads = new Map<string, Promise<void>>();
+  
+  private isProcessing = false;
+  private queueToDownload: string[] = [];
 
   constructor(
     @InjectModel(Episode.name) private episodeModel: Model<EpisodeDocument>,
@@ -28,7 +31,7 @@ export class EpisodeDownloaderService {
   }
 
   /**
-   * Triggers download for a list of episode IDs in the background.
+   * Triggers download for a list of episode IDs in the background sequentially.
    */
   triggerDownloads(episodeIds: (string | Types.ObjectId)[]) {
     if (!episodeIds || episodeIds.length === 0) return;
@@ -36,10 +39,34 @@ export class EpisodeDownloaderService {
     const uniqueIds = Array.from(new Set(episodeIds.map(id => id.toString())));
     this.logger.log(`[Downloader] Triggered background downloads check for ${uniqueIds.length} episodes`);
     
+    // Add all new IDs to the queue if they are not already there
     for (const id of uniqueIds) {
-      this.downloadEpisode(id).catch(err => {
-        this.logger.error(`[Downloader] Background download failed for episode ${id}: ${err.message}`);
-      });
+      if (!this.queueToDownload.includes(id)) {
+        this.queueToDownload.push(id);
+      }
+    }
+
+    // Process the queue (async, non-blocking)
+    this.processQueue();
+  }
+
+  private async processQueue() {
+    if (this.isProcessing) return;
+    this.isProcessing = true;
+
+    try {
+      while (this.queueToDownload.length > 0) {
+        const nextId = this.queueToDownload.shift();
+        if (nextId) {
+          try {
+            await this.downloadEpisode(nextId);
+          } catch (err) {
+            this.logger.error(`[Downloader] Background download failed for episode ${nextId}: ${err.message}`);
+          }
+        }
+      }
+    } finally {
+      this.isProcessing = false;
     }
   }
 
