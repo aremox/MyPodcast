@@ -14,7 +14,7 @@ services:
 
   # === NestJS API ===
   api:
-    image: ghcr.io/aremox/mypodcast-api:v1.11.12-stable
+    image: ghcr.io/aremox/mypodcast-api:v1.11.13-stable
     container_name: mypodcast-api
     restart: unless-stopped
     environment:
@@ -32,7 +32,7 @@ services:
 
   # === Angular PWA (nginx) ===
   web:
-    image: ghcr.io/aremox/mypodcast-web:v1.11.12-stable
+    image: ghcr.io/aremox/mypodcast-web:v1.11.13-stable
     container_name: mypodcast-web
     restart: unless-stopped
     environment:
