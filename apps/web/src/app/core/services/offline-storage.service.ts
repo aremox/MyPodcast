@@ -30,6 +30,9 @@ export class OfflineStorageService {
   /** Set of currently downloading episode IDs */
   readonly activeDownloads = signal<Set<string>>(new Set());
 
+  /** Set of queued episode IDs waiting to download */
+  readonly queuedDownloads = signal<Set<string>>(new Set());
+
   /** Map of episodeId → downloaded metadata */
   readonly downloadedMap = signal<Record<string, DownloadedEpisode>>({});
 
@@ -43,18 +46,30 @@ export class OfflineStorageService {
     this.downloads().reduce((sum, d) => sum + d.sizeBytes, 0)
   );
 
+  private downloadQueue: {
+    _id: string;
+    title: string;
+    audioUrl: string;
+    imageUrl?: string;
+    duration?: string;
+    podcastId: string;
+    podcastTitle?: string;
+    podcastImageUrl?: string;
+  }[] = [];
+  private isProcessingQueue = false;
+
   constructor(private api: ApiService, private auth: AuthService) {
     this.loadDownloadedMetadata();
   }
 
   /** Check the download state of an episode */
   getState(episodeId: string): DownloadState {
-    if (this.activeDownloads().has(episodeId)) return 'downloading';
+    if (this.activeDownloads().has(episodeId) || this.queuedDownloads().has(episodeId)) return 'downloading';
     if (this.downloadedMap()[episodeId]) return 'downloaded';
     return 'none';
   }
 
-  /** Download an episode's audio to browser cache + save metadata in IndexedDB */
+  /** Enqueue an episode to download sequentially */
   async download(episode: {
     _id: string;
     title: string;
@@ -67,7 +82,50 @@ export class OfflineStorageService {
   }): Promise<void> {
     if (this.getState(episode._id) !== 'none') return;
 
-    // Mark as downloading
+    // Check if already in queue
+    if (this.downloadQueue.some(ep => ep._id === episode._id)) return;
+
+    // Mark as queued/downloading
+    this.queuedDownloads.update(s => { const n = new Set(s); n.add(episode._id); return n; });
+    this.downloadProgress.update(p => ({ ...p, [episode._id]: 0 }));
+
+    // Add to queue
+    this.downloadQueue.push(episode);
+
+    // Trigger queue processor (async, non-blocking)
+    this.processQueue();
+  }
+
+  private async processQueue(): Promise<void> {
+    if (this.isProcessingQueue) return;
+    this.isProcessingQueue = true;
+
+    try {
+      while (this.downloadQueue.length > 0) {
+        const nextEpisode = this.downloadQueue.shift();
+        if (nextEpisode) {
+          // Remove from queuedDownloads just before starting active download
+          this.queuedDownloads.update(s => { const n = new Set(s); n.delete(nextEpisode._id); return n; });
+          await this.executeDownload(nextEpisode);
+        }
+      }
+    } finally {
+      this.isProcessingQueue = false;
+    }
+  }
+
+  /** Actual execution of a single episode download */
+  private async executeDownload(episode: {
+    _id: string;
+    title: string;
+    audioUrl: string;
+    imageUrl?: string;
+    duration?: string;
+    podcastId: string;
+    podcastTitle?: string;
+    podcastImageUrl?: string;
+  }): Promise<void> {
+    // Mark as active downloading
     this.activeDownloads.update(s => { const n = new Set(s); n.add(episode._id); return n; });
     this.downloadProgress.update(p => ({ ...p, [episode._id]: 0 }));
 
@@ -143,8 +201,13 @@ export class OfflineStorageService {
     }
   }
 
-  /** Remove a downloaded episode from cache and IndexedDB */
+  /** Remove a downloaded episode from cache and IndexedDB, or from the pending queue */
   async remove(episodeId: string): Promise<void> {
+    // Remove from queue if it is pending
+    this.downloadQueue = this.downloadQueue.filter(ep => ep._id !== episodeId);
+    this.queuedDownloads.update(s => { const n = new Set(s); n.delete(episodeId); return n; });
+    this.downloadProgress.update(p => { const n = { ...p }; delete n[episodeId]; return n; });
+
     // Remove from Cache API
     try {
       const audioUrl = this.api.getAudioProxyUrl(episodeId);
@@ -163,10 +226,15 @@ export class OfflineStorageService {
     });
   }
 
-  /** Clear all downloaded episodes */
+  /** Clear all downloaded episodes and pending downloads */
   async clearAll(): Promise<void> {
+    this.downloadQueue = [];
+    this.queuedDownloads.set(new Set());
+    this.downloadProgress.set({});
     try {
-      await caches.delete(AUDIO_CACHE_NAME);
+      await caches.open(AUDIO_CACHE_NAME).then(cache => cache.keys().then(keys => {
+        return Promise.all(keys.map(k => cache.delete(k)));
+      }));
     } catch {}
     await this.clearAllMetadata();
     this.downloadedMap.set({});
