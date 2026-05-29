@@ -17,7 +17,7 @@ export interface DownloadedEpisode {
 
 export type DownloadState = 'none' | 'downloading' | 'downloaded';
 
-const AUDIO_CACHE_NAME = 'mypodcast-audio-v1';
+const AUDIO_CACHE_NAME = 'mypodcast-audio-v2';
 const DB_NAME = 'mypodcast-offline';
 const DB_VERSION = 1;
 const STORE_NAME = 'downloaded-episodes';
