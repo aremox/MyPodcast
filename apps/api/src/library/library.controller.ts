@@ -179,6 +179,13 @@ export class LibraryController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Delete('sync-config/device')
+  async unlinkDevice(@Request() req: any) {
+    const config = await this.libraryService.unlinkDevice(req.user.userId);
+    return { success: true, data: config };
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Post('queue')
   async updateQueue(@Request() req: any, @Body() body: { episodeIds: string[] }) {
     this.logger.log(`[QueueSync] DEBUG - User: ${JSON.stringify(req.user)}`);

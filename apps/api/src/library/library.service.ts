@@ -722,6 +722,14 @@ export class LibraryService implements OnModuleInit {
     return this.updateSyncConfig(userId, { targetUsbSerial, targetFolder });
   }
 
+  async unlinkDevice(userId: string) {
+    return this.syncConfigModel.findOneAndUpdate(
+      { userId: new Types.ObjectId(userId) },
+      { $unset: { targetUsbSerial: "", targetFolder: "" } },
+      { new: true }
+    ).exec();
+  }
+
   async updateQueue(userId: string, episodeIds: string[]) {
     this.logger.log(`[Queue] Updating for user ${userId}. Received ${episodeIds?.length || 0} IDs`);
     if (episodeIds && episodeIds.length > 0) {
