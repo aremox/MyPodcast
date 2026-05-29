@@ -40,11 +40,11 @@ import { AudioPlayerService } from '../../core/services/audio-player.service';
           <div class="list">
             @for (ep of offline.localDownloads(); track ep._id) {
               <div class="item" (click)="play(ep)">
-                <img [src]="ep.podcastImageUrl || ''" class="thumb" />
+                <img [src]="ep.podcastImageUrl || ep.imageUrl || ''" class="thumb" />
                 <div class="info">
                   <span class="title">{{ ep.title }}</span>
                   <div class="meta">
-                    <span>{{ ep.podcastTitle }}</span>
+                    <span>{{ ep.podcastTitle || 'Podcast' }}</span>
                     <span>·</span>
                     <span>{{ offline.formatSize(ep.sizeBytes) }}</span>
                   </div>
@@ -75,11 +75,11 @@ import { AudioPlayerService } from '../../core/services/audio-player.service';
           <div class="list">
             @for (ep of offline.serverDownloads(); track ep._id) {
               <div class="item item-server" (click)="play(ep)">
-                <img [src]="ep.podcastImageUrl || ''" class="thumb" />
+                <img [src]="ep.podcastImageUrl || ep.imageUrl || ''" class="thumb" />
                 <div class="info">
                   <span class="title">{{ ep.title }}</span>
                   <div class="meta">
-                    <span>{{ ep.podcastTitle }}</span>
+                    <span>{{ ep.podcastTitle || 'Podcast' }}</span>
                     <span>·</span>
                     <span class="syncing-label">
                       <span class="syncing-dot"></span>
