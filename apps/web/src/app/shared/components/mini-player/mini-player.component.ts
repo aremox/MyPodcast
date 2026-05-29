@@ -53,7 +53,12 @@ import { PlaylistService } from '../../../core/services/playlist.service';
           <!-- Episode info -->
           <div class="expanded-info">
             <span class="expanded-title">{{ episode.title }}</span>
-            <span class="expanded-podcast">{{ episode.podcastTitle }}</span>
+            <span class="expanded-podcast">
+              {{ episode.podcastTitle }}
+              @if (episode.publishedAt) {
+                · {{ formatDate(episode.publishedAt) }}
+              }
+            </span>
           </div>
 
           <!-- Waveform progress -->
@@ -161,7 +166,12 @@ import { PlaylistService } from '../../../core/services/playlist.service';
             />
             <div class="episode-text">
               <span class="episode-title">{{ episode.title }}</span>
-              <span class="podcast-title">{{ episode.podcastTitle }}</span>
+              <span class="podcast-title">
+                {{ episode.podcastTitle }}
+                @if (episode.publishedAt) {
+                  · {{ formatDate(episode.publishedAt) }}
+                }
+              </span>
             </div>
           </button>
 
@@ -878,4 +888,10 @@ export class MiniPlayerComponent {
 
   @HostListener('document:click')
   onDocumentClick(): void { this.showSpeedMenu.set(false); }
+
+  formatDate(dateStr: string | Date | undefined): string {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
 }

@@ -26,7 +26,12 @@ import { AudioPlayerService, PlayerEpisode } from '../../core/services/audio-pla
               <img [src]="fav.episodeId?.podcastId?.imageUrl || ''" class="thumb" />
               <div class="info">
                 <span class="title">{{ fav.episodeId?.title }}</span>
-                <span class="sub">{{ fav.episodeId?.podcastId?.title }}</span>
+                <span class="sub">
+                  {{ fav.episodeId?.podcastId?.title }}
+                  @if (fav.episodeId?.publishedAt) {
+                    · {{ formatDate(fav.episodeId?.publishedAt) }}
+                  }
+                </span>
               </div>
               <button class="btn-remove" (click)="remove(fav.episodeId?._id); $event.stopPropagation()">✕</button>
             </div>
@@ -48,7 +53,7 @@ import { AudioPlayerService, PlayerEpisode } from '../../core/services/audio-pla
     .thumb { width: 48px; height: 48px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
     .info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .title { font-weight: 500; font-size: var(--font-md); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .sub { font-size: var(--font-xs); color: var(--text-muted); }
+    .sub { font-size: var(--font-xs); color: var(--text-muted); display: flex; gap: 4px; align-items: center; }
     .btn-remove { color: var(--text-muted); font-size: var(--font-lg); min-width: var(--touch-min); min-height: var(--touch-min); display: flex; align-items: center; justify-content: center; border-radius: var(--radius-full); }
     .btn-remove:hover { color: var(--error); background: rgba(239,68,68,0.1); }
     .empty { text-align: center; padding: var(--space-3xl); color: var(--text-muted); }
@@ -84,5 +89,11 @@ export class FavoritesComponent implements OnInit {
     if (!episodeId) return;
     await this.api.removeFavorite(episodeId);
     this.favorites.update(fs => fs.filter(f => f.episodeId?._id !== episodeId));
+  }
+
+  formatDate(dateStr: string | Date | undefined): string {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 }

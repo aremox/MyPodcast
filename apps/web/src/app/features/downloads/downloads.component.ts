@@ -46,6 +46,10 @@ import { AudioPlayerService } from '../../core/services/audio-player.service';
                   <div class="meta">
                     <span>{{ ep.podcastTitle || 'Podcast' }}</span>
                     <span>·</span>
+                    @if (ep.publishedAt) {
+                      <span>{{ formatDate(ep.publishedAt) }}</span>
+                      <span>·</span>
+                    }
                     <span>{{ offline.formatSize(ep.sizeBytes) }}</span>
                   </div>
                 </div>
@@ -81,6 +85,10 @@ import { AudioPlayerService } from '../../core/services/audio-player.service';
                   <div class="meta">
                     <span>{{ ep.podcastTitle || 'Podcast' }}</span>
                     <span>·</span>
+                    @if (ep.publishedAt) {
+                      <span>{{ formatDate(ep.publishedAt) }}</span>
+                      <span>·</span>
+                    }
                     <span class="syncing-label">
                       <span class="syncing-dot"></span>
                       Disponible en servidor
@@ -116,7 +124,7 @@ import { AudioPlayerService } from '../../core/services/audio-player.service';
     .thumb { width: 48px; height: 48px; border-radius: var(--radius-sm); object-fit: cover; flex-shrink: 0; }
     .info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .meta { display: flex; gap: var(--space-sm); font-size: var(--font-xs); color: var(--text-muted); margin-top: 2px; align-items: center; }
+    .meta { display: flex; gap: var(--space-sm); font-size: var(--font-xs); color: var(--text-muted); margin-top: 2px; align-items: center; flex-wrap: wrap; }
     .badges { display: flex; gap: 4px; flex-shrink: 0; }
     .badge { display: flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: var(--radius-full); }
     .badge-local { background: rgba(34, 197, 94, 0.15); color: #22c55e; }
@@ -149,5 +157,11 @@ export class DownloadsComponent {
 
   clearAll() {
     this.offline.clearAll();
+  }
+
+  formatDate(dateStr: string | Date | undefined): string {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 }

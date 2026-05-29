@@ -22,7 +22,12 @@ import { AudioPlayerService, PlayerEpisode } from '../../core/services/audio-pla
               <img [src]="entry.podcastId?.imageUrl || entry.episodeId?.imageUrl || ''" class="thumb" [alt]="entry.podcastId?.title" />
               <div class="info">
                 <span class="title">{{ entry.episodeId?.title }}</span>
-                <span class="sub">{{ entry.podcastId?.title }}</span>
+                <span class="sub">
+                  {{ entry.podcastId?.title }}
+                  @if (entry.episodeId?.publishedAt) {
+                    · {{ formatDate(entry.episodeId?.publishedAt) }}
+                  }
+                </span>
               </div>
               @if (entry.completed) { <span class="done">✓</span> }
             </div>
@@ -40,7 +45,7 @@ import { AudioPlayerService, PlayerEpisode } from '../../core/services/audio-pla
     .thumb { width: 48px; height: 48px; border-radius: var(--radius-sm); object-fit: cover; }
     .info { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .sub { font-size: var(--font-xs); color: var(--text-muted); }
+    .sub { font-size: var(--font-xs); color: var(--text-muted); display: flex; gap: 4px; align-items: center; }
     .done { color: var(--success); font-weight: 700; }
     .empty { text-align: center; padding: var(--space-3xl); color: var(--text-muted); }
     .empty span { font-size: 3rem; display: block; margin-bottom: var(--space-md); }
@@ -58,5 +63,11 @@ export class HistoryComponent implements OnInit {
     if (!ep) return;
     const podcast = entry.podcastId;
     this.player.play({ _id: ep._id, title: ep.title, audioUrl: ep.audioUrl, podcastId: podcast?._id, podcastTitle: podcast?.title, podcastImageUrl: podcast?.imageUrl });
+  }
+
+  formatDate(dateStr: string | Date | undefined): string {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 }
