@@ -295,7 +295,12 @@ import { OfflineStorageService } from '../../core/services/offline-storage.servi
               <!-- Episode info -->
               <div class="ep-info" (click)="playEpisode(episode)">
                 <span class="ep-title">{{ episode.title }}</span>
-                <span class="ep-podcast">{{ episode.podcastTitle }}</span>
+                <span class="ep-podcast">
+                  {{ episode.podcastTitle }}
+                  @if (episode.publishedAt) {
+                    · {{ formatDate(episode.publishedAt) }}
+                  }
+                </span>
                 <div class="ep-meta-row">
                   @if (episodeProgress()[episode._id]; as prog) {
                     <span class="ep-in-progress">Quedan {{ formatRemaining(episode.durationSeconds, prog.progress) }} de {{ episode.duration }}</span>
@@ -1061,5 +1066,11 @@ export class PlaylistComponent implements OnInit {
     if (h > 0) return `${h}h ${m}min`;
     if (m > 0) return `${m} min`;
     return 'menos de 1 min';
+  }
+
+  formatDate(dateStr: string | Date | undefined): string {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   }
 }
