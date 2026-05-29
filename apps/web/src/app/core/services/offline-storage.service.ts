@@ -13,6 +13,7 @@ export interface DownloadedEpisode {
   podcastId: string;
   podcastTitle?: string;
   podcastImageUrl?: string;
+  publishedAt?: string | Date;
   downloadedAt: number;
   sizeBytes: number;
 }
@@ -74,6 +75,7 @@ export class OfflineStorageService {
     podcastId: string;
     podcastTitle?: string;
     podcastImageUrl?: string;
+    publishedAt?: string | Date;
   }[] = [];
   private isProcessingQueue = false;
 
@@ -102,6 +104,7 @@ export class OfflineStorageService {
     podcastId: string;
     podcastTitle?: string;
     podcastImageUrl?: string;
+    publishedAt?: string | Date;
   }): Promise<void> {
     if (this.getState(episode._id) !== 'none') return;
 
@@ -147,6 +150,7 @@ export class OfflineStorageService {
     podcastId: string;
     podcastTitle?: string;
     podcastImageUrl?: string;
+    publishedAt?: string | Date;
   }): Promise<void> {
     // Mark as active downloading
     this.activeDownloads.update(s => { const n = new Set(s); n.add(episode._id); return n; });
@@ -209,6 +213,7 @@ export class OfflineStorageService {
         podcastId: episode.podcastId,
         podcastTitle: episode.podcastTitle,
         podcastImageUrl: episode.podcastImageUrl,
+        publishedAt: episode.publishedAt,
         downloadedAt: Date.now(),
         sizeBytes: blob.size,
       };
@@ -240,6 +245,7 @@ export class OfflineStorageService {
       podcastId: string;
       podcastTitle?: string;
       podcastImageUrl?: string;
+      publishedAt?: string | Date;
     }[],
     pollIntervalMs = 15000,
     maxAttempts = 80, // 80 * 15s = 20 min max
