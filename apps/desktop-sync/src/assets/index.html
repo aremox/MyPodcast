@@ -546,6 +546,7 @@
         <div class="info-item">
           <span class="info-label">Dispositivo USB</span>
           <span id="usb-name" class="info-value">Escaneando...</span>
+          <button id="btn-auto-usb" class="btn btn-secondary hidden" style="margin-top: 8px; padding: 6px; font-size: 0.75rem;">Detectar Automáticamente</button>
         </div>
         <div class="info-item">
           <span class="info-label">Directorio Destino</span>
@@ -701,8 +702,15 @@
         dashboardView.classList.remove('hidden');
         statusBadge.className = 'status-badge connected';
         statusText.textContent = 'Vinculado';
+        const btnAutoUsb = document.getElementById('btn-auto-usb');
+        if (!config.usbSerial) {
+          usbName.textContent = 'No Configurado';
+          btnAutoUsb.classList.remove('hidden');
+        } else {
+          usbName.textContent = `USB (${config.usbSerial})`;
+          btnAutoUsb.classList.add('hidden');
+        }
         
-        usbName.textContent = config.usbSerial ? `USB (${config.usbSerial})` : 'No Configurado';
         folderName.textContent = config.folder || 'Podcasts';
         intervalTime.textContent = config.syncInterval ? `${config.syncInterval}s` : '900s';
         autostartStatus.textContent = config.autostart ? 'Activado' : 'Desactivado';
@@ -856,6 +864,26 @@
 
     document.getElementById('btn-open-logs').addEventListener('click', () => {
       window.electronAPI.openLogsFolder();
+    });
+
+    document.getElementById('btn-auto-usb').addEventListener('click', async () => {
+      const btn = document.getElementById('btn-auto-usb');
+      btn.disabled = true;
+      btn.textContent = 'Detectando...';
+      try {
+        const res = await window.electronAPI.autoConfigureUsb();
+        if (res.success) {
+          appendLog('[SUCCESS] ' + res.message);
+        } else {
+          appendLog('[ERROR] ' + res.message);
+          alert(res.message);
+        }
+      } catch (err) {
+        appendLog('[ERROR] Error detectando USB: ' + err);
+      } finally {
+        btn.textContent = 'Detectar Automáticamente';
+        btn.disabled = false;
+      }
     });
   </script>
 </body>

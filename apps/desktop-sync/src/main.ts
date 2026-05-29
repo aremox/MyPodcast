@@ -244,6 +244,62 @@ ipcMain.handle('pair-account', async (_, code: string) => {
   }
 });
 
+ipcMain.handle('auto-configure-usb', async () => {
+  log('[Config] Intentando autodetectar y configurar USB...');
+  try {
+    const localConfig = getLocalConfig();
+    if (!localConfig.jwtToken) {
+      log('[Config] Error: El agente no está vinculado a una cuenta.', 'ERROR');
+      return { success: false, message: 'Primero debes vincular tu cuenta.' };
+    }
+
+    const drives = await UsbScanner.getRemovableDrives();
+    if (drives.length === 0) {
+      log('[Config] Auto-detect: No se ha detectado ningún USB conectado.', 'INFO');
+      return { success: false, message: 'No se detectó ningún USB. Conecta uno e inténtalo de nuevo.' };
+    }
+    if (drives.length > 1) {
+      log(`[Config] Auto-detect: Hay ${drives.length} USBs conectados. Imposible autoconfigurar.`, 'INFO');
+      return { success: false, message: 'Hay más de un USB conectado. Deja solo el que quieras usar y vuelve a intentarlo.' };
+    }
+
+    const drive = drives[0];
+    log(`[Config] Auto-detect: USB detectado ${drive.volumeName} (${drive.serialNumber}). Enviando al servidor...`, 'INFO');
+
+    const serverUrl = getServerUrl();
+    const response = await fetch(`${serverUrl}/api/library/sync-config`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${localConfig.jwtToken}`
+      },
+      body: JSON.stringify({
+        targetUsbSerial: drive.serialNumber,
+        targetFolder: 'Podcasts'
+      })
+    });
+
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    saveLocalConfig({
+      targetUsbSerial: drive.serialNumber,
+      targetFolder: 'Podcasts'
+    });
+    
+    sendConfigUpdate();
+    notify('MyPodcast Sync', `USB configurado correctamente: ${drive.volumeName || drive.serialNumber}`);
+    log(`[Config] Auto-detect: USB configurado correctamente.`, 'INFO');
+    
+    // Iniciar sincronización tras configurar
+    setTimeout(fetchConfigAndSync, 1000);
+    
+    return { success: true, message: `USB ${drive.volumeName || drive.serialNumber} configurado con éxito.` };
+  } catch (err) {
+    log(`[Config] Error autoconfigurando USB: ${err}`, 'ERROR');
+    return { success: false, message: 'Error de red al configurar el USB.' };
+  }
+});
+
 ipcMain.on('trigger-sync', () => {
   log('Sincronización manual iniciada por el usuario.');
   fetchConfigAndSync();
