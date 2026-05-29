@@ -38,17 +38,32 @@ export class OfflineStorageService {
   /** Map of episodeId → downloaded metadata */
   readonly downloadedMap = signal<Record<string, DownloadedEpisode>>({});
 
-  /** List of all downloaded episodes (only those fully cached in the browser) */
+  /** List of all episodes registered as downloaded (both locally cached and server-only) */
   readonly downloads = computed(() =>
     Object.values(this.downloadedMap())
-      .filter(d => d.sizeBytes > 0)
       .sort((a, b) => b.downloadedAt - a.downloadedAt)
   );
 
-  /** Total size of all downloaded episodes */
-  readonly totalSize = computed(() =>
-    this.downloads().reduce((sum, d) => sum + d.sizeBytes, 0)
+  /** Only episodes fully cached in the browser (sizeBytes > 0) */
+  readonly localDownloads = computed(() =>
+    this.downloads().filter(d => d.sizeBytes > 0)
   );
+
+  /** Episodes available on server but not yet cached locally in the browser */
+  readonly serverDownloads = computed(() =>
+    this.downloads().filter(d => d.sizeBytes === 0)
+  );
+
+  /** Total size of locally cached downloaded episodes */
+  readonly totalSize = computed(() =>
+    this.localDownloads().reduce((sum, d) => sum + d.sizeBytes, 0)
+  );
+
+  /** Returns true if the episode is physically cached in the browser's Cache Storage */
+  isCachedLocally(episodeId: string): boolean {
+    const meta = this.downloadedMap()[episodeId];
+    return !!meta && meta.sizeBytes > 0;
+  }
 
   private downloadQueue: {
     _id: string;
@@ -73,8 +88,7 @@ export class OfflineStorageService {
   /** Check the download state of an episode */
   getState(episodeId: string): DownloadState {
     if (this.activeDownloads().has(episodeId) || this.queuedDownloads().has(episodeId)) return 'downloading';
-    const downloaded = this.downloadedMap()[episodeId];
-    if (downloaded && downloaded.sizeBytes > 0) return 'downloaded';
+    if (this.downloadedMap()[episodeId]) return 'downloaded';
     return 'none';
   }
 
@@ -259,7 +273,8 @@ export class OfflineStorageService {
             // Trigger actual local browser download now that the server has it cached.
             // Since the server has already downloaded the audio file to its local disk,
             // the browser's download will fetch it instantly and robustly without any 502s!
-            if (this.getState(id) === 'none') {
+            // Use isCachedLocally to only skip if it is truly in the browser's Cache Storage.
+            if (!this.isCachedLocally(id)) {
               console.log(`[OfflineStorage] Episode ${id} is available on server. Triggering local browser download.`);
               this.download(ep);
             }
