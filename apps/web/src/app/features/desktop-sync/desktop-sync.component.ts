@@ -160,6 +160,19 @@ export class DesktopSyncComponent implements OnInit {
     });
   }
 
+  unlinkDevice() {
+    if (confirm('¿Estás seguro de que quieres desvincular este dispositivo? El agente dejará de sincronizar automáticamente.')) {
+      this.saving.set(true);
+      this.http.delete<any>(`${this.API_URL}/sync-config/device`).subscribe({
+        next: (res) => {
+          this.syncConfig.set(res.data);
+          this.saving.set(false);
+        },
+        error: () => this.saving.set(false)
+      });
+    }
+  }
+
   updateInterval(seconds: number) {
     const config = this.syncConfig();
     if (!config || this.saving()) return;
