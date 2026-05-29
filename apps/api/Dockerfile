@@ -27,6 +27,8 @@ RUN npm install --omit=dev --ignore-scripts && npm cache clean --force
 # Create non-root user
 RUN addgroup -g 1001 -S appgroup && \
     adduser -S appuser -u 1001 -G appgroup
+
+RUN mkdir -p /app/downloads && chown appuser:appgroup /app/downloads
 USER appuser
 
 EXPOSE 3000
