@@ -304,7 +304,7 @@ ipcMain.handle('set-speed-limit', async (_, limit: number) => {
   }
 });
 
-async function reportUsbStorageSpace(driveSerialNumber: string, targetFolder: string, jwtToken: string) {
+async function reportUsbStorageSpace(driveSerialNumber: string, targetFolder: string, jwtToken: string, updateLastSync: boolean = false) {
   try {
     const drives = await UsbScanner.getRemovableDrives();
     const drive = drives.find(d => d.serialNumber === driveSerialNumber);
@@ -319,19 +319,26 @@ async function reportUsbStorageSpace(driveSerialNumber: string, targetFolder: st
       log(`[Storage] Reportando estadísticas USB: Total=${(totalSpace/1e9).toFixed(1)}GB, Libre=${(freeSpace/1e9).toFixed(1)}GB, Podcasts=${(podcastsSpace/1e9).toFixed(2)}GB`);
       
       const serverUrl = getServerUrl();
+      
+      const payload: any = {
+        usbTotalSpace: totalSpace,
+        usbFreeSpace: freeSpace,
+        usbPodcastsSpace: podcastsSpace,
+        usbOtherSpace: otherSpace,
+        usbFormat: format
+      };
+
+      if (updateLastSync) {
+        payload.lastSyncAt = new Date().toISOString();
+      }
+
       await fetch(`${serverUrl}/api/library/sync-config`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${jwtToken}`
         },
-        body: JSON.stringify({
-          usbTotalSpace: totalSpace,
-          usbFreeSpace: freeSpace,
-          usbPodcastsSpace: podcastsSpace,
-          usbOtherSpace: otherSpace,
-          usbFormat: format
-        })
+        body: JSON.stringify(payload)
       });
     }
   } catch (err) {
@@ -440,8 +447,8 @@ async function fetchConfigAndSync() {
           }
         }
 
-        // Report final USB space (after downloads)
-        await reportUsbStorageSpace(config.targetUsbSerial, config.targetFolder, localConfig.jwtToken);
+        // Report final USB space (after downloads) and update lastSyncAt
+        await reportUsbStorageSpace(config.targetUsbSerial, config.targetFolder, localConfig.jwtToken, true);
       } else {
         log(`El USB configurado (${config.targetUsbSerial}) no se encuentra conectado.`, 'ERROR');
         sendSyncStatus(false, 'USB no conectado');
