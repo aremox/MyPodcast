@@ -38,9 +38,11 @@ export class OfflineStorageService {
   /** Map of episodeId → downloaded metadata */
   readonly downloadedMap = signal<Record<string, DownloadedEpisode>>({});
 
-  /** List of all downloaded episodes */
+  /** List of all downloaded episodes (only those fully cached in the browser) */
   readonly downloads = computed(() =>
-    Object.values(this.downloadedMap()).sort((a, b) => b.downloadedAt - a.downloadedAt)
+    Object.values(this.downloadedMap())
+      .filter(d => d.sizeBytes > 0)
+      .sort((a, b) => b.downloadedAt - a.downloadedAt)
   );
 
   /** Total size of all downloaded episodes */
@@ -71,7 +73,8 @@ export class OfflineStorageService {
   /** Check the download state of an episode */
   getState(episodeId: string): DownloadState {
     if (this.activeDownloads().has(episodeId) || this.queuedDownloads().has(episodeId)) return 'downloading';
-    if (this.downloadedMap()[episodeId]) return 'downloaded';
+    const downloaded = this.downloadedMap()[episodeId];
+    if (downloaded && downloaded.sizeBytes > 0) return 'downloaded';
     return 'none';
   }
 
@@ -253,24 +256,13 @@ export class OfflineStorageService {
             const ep = episodes.find(e => e._id === id);
             if (!ep) continue;
 
-            // Episode is now available on server — mark locally as downloaded
-            if (this.downloadedMap()[id]) continue; // already marked
-
-            const meta: DownloadedEpisode = {
-              _id: ep._id,
-              title: ep.title,
-              audioUrl: ep.audioUrl,
-              imageUrl: ep.imageUrl,
-              duration: ep.duration,
-              podcastId: ep.podcastId,
-              podcastTitle: ep.podcastTitle,
-              podcastImageUrl: ep.podcastImageUrl,
-              downloadedAt: Date.now(),
-              sizeBytes: 0, // Unknown — file is on server
-            };
-            await this.saveMetadata(meta);
-            this.downloadedMap.update(m => ({ ...m, [id]: meta }));
-            console.log(`[OfflineStorage] Marked episode ${id} as server-downloaded`);
+            // Trigger actual local browser download now that the server has it cached.
+            // Since the server has already downloaded the audio file to its local disk,
+            // the browser's download will fetch it instantly and robustly without any 502s!
+            if (this.getState(id) === 'none') {
+              console.log(`[OfflineStorage] Episode ${id} is available on server. Triggering local browser download.`);
+              this.download(ep);
+            }
           }
         }
       } catch (err) {

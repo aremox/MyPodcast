@@ -61,7 +61,7 @@ self.addEventListener('fetch', (event) => {
 
 async function handleAudioRequest(request) {
   const cache = await caches.open(AUDIO_CACHE_NAME);
-  const cached = await cache.match(request);
+  const cached = await cache.match(request, { ignoreSearch: true });
   if (cached) return cached;
 
   // Not in cache — fetch from network (will carry the JWT from OfflineStorageService)
