@@ -1,6 +1,8 @@
 import { Injectable, signal, computed } from '@angular/core';
 import { ApiService } from './api.service';
 import { AuthService } from '../auth/auth.service';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 
 export interface DownloadedEpisode {
   _id: string;
@@ -58,7 +60,11 @@ export class OfflineStorageService {
   }[] = [];
   private isProcessingQueue = false;
 
-  constructor(private api: ApiService, private auth: AuthService) {
+  constructor(
+    private api: ApiService,
+    private auth: AuthService,
+    private http: HttpClient,
+  ) {
     this.loadDownloadedMetadata();
   }
 
@@ -199,6 +205,80 @@ export class OfflineStorageService {
       this.activeDownloads.update(s => { const n = new Set(s); n.delete(episode._id); return n; });
       this.downloadProgress.update(p => { const n = { ...p }; delete n[episode._id]; return n; });
     }
+  }
+
+  /**
+   * Sync server-side downloaded status for a list of episodes.
+   * For each episode the server has fully downloaded, mark it locally as downloaded
+   * WITHOUT re-downloading through the browser proxy.
+   * Call this after triggering a server-side batch download.
+   */
+  async syncServerDownloads(
+    episodes: {
+      _id: string;
+      title: string;
+      audioUrl: string;
+      imageUrl?: string;
+      duration?: string;
+      podcastId: string;
+      podcastTitle?: string;
+      podcastImageUrl?: string;
+    }[],
+    pollIntervalMs = 15000,
+    maxAttempts = 80, // 80 * 15s = 20 min max
+  ): Promise<void> {
+    if (!episodes || episodes.length === 0) return;
+
+    const episodeIds = episodes.map(e => e._id);
+    const remaining = new Set(episodeIds);
+
+    console.log(`[OfflineStorage] Starting server-sync poll for ${episodeIds.length} episodes`);
+
+    for (let attempt = 0; attempt < maxAttempts && remaining.size > 0; attempt++) {
+      await new Promise(resolve => setTimeout(resolve, pollIntervalMs));
+
+      try {
+        const res = await firstValueFrom(
+          this.http.post<{ success: boolean; downloaded: string[]; pending: string[] }>(
+            '/api/episodes/download-status',
+            { episodeIds: Array.from(remaining) },
+          ),
+        );
+
+        if (res.success && res.downloaded?.length > 0) {
+          for (const id of res.downloaded) {
+            if (!remaining.has(id)) continue;
+            remaining.delete(id);
+
+            const ep = episodes.find(e => e._id === id);
+            if (!ep) continue;
+
+            // Episode is now available on server — mark locally as downloaded
+            if (this.downloadedMap()[id]) continue; // already marked
+
+            const meta: DownloadedEpisode = {
+              _id: ep._id,
+              title: ep.title,
+              audioUrl: ep.audioUrl,
+              imageUrl: ep.imageUrl,
+              duration: ep.duration,
+              podcastId: ep.podcastId,
+              podcastTitle: ep.podcastTitle,
+              podcastImageUrl: ep.podcastImageUrl,
+              downloadedAt: Date.now(),
+              sizeBytes: 0, // Unknown — file is on server
+            };
+            await this.saveMetadata(meta);
+            this.downloadedMap.update(m => ({ ...m, [id]: meta }));
+            console.log(`[OfflineStorage] Marked episode ${id} as server-downloaded`);
+          }
+        }
+      } catch (err) {
+        console.warn('[OfflineStorage] Server sync poll error:', err);
+      }
+    }
+
+    console.log(`[OfflineStorage] Server-sync poll finished. ${remaining.size} episodes still pending.`);
   }
 
   /** Remove a downloaded episode from cache and IndexedDB, or from the pending queue */

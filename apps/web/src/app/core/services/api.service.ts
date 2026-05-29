@@ -145,4 +145,20 @@ export class ApiService {
   getAudioProxyUrl(episodeId: string): string {
     return `${this.BASE_URL}/proxy/audio/${episodeId}`;
   }
+
+  // ===== SERVER-SIDE DOWNLOADS =====
+  downloadBatch(episodeIds: string[]) {
+    return firstValueFrom(
+      this.http.post<{ success: boolean; queued: number }>(`${this.BASE_URL}/episodes/download-batch`, { episodeIds }),
+    );
+  }
+
+  downloadStatus(episodeIds: string[]) {
+    return firstValueFrom(
+      this.http.post<{ success: boolean; downloaded: string[]; pending: string[] }>(
+        `${this.BASE_URL}/episodes/download-status`,
+        { episodeIds },
+      ),
+    );
+  }
 }
