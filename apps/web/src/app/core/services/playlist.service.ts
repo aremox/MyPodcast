@@ -192,11 +192,21 @@ export class PlaylistService {
             return;
           }
 
-          const serverQueue = res.data.queue.map((ep: any) => ({
-            ...ep,
-            imageUrl: ep.imageUrl || ep.image || ep.podcastId?.imageUrl,
-            audioUrl: ep.audioUrl || ep.url
-          }));
+          const serverQueue = res.data.queue.map((ep: any) => {
+            const isPopulated = typeof ep.podcastId === 'object' && ep.podcastId !== null;
+            const podId = isPopulated ? ep.podcastId._id : ep.podcastId;
+            const podcastTitle = ep.podcastTitle || (isPopulated ? ep.podcastId.title : undefined);
+            const podcastImageUrl = ep.podcastImageUrl || (isPopulated ? ep.podcastId.imageUrl : undefined);
+
+            return {
+              ...ep,
+              podcastId: podId,
+              podcastTitle: podcastTitle,
+              podcastImageUrl: podcastImageUrl,
+              imageUrl: ep.imageUrl || ep.image || podcastImageUrl,
+              audioUrl: ep.audioUrl || ep.url
+            };
+          });
 
           const localIds = JSON.stringify(this.queue().map(e => e._id));
           const serverIds = JSON.stringify(serverQueue.map((e: any) => e._id));
