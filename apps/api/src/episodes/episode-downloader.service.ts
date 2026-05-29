@@ -116,31 +116,44 @@ export class EpisodeDownloaderService {
       this.logger.log(`[Downloader] Starting download for episode "${episode.title}" from: ${downloadUrl}`);
       
       const writer = fs.createWriteStream(tempPath);
-      const response = await axios({
-        method: 'get',
-        url: downloadUrl,
-        responseType: 'stream',
-        headers: {
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-          'Referer': 'https://www.ivoox.com/',
-          'Accept': '*/*',
-        },
-        timeout: 60000,
+      
+      // We must attach an error listener IMMEDIATELY.
+      // If we await axios() first and the file system throws an error (e.g., permissions, locks),
+      // the 'error' event will be emitted with no listeners, causing Node.js to crash!
+      const downloadPromise = new Promise<void>((resolve, reject) => {
+        let isDone = false;
+        
+        const cleanup = (err?: any) => {
+          if (isDone) return;
+          isDone = true;
+          writer.close();
+          if (err) reject(err);
+          else resolve();
+        };
+
+        writer.on('finish', () => cleanup());
+        writer.on('error', (err) => cleanup(err));
+
+        // Start Axios download
+        axios({
+          method: 'get',
+          url: downloadUrl,
+          responseType: 'stream',
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+            'Referer': 'https://www.ivoox.com/',
+            'Accept': '*/*',
+          },
+          timeout: 60000,
+        }).then(response => {
+          response.data.on('error', (err: any) => cleanup(err));
+          response.data.pipe(writer);
+        }).catch(err => {
+          cleanup(err);
+        });
       });
 
-      response.data.pipe(writer);
-
-      await new Promise<void>((resolve, reject) => {
-        writer.on('finish', resolve);
-        writer.on('error', (err) => {
-          writer.close();
-          reject(err);
-        });
-        response.data.on('error', (err) => {
-          writer.close();
-          reject(err);
-        });
-      });
+      await downloadPromise;
 
       // Atomically move the file from temp to final destination
       await fs.promises.rename(tempPath, finalPath);
