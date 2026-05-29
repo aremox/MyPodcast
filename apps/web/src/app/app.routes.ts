@@ -30,11 +30,6 @@ export const appRoutes: Route[] = [
           ),
       },
       {
-        path: 'favorites',
-        loadComponent: () =>
-          import('./features/favorites/favorites.component').then(m => m.FavoritesComponent),
-      },
-      {
         path: 'history',
         loadComponent: () =>
           import('./features/history/history.component').then(m => m.HistoryComponent),

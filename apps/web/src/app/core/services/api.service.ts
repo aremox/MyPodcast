@@ -77,22 +77,6 @@ export class ApiService {
     );
   }
 
-  getFavorites() {
-    return firstValueFrom(this.http.get<any>(`${this.BASE_URL}/library/favorites`));
-  }
-
-  addFavorite(episodeId: string) {
-    return firstValueFrom(
-      this.http.post<any>(`${this.BASE_URL}/library/favorites/${episodeId}`, {}),
-    );
-  }
-
-  removeFavorite(episodeId: string) {
-    return firstValueFrom(
-      this.http.delete<any>(`${this.BASE_URL}/library/favorites/${episodeId}`),
-    );
-  }
-
   getHistory(page = 1, limit = 20) {
     const params = new HttpParams()
       .set('page', page.toString())
