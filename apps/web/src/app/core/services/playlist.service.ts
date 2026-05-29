@@ -147,12 +147,24 @@ export class PlaylistService {
 
   triggerAutoDownloads(): void {
     const episodes = this.queue();
-    for (const ep of episodes) {
-      if (this.offlineStorage.getState(ep._id) === 'none') {
-        console.log(`[Playlist] Auto-downloading episode ${ep._id} (${ep.title}) in browser`);
-        this.offlineStorage.download(ep);
-      }
-    }
+    const toDownload = episodes.filter(ep => this.offlineStorage.getState(ep._id) === 'none');
+    if (toDownload.length === 0) return;
+
+    const ids = toDownload.map(ep => ep._id);
+    console.log(`[Playlist] Triggering SERVER-SIDE download for ${ids.length} episodes`, ids);
+
+    // Ask the backend to download episodes sequentially to its local disk.
+    // This avoids streaming large audio files through Nginx (which causes 502s).
+    this.http.post('/api/episodes/download-batch', { episodeIds: ids }).subscribe({
+      next: (res: any) => {
+        console.log(`[Playlist] Server download batch queued: ${res.queued} episodes`);
+        // Begin polling the server to detect when each episode finishes downloading
+        this.offlineStorage.syncServerDownloads(toDownload);
+      },
+      error: (err) => {
+        console.error('[Playlist] Server download-batch failed:', err);
+      },
+    });
   }
 
   private load(): PlayerEpisode[] {
@@ -194,11 +206,34 @@ export class PlaylistService {
             this.queue.set(serverQueue);
             localStorage.setItem(STORAGE_KEY, JSON.stringify(serverQueue));
           }
+
+          // One-shot check: see which episodes are already downloaded on the server
+          // so we can update the local downloaded state without re-downloading.
+          const episodes = this.queue();
+          if (episodes.length > 0) {
+            const ids = episodes.map(e => e._id);
+            this.http.post<{ success: boolean; downloaded: string[] }>(
+              '/api/episodes/download-status',
+              { episodeIds: ids },
+            ).subscribe({
+              next: (statusRes) => {
+                if (statusRes.success && statusRes.downloaded?.length > 0) {
+                  this.offlineStorage.syncServerDownloads(
+                    episodes.filter(ep => statusRes.downloaded.includes(ep._id)),
+                    100, // Quick poll — just one check since these are already done
+                    1,
+                  );
+                }
+              },
+              error: () => {},
+            });
+          }
         }
       },
       error: (err) => console.error('[Playlist] Background sync error:', err)
     });
   }
+
 
   // ── Smart Rules Implementation ──────────────────────────────────────────
 
