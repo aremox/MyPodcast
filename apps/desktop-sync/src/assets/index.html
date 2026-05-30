@@ -545,8 +545,9 @@
       <div class="info-grid">
         <div class="info-item">
           <span class="info-label">Dispositivo USB</span>
-          <span id="usb-name" class="info-value">Escaneando...</span>
-          <button id="btn-auto-usb" class="btn btn-secondary hidden" style="margin-top: 8px; padding: 6px; font-size: 0.75rem;">Detectar Automáticamente</button>
+          <select id="usb-select" class="speed-limit-select" style="width: 100%; margin-top: 4px; padding: 6px;">
+            <option value="">Cargando USBs...</option>
+          </select>
         </div>
         <div class="info-item">
           <span class="info-label">Directorio Destino</span>
@@ -634,9 +635,6 @@
     const serverUrlText = document.getElementById('server-url-text');
     const btnUnpair = document.getElementById('btn-unpair');
     const btnSync = document.getElementById('btn-sync');
-
-    // Config fields
-    const usbName = document.getElementById('usb-name');
     const folderName = document.getElementById('folder-name');
     const intervalTime = document.getElementById('interval-time');
     const autostartStatus = document.getElementById('autostart-status');
@@ -702,14 +700,6 @@
         dashboardView.classList.remove('hidden');
         statusBadge.className = 'status-badge connected';
         statusText.textContent = 'Vinculado';
-        const btnAutoUsb = document.getElementById('btn-auto-usb');
-        if (!config.usbSerial) {
-          usbName.textContent = 'No Configurado';
-          btnAutoUsb.classList.remove('hidden');
-        } else {
-          usbName.textContent = `USB (${config.usbSerial})`;
-          btnAutoUsb.classList.add('hidden');
-        }
         
         folderName.textContent = config.folder || 'Podcasts';
         intervalTime.textContent = config.syncInterval ? `${config.syncInterval}s` : '900s';
@@ -737,12 +727,46 @@
       }
     }
 
+    async function loadUsbDrives(currentConfig) {
+      const select = document.getElementById('usb-select');
+      if (!select) return;
+
+      try {
+        const drives = await window.electronAPI.getUsbDrives();
+        select.innerHTML = '<option value="">-- Seleccionar USB --</option>';
+        
+        drives.forEach(drive => {
+          const option = document.createElement('option');
+          option.value = drive.serialNumber;
+          option.textContent = `${drive.volumeName || 'USB'} (${drive.deviceId}) - ${drive.serialNumber}`;
+          select.appendChild(option);
+        });
+
+        // Set the currently configured USB if it exists
+        if (currentConfig && currentConfig.usbSerial) {
+          // If the configured USB is not currently connected, add it as a disconnected option
+          if (!drives.some(d => d.serialNumber === currentConfig.usbSerial)) {
+            const missingOption = document.createElement('option');
+            missingOption.value = currentConfig.usbSerial;
+            missingOption.textContent = `[Desconectado] USB (${currentConfig.usbSerial})`;
+            select.appendChild(missingOption);
+          }
+          select.value = currentConfig.usbSerial;
+        } else {
+          select.value = '';
+        }
+      } catch (err) {
+        appendLog('[ERROR] Fallo al cargar USBs: ' + err);
+      }
+    }
+
     // Initial Loading
     window.addEventListener('DOMContentLoaded', async () => {
       appendLog('[INFO] Inicializando interfaz del agente...');
       try {
         const config = await window.electronAPI.getConfig();
         updateUI(config);
+        await loadUsbDrives(config);
       } catch (err) {
         appendLog('[ERROR] Error cargando config inicial: ' + err);
       }
@@ -752,8 +776,9 @@
         appendLog(logText);
       });
 
-      window.electronAPI.onConfigUpdated((config) => {
+      window.electronAPI.onConfigUpdated(async (config) => {
         updateUI(config);
+        await loadUsbDrives(config);
       });
 
       window.electronAPI.onSyncStatus((status) => {
@@ -774,6 +799,34 @@
           progressView.classList.add('hidden');
         }
       });
+
+      // Listen to USB selection change
+      const usbSelect = document.getElementById('usb-select');
+      if (usbSelect) {
+        usbSelect.addEventListener('change', async () => {
+          const serial = usbSelect.value;
+          if (!serial) return;
+          
+          usbSelect.disabled = true;
+          appendLog(`[INFO] Configurando USB ${serial}...`);
+          try {
+            const res = await window.electronAPI.configureUsb(serial);
+            if (res.success) {
+              appendLog('[SUCCESS] ' + res.message);
+            } else {
+              appendLog('[ERROR] ' + res.message);
+              alert(res.message);
+              // reload drives to revert selection
+              const config = await window.electronAPI.getConfig();
+              await loadUsbDrives(config);
+            }
+          } catch (err) {
+            appendLog('[ERROR] Error configurando USB: ' + err);
+          } finally {
+            usbSelect.disabled = false;
+          }
+        });
+      }
     });
 
     // Buttons actions
@@ -866,25 +919,6 @@
       window.electronAPI.openLogsFolder();
     });
 
-    document.getElementById('btn-auto-usb').addEventListener('click', async () => {
-      const btn = document.getElementById('btn-auto-usb');
-      btn.disabled = true;
-      btn.textContent = 'Detectando...';
-      try {
-        const res = await window.electronAPI.autoConfigureUsb();
-        if (res.success) {
-          appendLog('[SUCCESS] ' + res.message);
-        } else {
-          appendLog('[ERROR] ' + res.message);
-          alert(res.message);
-        }
-      } catch (err) {
-        appendLog('[ERROR] Error detectando USB: ' + err);
-      } finally {
-        btn.textContent = 'Detectar Automáticamente';
-        btn.disabled = false;
-      }
-    });
   </script>
 </body>
 </html>
