@@ -244,8 +244,18 @@ ipcMain.handle('pair-account', async (_, code: string) => {
   }
 });
 
-ipcMain.handle('auto-configure-usb', async () => {
-  log('[Config] Intentando autodetectar y configurar USB...');
+ipcMain.handle('get-usb-drives', async () => {
+  try {
+    const drives = await UsbScanner.getRemovableDrives();
+    return drives;
+  } catch (err) {
+    log(`[Config] Error obteniendo USBs: ${err}`, 'ERROR');
+    return [];
+  }
+});
+
+ipcMain.handle('configure-usb', async (_, serialNumber: string) => {
+  log(`[Config] Intentando configurar USB con serial ${serialNumber}...`);
   try {
     const localConfig = getLocalConfig();
     if (!localConfig.jwtToken) {
@@ -254,17 +264,13 @@ ipcMain.handle('auto-configure-usb', async () => {
     }
 
     const drives = await UsbScanner.getRemovableDrives();
-    if (drives.length === 0) {
-      log('[Config] Auto-detect: No se ha detectado ningún USB conectado.', 'INFO');
-      return { success: false, message: 'No se detectó ningún USB. Conecta uno e inténtalo de nuevo.' };
-    }
-    if (drives.length > 1) {
-      log(`[Config] Auto-detect: Hay ${drives.length} USBs conectados. Imposible autoconfigurar.`, 'INFO');
-      return { success: false, message: 'Hay más de un USB conectado. Deja solo el que quieras usar y vuelve a intentarlo.' };
+    const drive = drives.find(d => d.serialNumber === serialNumber);
+    if (!drive) {
+      log(`[Config] Error: El USB seleccionado (${serialNumber}) ya no está conectado.`, 'ERROR');
+      return { success: false, message: 'El USB seleccionado no está conectado.' };
     }
 
-    const drive = drives[0];
-    log(`[Config] Auto-detect: USB detectado ${drive.volumeName} (${drive.serialNumber}). Enviando al servidor...`, 'INFO');
+    log(`[Config] USB seleccionado: ${drive.volumeName} (${drive.serialNumber}). Enviando al servidor...`, 'INFO');
 
     const serverUrl = getServerUrl();
     const response = await fetch(`${serverUrl}/api/library/sync-config`, {
@@ -288,14 +294,14 @@ ipcMain.handle('auto-configure-usb', async () => {
     
     sendConfigUpdate();
     notify('MyPodcast Sync', `USB configurado correctamente: ${drive.volumeName || drive.serialNumber}`);
-    log(`[Config] Auto-detect: USB configurado correctamente.`, 'INFO');
+    log(`[Config] USB configurado correctamente.`, 'INFO');
     
     // Iniciar sincronización tras configurar
     setTimeout(fetchConfigAndSync, 1000);
     
     return { success: true, message: `USB ${drive.volumeName || drive.serialNumber} configurado con éxito.` };
   } catch (err) {
-    log(`[Config] Error autoconfigurando USB: ${err}`, 'ERROR');
+    log(`[Config] Error configurando USB: ${err}`, 'ERROR');
     return { success: false, message: 'Error de red al configurar el USB.' };
   }
 });
