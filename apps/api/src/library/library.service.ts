@@ -698,7 +698,9 @@ export class LibraryService implements OnModuleInit {
       usbFreeSpace: config.usbFreeSpace,
       usbPodcastsSpace: config.usbPodcastsSpace,
       usbOtherSpace: config.usbOtherSpace,
-      usbFormat: config.usbFormat
+      usbFormat: config.usbFormat,
+      smartRules: config.smartRules,
+      autoApplyRules: config.autoApplyRules
     };
   }
 
