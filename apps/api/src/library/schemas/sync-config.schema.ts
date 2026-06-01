@@ -1,5 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
-import { Document, Types } from 'mongoose';
+import { Document, Types, SchemaTypes } from 'mongoose';
 
 export type SyncConfigDocument = SyncConfig & Document;
 
@@ -43,6 +43,13 @@ export class SyncConfig {
 
   @Prop()
   usbFormat?: string;
+
+  @Prop({ type: SchemaTypes.Mixed, default: [] })
+  smartRules?: any[];
+
+  @Prop({ type: Boolean, default: false })
+  autoApplyRules?: boolean;
 }
+
 
 export const SyncConfigSchema = SchemaFactory.createForClass(SyncConfig);

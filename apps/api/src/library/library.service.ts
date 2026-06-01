@@ -717,6 +717,8 @@ export class LibraryService implements OnModuleInit {
     if (update.usbPodcastsSpace !== undefined) cleanUpdate.usbPodcastsSpace = update.usbPodcastsSpace;
     if (update.usbOtherSpace !== undefined) cleanUpdate.usbOtherSpace = update.usbOtherSpace;
     if (update.usbFormat !== undefined) cleanUpdate.usbFormat = update.usbFormat;
+    if (update.smartRules !== undefined) cleanUpdate.smartRules = update.smartRules;
+    if (update.autoApplyRules !== undefined) cleanUpdate.autoApplyRules = update.autoApplyRules;
 
     await this.syncConfigModel.findOneAndUpdate(
       { userId: new Types.ObjectId(userId) },

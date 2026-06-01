@@ -185,12 +185,30 @@ export class PlaylistService {
   private syncWithServer(): void {
     this.http.get<{ success: boolean; data: any }>(`${this.API_URL}/sync-config`).subscribe({
       next: (res) => {
-        if (res.success && res.data && res.data.queue) {
-          // If we recently updated locally, ignore server for a few seconds to let cloud update
-          if (Date.now() - this.lastLocalUpdate < 5000) {
-            console.log('[Playlist] Ignoring server sync (recent local update)');
-            return;
+        if (res.success && res.data) {
+          // Sync Rules from Server
+          if (res.data.smartRules && Array.isArray(res.data.smartRules) && res.data.smartRules.length > 0) {
+            const serverRulesRaw = JSON.stringify(res.data.smartRules);
+            const localRulesRaw = JSON.stringify(this.rules());
+            if (serverRulesRaw !== localRulesRaw) {
+              console.log('[Playlist] Updating local rules to match server state');
+              const merged = this.mergeRulesWithTemplates(res.data.smartRules);
+              this.rules.set(merged);
+              localStorage.setItem('playlist_smart_rules', JSON.stringify(merged));
+            }
           }
+          if (res.data.autoApplyRules !== undefined && res.data.autoApplyRules !== this.autoApplyRules()) {
+            console.log('[Playlist] Updating autoApplyRules to match server state:', res.data.autoApplyRules);
+            this.autoApplyRules.set(res.data.autoApplyRules);
+            localStorage.setItem('playlist_auto_apply', String(res.data.autoApplyRules));
+          }
+
+          if (res.data.queue) {
+            // If we recently updated locally, ignore server for a few seconds to let cloud update
+            if (Date.now() - this.lastLocalUpdate < 5000) {
+              console.log('[Playlist] Ignoring server sync (recent local update)');
+              return;
+            }
 
           const serverQueue = res.data.queue.map((ep: any) => {
             const isPopulated = typeof ep.podcastId === 'object' && ep.podcastId !== null;
@@ -239,8 +257,9 @@ export class PlaylistService {
             });
           }
         }
+      }
       },
-      error: (err) => console.error('[Playlist] Background sync error:', err)
+      error: (err: any) => console.error('[Playlist] Background sync error:', err)
     });
   }
 
@@ -248,7 +267,43 @@ export class PlaylistService {
   // ── Smart Rules Implementation ──────────────────────────────────────────
 
   private loadRules(): SmartRule[] {
-    const templates: SmartRule[] = [
+    const templates = this.getRuleTemplates();
+
+    try {
+      const raw = localStorage.getItem('playlist_smart_rules');
+      if (raw) {
+        const saved: SmartRule[] = JSON.parse(raw);
+        const merged = this.mergeRulesWithTemplates(saved, templates);
+        localStorage.setItem('playlist_smart_rules', JSON.stringify(merged));
+        return merged;
+      }
+    } catch {}
+    
+    return templates;
+  }
+
+  private loadAutoApply(): boolean {
+    try {
+      const raw = localStorage.getItem('playlist_auto_apply');
+      return raw === 'true';
+    } catch {
+      return false;
+    }
+  }
+
+  private mergeRulesWithTemplates(saved: SmartRule[], tpls?: SmartRule[]): SmartRule[] {
+    const templates = tpls || this.getRuleTemplates();
+    const merged = [...saved];
+    for (const t of templates) {
+      if (!merged.some(r => r.id === t.id)) {
+        merged.push(t);
+      }
+    }
+    return merged;
+  }
+
+  private getRuleTemplates(): SmartRule[] {
+    return [
       {
         id: 'prioritize_unplayed',
         name: 'Priorizar no escuchados / Empezados',
@@ -303,32 +358,16 @@ export class PlaylistService {
         type: 'auto_download_browser'
       }
     ];
-
-    try {
-      const raw = localStorage.getItem('playlist_smart_rules');
-      if (raw) {
-        const saved: SmartRule[] = JSON.parse(raw);
-        const merged = [...saved];
-        for (const t of templates) {
-          if (!merged.some(r => r.id === t.id)) {
-            merged.push(t);
-          }
-        }
-        localStorage.setItem('playlist_smart_rules', JSON.stringify(merged));
-        return merged;
-      }
-    } catch {}
-    
-    return templates;
   }
 
-  private loadAutoApply(): boolean {
-    try {
-      const raw = localStorage.getItem('playlist_auto_apply');
-      return raw === 'true';
-    } catch {
-      return false;
-    }
+  private saveRulesToCloud(): void {
+    this.http.post(`${this.API_URL}/sync-config`, { 
+      smartRules: this.rules(), 
+      autoApplyRules: this.autoApplyRules() 
+    }).subscribe({
+      next: () => console.log('[Playlist] Rules saved to cloud successfully ✅'),
+      error: (err) => console.error('[Playlist] Error saving rules to cloud ❌', err)
+    });
   }
 
   toggleRule(ruleId: string): void {
@@ -361,6 +400,8 @@ export class PlaylistService {
     if (this.autoApplyRules()) {
       this.applyRulesNow();
     }
+    
+    this.saveRulesToCloud();
   }
 
   updateRuleConfig(ruleId: string, key: string, value: any): void {
@@ -378,6 +419,8 @@ export class PlaylistService {
     if (this.autoApplyRules()) {
       this.applyRulesNow();
     }
+    
+    this.saveRulesToCloud();
   }
 
   toggleAutoApply(): void {
@@ -387,6 +430,7 @@ export class PlaylistService {
     if (newVal) {
       this.applyRulesNow();
     }
+    this.saveRulesToCloud();
   }
 
   async applyRulesNow(): Promise<void> {
