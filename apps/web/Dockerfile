@@ -18,6 +18,9 @@ COPY apps/web/nginx.conf /etc/nginx/conf.d/default.conf
 # Copy built Angular app
 COPY --from=builder /app/dist/apps/web/browser /usr/share/nginx/html
 
+# Upgrade Alpine packages to fix known vulnerabilities (e.g. libxml2 CVE-2026-6732)
+RUN apk upgrade --no-cache
+
 # Non-root user
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
     chmod -R 755 /usr/share/nginx/html
