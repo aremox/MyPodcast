@@ -538,6 +538,21 @@ export class LibraryService implements OnModuleInit {
       .exec();
   }
 
+  async getNowPlaying(userId: string) {
+    const objectId = new Types.ObjectId(userId);
+    return this.playHistoryModel.findOne({
+      $or: [{ userId: objectId }, { userId: userId }],
+      completed: false,
+      progress: { $gt: 10 }, // at least 10 seconds in to avoid false starts
+    })
+      .sort({ lastPlayedAt: -1 })
+      .populate({
+        path: 'episodeId',
+        populate: { path: 'podcastId', select: 'title imageUrl' },
+      })
+      .exec();
+  }
+
   async getPodcastInProgress(userId: string, podcastId: string) {
     const userObj = new Types.ObjectId(userId);
     const podcastObj = new Types.ObjectId(podcastId);
