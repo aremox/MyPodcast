@@ -101,6 +101,10 @@ export class ApiService {
     return firstValueFrom(this.http.get<any>(`${this.BASE_URL}/library/in-progress`));
   }
 
+  getNowPlaying() {
+    return firstValueFrom(this.http.get<any>(`${this.BASE_URL}/library/now-playing`));
+  }
+
   getEpisodeProgress(episodeId: string) {
     return firstValueFrom(
       this.http.get<any>(`${this.BASE_URL}/library/progress/${episodeId}`),

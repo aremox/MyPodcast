@@ -7,6 +7,41 @@ import { PlaylistService } from '../../../core/services/playlist.service';
   selector: 'app-mini-player',
   imports: [RouterLink],
   template: `
+    @if (player.crossDeviceResume(); as resume) {
+      <!-- ══════════════════════════════════════════════
+           CROSS-DEVICE RESUME BANNER
+      ══════════════════════════════════════════════ -->
+      <div class="resume-banner" role="alert" aria-live="polite">
+        <img
+          [src]="resume.episode.podcastImageUrl || resume.episode.imageUrl || '/assets/placeholder.png'"
+          [alt]="resume.episode.podcastTitle || 'Podcast'"
+          class="resume-art"
+        />
+        <div class="resume-info">
+          <span class="resume-label">Continúa escuchando</span>
+          <span class="resume-title">{{ resume.episode.title }}</span>
+          <span class="resume-meta">
+            {{ resume.episode.podcastTitle }}
+            &nbsp;·&nbsp;
+            hace {{ formatRelativeTime(resume.lastPlayedAt) }}
+            &nbsp;·&nbsp;
+            {{ formatTime(resume.progress) }}
+          </span>
+        </div>
+        <div class="resume-actions">
+          <button class="resume-btn-play" (click)="player.resumeFromCrossDevice()" aria-label="Continuar reproduciendo">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            Continuar
+          </button>
+          <button class="resume-btn-dismiss" (click)="player.dismissCrossDeviceResume()" aria-label="Cerrar">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+    }
+
     @if (player.currentEpisode(); as episode) {
 
       <!-- ══════════════════════════════════════════════
@@ -255,6 +290,118 @@ import { PlaylistService } from '../../../core/services/playlist.service';
     }
   `,
   styles: `
+    /* ══════════════════════════════════════════
+       CROSS-DEVICE RESUME BANNER
+    ══════════════════════════════════════════ */
+    .resume-banner {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: calc(var(--z-mini-player) + 5);
+      display: flex;
+      align-items: center;
+      gap: var(--space-md);
+      padding: var(--space-md) var(--space-lg);
+      background: linear-gradient(135deg, rgba(15, 23, 42, 0.97), rgba(10, 10, 20, 0.97));
+      border-top: 1px solid rgba(0, 212, 170, 0.3);
+      backdrop-filter: blur(20px);
+      box-shadow: 0 -4px 32px rgba(0, 212, 170, 0.12), 0 -1px 0 rgba(255,255,255,0.04);
+      animation: resumeSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes resumeSlideUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    .resume-art {
+      width: 52px;
+      height: 52px;
+      border-radius: var(--radius-sm);
+      object-fit: cover;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+    }
+
+    .resume-info {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+      flex: 1;
+      gap: 2px;
+    }
+    .resume-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .resume-title {
+      font-size: var(--font-sm);
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .resume-meta {
+      font-size: var(--font-xs);
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .resume-actions {
+      display: flex;
+      align-items: center;
+      gap: var(--space-sm);
+      flex-shrink: 0;
+    }
+    .resume-btn-play {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 10px 18px;
+      background: var(--accent);
+      color: var(--bg-primary);
+      border-radius: var(--radius-full);
+      font-size: var(--font-sm);
+      font-weight: 700;
+      transition: all var(--transition-fast);
+      white-space: nowrap;
+    }
+    .resume-btn-play:hover {
+      background: var(--accent-hover);
+      transform: scale(1.03);
+      box-shadow: 0 4px 16px rgba(0, 212, 170, 0.4);
+    }
+    .resume-btn-dismiss {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: var(--radius-full);
+      color: var(--text-muted);
+      transition: all var(--transition-fast);
+    }
+    .resume-btn-dismiss:hover {
+      color: var(--text-primary);
+      background: rgba(255,255,255,0.08);
+    }
+
+    @media (max-width: 600px) {
+      .resume-banner {
+        flex-wrap: wrap;
+        gap: var(--space-sm);
+        padding: var(--space-sm) var(--space-md);
+      }
+      .resume-info { flex-basis: calc(100% - 68px); }
+      .resume-actions { width: 100%; justify-content: flex-end; }
+      .resume-btn-play { flex: 1; justify-content: center; }
+    }
     /* ══════════════════════════════════════════
        EXPANDED PLAYER
     ══════════════════════════════════════════ */
@@ -893,5 +1040,21 @@ export class MiniPlayerComponent {
     if (!dateStr) return '';
     const d = new Date(dateStr);
     return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
+  }
+
+  formatTime(seconds: number): string {
+    return this.player.formatTime(seconds);
+  }
+
+  formatRelativeTime(dateStr: string): string {
+    if (!dateStr) return '';
+    const diff = Date.now() - new Date(dateStr).getTime();
+    const minutes = Math.floor(diff / 60000);
+    if (minutes < 1) return 'un momento';
+    if (minutes < 60) return `${minutes} min`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return `${hours} h`;
+    const days = Math.floor(hours / 24);
+    return `${days} día${days !== 1 ? 's' : ''}`;
   }
 }

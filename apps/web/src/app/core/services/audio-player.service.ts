@@ -35,6 +35,23 @@ export class AudioPlayerService {
   readonly speed = signal<PlaybackSpeed>(1);
   readonly isLoading = signal(false);
 
+  /** Cross-device resume: set when cloud has a more recent in-progress episode */
+  readonly crossDeviceResume = signal<{ episode: PlayerEpisode; progress: number; lastPlayedAt: string } | null>(null);
+
+  dismissCrossDeviceResume(): void {
+    this.crossDeviceResume.set(null);
+  }
+
+  resumeFromCrossDevice(): void {
+    const resume = this.crossDeviceResume();
+    if (!resume) return;
+    this.crossDeviceResume.set(null);
+    this.pendingSeek = resume.progress;
+    this.currentEpisode.set(resume.episode);
+    this.isLoading.set(true);
+    this.loadAudioWithAuth(resume.episode._id);
+  }
+
   /** Injected after construction to avoid circular dependency */
   playlist!: PlaylistService;
 
@@ -276,33 +293,80 @@ export class AudioPlayerService {
       this.audio.playbackRate = speed;
     }
 
-    // Restore last playing episode and auto-resume
+    // Restore last playing episode from localStorage (same device)
     const raw = localStorage.getItem('playerState');
-    if (!raw) return;
-    try {
-      const state = JSON.parse(raw) as { episodeId: string; progress: number; episode: PlayerEpisode };
-      if (!state?.episode?._id) return;
+    if (raw) {
+      try {
+        const state = JSON.parse(raw) as { episodeId: string; progress: number; episode: PlayerEpisode };
+        if (state?.episode?._id) {
+          const ep = state.episode;
+          this.currentEpisode.set(ep);
+          this.isLoading.set(true);
+          this.pendingSeek = state.progress || 0;
+          this.loadAudioWithAuth(ep._id);
 
-      const ep = state.episode;
-      this.currentEpisode.set(ep);
-      this.isLoading.set(true);
-      this.pendingSeek = state.progress || 0;
-      this.loadAudioWithAuth(ep._id);
+          // Auto-play after a short delay to let the browser load enough audio
+          setTimeout(async () => {
+            try {
+              await this.audio.play();
+              this.isPlaying.set(true);
+              this.startProgressTracking();
+            } catch (e) {
+              // Autoplay blocked by browser policy — user will see the episode loaded but paused
+              this.isPlaying.set(false);
+              this.isLoading.set(false);
+            }
+          }, 800);
 
-      // Auto-play after a short delay to let the browser load enough audio
-      setTimeout(async () => {
-        try {
-          await this.audio.play();
-          this.isPlaying.set(true);
-          this.startProgressTracking();
-        } catch (e) {
-          // Autoplay blocked by browser policy — user will see the episode loaded but paused
-          this.isPlaying.set(false);
-          this.isLoading.set(false);
+          // Also check cloud in background to see if another device is ahead
+          // (e.g., user continued on mobile → cloud progress > local progress)
+          this.checkCrossDeviceResume(state.episodeId, state.progress);
+          return;
         }
-      }, 800);
+      } catch {
+        localStorage.removeItem('playerState');
+      }
+    }
+
+    // No local state → check cloud for a cross-device resume opportunity
+    this.checkCrossDeviceResume(null, 0);
+  }
+
+  /**
+   * Checks if the cloud has a more recent in-progress episode from another device.
+   * If the cloud episode differs from currentLocalEpisodeId, or has more progress,
+   * sets crossDeviceResume signal so the UI can show a banner.
+   */
+  private async checkCrossDeviceResume(currentLocalEpisodeId: string | null, localProgress: number): Promise<void> {
+    try {
+      const res = await this.api.getNowPlaying();
+      if (!res?.data?.episodeId) return;
+
+      const cloud = res.data;
+
+      // If we already have local state for the same episode and local progress is >= cloud, skip
+      if (currentLocalEpisodeId === cloud.episodeId && localProgress >= cloud.progress - 30) return;
+
+      // Build a PlayerEpisode from the cloud data
+      const episode: PlayerEpisode = {
+        _id: cloud.episodeId,
+        title: cloud.title,
+        audioUrl: cloud.audioUrl,
+        imageUrl: cloud.imageUrl,
+        podcastId: cloud.podcastId,
+        podcastTitle: cloud.podcastTitle,
+        podcastImageUrl: cloud.podcastImageUrl,
+        publishedAt: cloud.publishedAt,
+        durationSeconds: cloud.durationSeconds,
+      };
+
+      this.crossDeviceResume.set({
+        episode,
+        progress: cloud.progress,
+        lastPlayedAt: cloud.lastPlayedAt,
+      });
     } catch {
-      localStorage.removeItem('playerState');
+      // Silently ignore — user is not logged in or network error
     }
   }
 

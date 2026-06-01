@@ -125,6 +125,33 @@ export class LibraryController {
   }
 
   @UseGuards(JwtAuthGuard)
+  @Get('now-playing')
+  async getNowPlaying(@Request() req: any) {
+    const record = await this.libraryService.getNowPlaying(req.user.userId);
+    if (!record) {
+      return { success: true, data: null };
+    }
+    const ep = record.episodeId as any;
+    const podcast = ep?.podcastId as any;
+    return {
+      success: true,
+      data: {
+        episodeId: ep?._id?.toString(),
+        title: ep?.title,
+        audioUrl: ep?.audioUrl,
+        imageUrl: ep?.imageUrl || podcast?.imageUrl,
+        podcastId: podcast?._id?.toString() || ep?.podcastId?.toString(),
+        podcastTitle: podcast?.title,
+        podcastImageUrl: podcast?.imageUrl,
+        publishedAt: ep?.publishedAt,
+        durationSeconds: ep?.durationSeconds,
+        progress: record.progress,
+        lastPlayedAt: record.lastPlayedAt,
+      },
+    };
+  }
+
+  @UseGuards(JwtAuthGuard)
   @Get('progress/:episodeId')
   async getEpisodeProgress(@Request() req: any, @Param('episodeId') episodeId: string) {
     const progress = await this.libraryService.getEpisodeProgress(req.user.userId, episodeId);
