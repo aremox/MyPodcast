@@ -384,6 +384,15 @@ export class PlaylistService {
         if (ruleId === 'round_robin' && r.id === 'group_by_podcast') {
           return { ...r, enabled: false };
         }
+        
+        // Mutual exclusion between base sorting rules: duration vs date
+        if (ruleId === 'sort_by_duration' && r.id === 'sort_by_date') {
+          return { ...r, enabled: false };
+        }
+        if (ruleId === 'sort_by_date' && r.id === 'sort_by_duration') {
+          return { ...r, enabled: false };
+        }
+        
         return r;
       });
       localStorage.setItem('playlist_smart_rules', JSON.stringify(newList));
