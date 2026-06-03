@@ -45,6 +45,10 @@ self.addEventListener('fetch', (event) => {
     if (url.searchParams.has('export')) {
       return;
     }
+    // Tesla browser media player does not play nice with SW media interception (causes seeking to reset to 0)
+    if (typeof navigator !== 'undefined' && /Tesla/i.test(navigator.userAgent)) {
+      return;
+    }
     event.respondWith(handleAudioRequest(event.request));
     return;
   }
@@ -62,7 +66,9 @@ self.addEventListener('fetch', (event) => {
 async function handleAudioRequest(request) {
   const cache = await caches.open(AUDIO_CACHE_NAME);
   const cached = await cache.match(request, { ignoreSearch: true });
-  if (cached) return cached;
+  if (cached) {
+    return handleRangeRequest(request, cached);
+  }
 
   // Not in cache — fetch from network (will carry the JWT from OfflineStorageService)
   try {
@@ -77,6 +83,51 @@ async function handleAudioRequest(request) {
   } catch (err) {
     console.error('SW Audio Fetch error:', err);
     return new Response('Audio no disponible offline', { status: 503 });
+  }
+}
+
+async function handleRangeRequest(request, response) {
+  const rangeHeader = request.headers.get('range');
+  if (!rangeHeader) {
+    return response;
+  }
+
+  try {
+    const blob = await response.blob();
+    const size = blob.size;
+    
+    // Parse range: e.g. "bytes=100-200" or "bytes=100-"
+    const rangeMatch = rangeHeader.match(/bytes=(\d+)-(\d+)?/);
+    if (!rangeMatch) {
+      return response;
+    }
+    
+    const start = parseInt(rangeMatch[1], 10);
+    const end = rangeMatch[2] ? parseInt(rangeMatch[2], 10) : size - 1;
+    
+    if (isNaN(start) || isNaN(end) || start >= size || end >= size) {
+      return new Response('', {
+        status: 416,
+        headers: {
+          'Content-Range': `bytes */${size}`,
+        }
+      });
+    }
+    
+    const slicedBlob = blob.slice(start, end + 1);
+    return new Response(slicedBlob, {
+      status: 206,
+      statusText: 'Partial Content',
+      headers: {
+        'Content-Type': response.headers.get('content-type') || 'audio/mpeg',
+        'Content-Range': `bytes ${start}-${end}/${size}`,
+        'Content-Length': String(slicedBlob.size),
+        'Accept-Ranges': 'bytes',
+      }
+    });
+  } catch (err) {
+    console.error('Error handling SW range request:', err);
+    return response;
   }
 }
 

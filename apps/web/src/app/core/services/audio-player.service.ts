@@ -202,6 +202,12 @@ export class AudioPlayerService {
 
     this.audio.addEventListener('canplay', () => {
       this.isLoading.set(false);
+      // Apply pending seek (race-condition-safe position restore)
+      if (this.pendingSeek !== null && this.pendingSeek > 0) {
+        this.audio.currentTime = this.pendingSeek;
+        this.currentTime.set(this.pendingSeek);
+        this.pendingSeek = null;
+      }
     });
 
     this.audio.addEventListener('waiting', () => {
