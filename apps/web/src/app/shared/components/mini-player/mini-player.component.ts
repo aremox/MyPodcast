@@ -1004,10 +1004,14 @@ export class MiniPlayerComponent {
   onMouseMove(event: MouseEvent): void {
     const el = event.currentTarget as HTMLElement;
     const rect = el.getBoundingClientRect();
+    const canvas = el.querySelector('canvas');
+    const canvasRect = canvas ? canvas.getBoundingClientRect() : rect;
+
     const mouseX = event.clientX - rect.left;
-    // Use the actual drawn waveform width (bars only) to avoid offset drift
-    const drawnWidth = this._waveformDrawnWidth || rect.width;
-    const pct = Math.max(0, Math.min(100, (mouseX / drawnWidth) * 100));
+    const mouseXCanvas = event.clientX - canvasRect.left;
+    const drawnWidth = this._waveformDrawnWidth || canvasRect.width;
+    const pct = Math.max(0, Math.min(100, (mouseXCanvas / drawnWidth) * 100));
+
     this.hoverPercent.set(pct);
     this.showTooltip.set(true);
     const duration = this.player.duration();
@@ -1027,10 +1031,11 @@ export class MiniPlayerComponent {
 
   onWaveformClick(event: MouseEvent): void {
     const el = event.currentTarget as HTMLElement;
-    const rect = el.getBoundingClientRect();
-    const mouseX = event.clientX - rect.left;
-    const drawnWidth = this._waveformDrawnWidth || rect.width;
-    const pct = Math.max(0, Math.min(100, (mouseX / drawnWidth) * 100));
+    const canvas = el.querySelector('canvas');
+    const canvasRect = canvas ? canvas.getBoundingClientRect() : el.getBoundingClientRect();
+    const mouseXCanvas = event.clientX - canvasRect.left;
+    const drawnWidth = this._waveformDrawnWidth || canvasRect.width;
+    const pct = Math.max(0, Math.min(100, (mouseXCanvas / drawnWidth) * 100));
     this.player.seekToPercent(pct);
   }
 
@@ -1040,10 +1045,11 @@ export class MiniPlayerComponent {
     const touch = event.changedTouches?.[0];
     if (!touch) return;
     const el = event.currentTarget as HTMLElement;
-    const rect = el.getBoundingClientRect();
-    const touchX = touch.clientX - rect.left;
-    const drawnWidth = this._waveformDrawnWidth || rect.width;
-    const pct = Math.max(0, Math.min(100, (touchX / drawnWidth) * 100));
+    const canvas = el.querySelector('canvas');
+    const canvasRect = canvas ? canvas.getBoundingClientRect() : el.getBoundingClientRect();
+    const touchXCanvas = touch.clientX - canvasRect.left;
+    const drawnWidth = this._waveformDrawnWidth || canvasRect.width;
+    const pct = Math.max(0, Math.min(100, (touchXCanvas / drawnWidth) * 100));
     this.player.seekToPercent(pct);
   }
 
