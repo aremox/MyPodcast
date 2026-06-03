@@ -700,7 +700,8 @@ export class LibraryService implements OnModuleInit {
       usbOtherSpace: config.usbOtherSpace,
       usbFormat: config.usbFormat,
       smartRules: config.smartRules,
-      autoApplyRules: config.autoApplyRules
+      autoApplyRules: config.autoApplyRules,
+      playbackSpeed: config.playbackSpeed
     };
   }
 
@@ -721,6 +722,7 @@ export class LibraryService implements OnModuleInit {
     if (update.usbFormat !== undefined) cleanUpdate.usbFormat = update.usbFormat;
     if (update.smartRules !== undefined) cleanUpdate.smartRules = update.smartRules;
     if (update.autoApplyRules !== undefined) cleanUpdate.autoApplyRules = update.autoApplyRules;
+    if (update.playbackSpeed !== undefined) cleanUpdate.playbackSpeed = update.playbackSpeed;
 
     await this.syncConfigModel.findOneAndUpdate(
       { userId: new Types.ObjectId(userId) },

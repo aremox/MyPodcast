@@ -161,6 +161,10 @@ export class AudioPlayerService {
     this.speed.set(speed);
     this.audio.playbackRate = speed;
     localStorage.setItem('playerSpeed', String(speed));
+    // Persist speed to user's server config
+    this.api.updateSyncConfig({ playbackSpeed: speed }).catch(err => {
+      console.error('[Player] Error saving playback speed to server:', err);
+    });
   }
 
   setVolume(vol: number): void {
@@ -305,6 +309,19 @@ export class AudioPlayerService {
       this.speed.set(speed);
       this.audio.playbackRate = speed;
     }
+
+    // Sync playback speed from server config in background
+    this.api.getSyncConfig().then(config => {
+      if (config && config.playbackSpeed) {
+        const speed = config.playbackSpeed as PlaybackSpeed;
+        if (this.speed() !== speed) {
+          console.log('[Player] Syncing playback speed from server:', speed);
+          this.speed.set(speed);
+          this.audio.playbackRate = speed;
+          localStorage.setItem('playerSpeed', String(speed));
+        }
+      }
+    }).catch(() => {});
 
     // Restore last playing episode from localStorage (same device)
     const raw = localStorage.getItem('playerState');

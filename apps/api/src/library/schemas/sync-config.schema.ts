@@ -49,6 +49,9 @@ export class SyncConfig {
 
   @Prop({ type: Boolean, default: false })
   autoApplyRules?: boolean;
+
+  @Prop({ type: Number, default: 1 })
+  playbackSpeed?: number;
 }
 
 
