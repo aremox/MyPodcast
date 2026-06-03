@@ -101,6 +101,7 @@ import { PlaylistService } from '../../../core/services/playlist.service';
                (mousemove)="onMouseMove($event)"
                (mouseleave)="onMouseLeave()"
                (click)="onWaveformClick($event)"
+               (touchend)="onWaveformTouch($event)"
                title="Haz clic para saltar">
             <canvas #waveformCanvas class="waveform-canvas"></canvas>
             @if (showTooltip()) {
@@ -183,6 +184,7 @@ import { PlaylistService } from '../../../core/services/playlist.service';
                (mousemove)="onMouseMove($event)"
                (mouseleave)="onMouseLeave()"
                (click)="onWaveformClick($event)"
+               (touchend)="onWaveformTouch($event)"
                title="Haz clic para saltar en la reproducción">
             <canvas #waveformCanvas class="waveform-canvas"></canvas>
             @if (showTooltip()) {
@@ -1019,6 +1021,18 @@ export class MiniPlayerComponent {
     const rect = el.getBoundingClientRect();
     const mouseX = event.clientX - rect.left;
     const pct = Math.max(0, Math.min(100, (mouseX / rect.width) * 100));
+    this.player.seekToPercent(pct);
+  }
+
+  /** Touch-based seek for touchscreen devices (e.g. Tesla browser) */
+  onWaveformTouch(event: TouchEvent): void {
+    event.preventDefault(); // prevent duplicate synthesized click
+    const touch = event.changedTouches?.[0];
+    if (!touch) return;
+    const el = event.currentTarget as HTMLElement;
+    const rect = el.getBoundingClientRect();
+    const touchX = touch.clientX - rect.left;
+    const pct = Math.max(0, Math.min(100, (touchX / rect.width) * 100));
     this.player.seekToPercent(pct);
   }
 

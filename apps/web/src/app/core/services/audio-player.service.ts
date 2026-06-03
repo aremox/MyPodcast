@@ -134,17 +134,24 @@ export class AudioPlayerService {
   }
 
   seek(seconds: number): void {
-    if (!isNaN(this.audio.duration)) {
-      this.audio.currentTime = Math.max(0, Math.min(seconds, this.audio.duration));
-      this.currentTime.set(this.audio.currentTime);
+    // readyState >= 2 means enough data has loaded to set currentTime safely
+    // On some browsers (e.g. Tesla), setting currentTime on an unready audio element resets it to 0
+    if (this.audio.readyState < 2) {
+      console.warn('[Player] seek() called before audio is ready — deferring');
+      this.pendingSeek = seconds;
+      return;
     }
+    this.audio.currentTime = Math.max(0, Math.min(seconds, this.audio.duration));
+    this.currentTime.set(this.audio.currentTime);
   }
 
   seekRelative(delta: number): void {
+    if (this.audio.readyState < 2) return;
     this.seek(this.audio.currentTime + delta);
   }
 
   seekToPercent(percent: number): void {
+    if (this.audio.readyState < 2) return;
     if (!isNaN(this.audio.duration)) {
       this.seek((percent / 100) * this.audio.duration);
     }
