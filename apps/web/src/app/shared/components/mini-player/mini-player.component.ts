@@ -867,6 +867,10 @@ export class MiniPlayerComponent {
   readonly tooltipLeft = signal(0);
   readonly hoverPercent = signal(0);
 
+  // Waveform alignment: actual pixel width occupied by bars (updated on each drawWaveform call)
+  private _waveformDrawnWidth = 0;
+  private _waveformCanvasLeft = 0;
+
   constructor(
     public player: AudioPlayerService,
     public pl: PlaylistService,
@@ -948,6 +952,9 @@ export class MiniPlayerComponent {
       const gap = 2;
       const totalBarWidth = barWidth + gap;
       const maxBars = Math.floor(width / totalBarWidth);
+      // Store the actual drawn width so mouse handlers can use the same reference
+      this._waveformDrawnWidth = maxBars * totalBarWidth;
+      this._waveformCanvasLeft = rect.left;
 
       for (let i = 0; i < maxBars; i++) {
         const idx = Math.floor(i * (barCount / maxBars));
@@ -998,7 +1005,9 @@ export class MiniPlayerComponent {
     const el = event.currentTarget as HTMLElement;
     const rect = el.getBoundingClientRect();
     const mouseX = event.clientX - rect.left;
-    const pct = Math.max(0, Math.min(100, (mouseX / rect.width) * 100));
+    // Use the actual drawn waveform width (bars only) to avoid offset drift
+    const drawnWidth = this._waveformDrawnWidth || rect.width;
+    const pct = Math.max(0, Math.min(100, (mouseX / drawnWidth) * 100));
     this.hoverPercent.set(pct);
     this.showTooltip.set(true);
     const duration = this.player.duration();
@@ -1020,7 +1029,8 @@ export class MiniPlayerComponent {
     const el = event.currentTarget as HTMLElement;
     const rect = el.getBoundingClientRect();
     const mouseX = event.clientX - rect.left;
-    const pct = Math.max(0, Math.min(100, (mouseX / rect.width) * 100));
+    const drawnWidth = this._waveformDrawnWidth || rect.width;
+    const pct = Math.max(0, Math.min(100, (mouseX / drawnWidth) * 100));
     this.player.seekToPercent(pct);
   }
 
@@ -1032,7 +1042,8 @@ export class MiniPlayerComponent {
     const el = event.currentTarget as HTMLElement;
     const rect = el.getBoundingClientRect();
     const touchX = touch.clientX - rect.left;
-    const pct = Math.max(0, Math.min(100, (touchX / rect.width) * 100));
+    const drawnWidth = this._waveformDrawnWidth || rect.width;
+    const pct = Math.max(0, Math.min(100, (touchX / drawnWidth) * 100));
     this.player.seekToPercent(pct);
   }
 
