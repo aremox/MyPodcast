@@ -149,4 +149,12 @@ export class ApiService {
       ),
     );
   }
+
+  getSyncConfig() {
+    return firstValueFrom(this.http.get<any>(`${this.BASE_URL}/sync-config`));
+  }
+
+  updateSyncConfig(payload: any) {
+    return firstValueFrom(this.http.post<any>(`${this.BASE_URL}/sync-config`, payload));
+  }
 }
