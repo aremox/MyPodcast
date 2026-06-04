@@ -45,6 +45,9 @@ Thumbs.db
 .env.production
 .env.development
 
+# Local scratch/debug scripts - may contain credentials, never commit
+scratch/
+
 .nx/cache
 .nx/workspace-data
 .claude/worktrees

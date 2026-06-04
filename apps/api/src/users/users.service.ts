@@ -13,17 +13,13 @@ export class UsersService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    // Seeding migration: promote testuser or any user to a valid role
+    // Seeding migration: ensure all users have a valid role assigned
     try {
       const users = await this.userModel.find({}).exec();
       this.logger.log(`Running user roles migration. Total users: ${users.length}`);
       for (const user of users) {
-        const normalizedEmail = user.email?.toLowerCase().trim();
-        if (user.username === 'testuser' || normalizedEmail === 'arenasmorante@gmail.com') {
-          await this.userModel.findByIdAndUpdate(user._id, { role: 'administrador' }).exec();
-          this.logger.log(`Seeded user ${user.username} (${user.email}) role as administrador`);
-        } else {
-          const role = user.role || 'usuario';
+        if (!user.role || user.role === 'testuser') {
+          const role = 'usuario';
           await this.userModel.findByIdAndUpdate(user._id, { role }).exec();
           this.logger.log(`Seeded user ${user.username} role as ${role}`);
         }
