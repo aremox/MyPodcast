@@ -21,8 +21,8 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - MONGODB_URI=mongodb://mongodb:27017/mypodcast
-      - JWT_SECRET=mypodcast-super-secret-key-2026
-      - JWT_REFRESH_SECRET=mypodcast-refresh-secret-2026
+      - JWT_SECRET=${JWT_SECRET}
+      - JWT_REFRESH_SECRET=${JWT_REFRESH_SECRET}
       - FRONTEND_URL=http://192.168.1.107:84
       - TZ=Europe/Madrid
     depends_on:
