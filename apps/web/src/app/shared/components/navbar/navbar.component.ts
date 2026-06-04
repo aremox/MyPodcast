@@ -2,6 +2,7 @@ import { Component, signal, inject } from '@angular/core';
 import { Router, RouterLink, RouterLinkActive } from '@angular/router';
 import { AuthService } from '../../../core/auth/auth.service';
 import { PlaylistService } from '../../../core/services/playlist.service';
+import { isTeslaBrowser } from '../../../core/services/audio-player.service';
 
 @Component({
   selector: 'app-navbar',
@@ -30,7 +31,7 @@ import { PlaylistService } from '../../../core/services/playlist.service';
           [title]="fullUserAgent"
           (click)="toggleTeslaMode($event)"
         >
-          v1.13.10-stable | {{ teslaStatus }}
+          v1.13.11-stable | {{ teslaStatus }}
         </div>
       </div>
 
@@ -517,7 +518,7 @@ import { PlaylistService } from '../../../core/services/playlist.service';
 export class NavbarComponent {
   mobileMenuOpen = signal(false);
   adminMenuOpen = signal(false);
-  showVersion = signal(false);
+  showVersion = signal(isTeslaBrowser());
 
   private router = inject(Router);
 

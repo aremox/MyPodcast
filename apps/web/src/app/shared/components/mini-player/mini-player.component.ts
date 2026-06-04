@@ -425,7 +425,7 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       margin: 0 auto;
       background: var(--bg-elevated);
       border-radius: var(--radius-xl) var(--radius-xl) 0 0;
-      overflow: hidden;
+      overflow: hidden auto;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -876,11 +876,12 @@ export class MiniPlayerComponent {
     public pl: PlaylistService,
     public router: Router,
   ) {
-    // Redraw waveform whenever progress, buffer or active episode changes
+    // Redraw waveform whenever progress, buffer, active episode or expanded state changes
     effect(() => {
       this.player.currentEpisode();
       this.player.progress();
       this.player.buffered();
+      this.isExpanded(); // Triggers redraw when modal is closed
       requestAnimationFrame(() => { this.drawWaveform(); });
     });
   }
