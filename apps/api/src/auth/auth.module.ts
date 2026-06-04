@@ -16,7 +16,7 @@ import { UsersModule } from '../users/users.module';
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: (configService: ConfigService) => ({
-        secret: configService.get<string>('JWT_SECRET', 'mypodcast-secret-dev'),
+        secret: configService.get<string>('JWT_SECRET') || 'mypodcast-secret-dev',
         signOptions: { expiresIn: '7d' },
       }),
       inject: [ConfigService],
