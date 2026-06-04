@@ -39,7 +39,7 @@ export class ProxyController {
     }
     try {
       await this.jwtService.verifyAsync(token, {
-        secret: this.configService.get<string>('JWT_SECRET') || 'mypodcast-super-secret-key-dev',
+        secret: this.configService.get<string>('JWT_SECRET') || 'mypodcast-secret-dev',
       });
     } catch {
       return res.status(401).json({ error: 'Token inválido o expirado' });

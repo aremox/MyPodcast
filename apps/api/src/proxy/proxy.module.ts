@@ -12,7 +12,7 @@ import { EpisodesModule } from '../episodes/episodes.module';
       imports: [ConfigModule],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
-        secret: config.get<string>('JWT_SECRET') || 'mypodcast-super-secret-key-dev',
+        secret: config.get<string>('JWT_SECRET') || 'mypodcast-secret-dev',
         signOptions: { expiresIn: '15m' },
       }),
     }),

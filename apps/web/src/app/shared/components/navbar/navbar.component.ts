@@ -31,7 +31,7 @@ import { isTeslaBrowser } from '../../../core/services/audio-player.service';
           [title]="fullUserAgent"
           (click)="toggleTeslaMode($event)"
         >
-          v1.13.11-stable | {{ teslaStatus }}
+          v1.13.12-stable | {{ teslaStatus }}
         </div>
       </div>
 
@@ -526,6 +526,11 @@ export class NavbarComponent {
 
   onBrandClick(event: MouseEvent): void {
     this.mobileMenuOpen.set(false);
+    // If it's a Tesla browser, let the logo act as a normal home link
+    // and never hide the version subtext.
+    if (isTeslaBrowser()) {
+      return;
+    }
     // On small/medium screens, toggle the version display instead of navigating
     if (window.innerWidth < 1279) {
       event.preventDefault();

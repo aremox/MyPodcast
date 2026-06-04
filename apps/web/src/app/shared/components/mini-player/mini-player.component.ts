@@ -1,4 +1,4 @@
-import { Component, HostListener, signal, ViewChildren, QueryList, ElementRef, effect } from '@angular/core';
+import { Component, HostListener, signal, ViewChildren, QueryList, ElementRef, effect, AfterViewInit } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { AudioPlayerService, PlaybackSpeed } from '../../../core/services/audio-player.service';
 import { PlaylistService } from '../../../core/services/playlist.service';
@@ -854,7 +854,7 @@ import { PlaylistService } from '../../../core/services/playlist.service';
     }
   `,
 })
-export class MiniPlayerComponent {
+export class MiniPlayerComponent implements AfterViewInit {
   @ViewChildren('waveformCanvas') canvasRefs!: QueryList<ElementRef<HTMLCanvasElement>>;
 
   readonly isExpanded = signal(false);
@@ -884,6 +884,15 @@ export class MiniPlayerComponent {
       this.isExpanded(); // Triggers redraw when modal is closed
       requestAnimationFrame(() => { this.drawWaveform(); });
     });
+  }
+
+  ngAfterViewInit(): void {
+    // Listen to changes in dynamic canvas elements and redraw immediately when they mount
+    this.canvasRefs.changes.subscribe(() => {
+      requestAnimationFrame(() => this.drawWaveform());
+    });
+    // Initial draw
+    requestAnimationFrame(() => this.drawWaveform());
   }
 
   onExpandedBackdropClick(event: MouseEvent): void {
