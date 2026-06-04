@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mypodcast-v4';
+const CACHE_NAME = 'mypodcast-v5';
 const AUDIO_CACHE_NAME = 'mypodcast-audio-v2';
 const MAX_AUDIO_CACHE_ITEMS = 20;
 
