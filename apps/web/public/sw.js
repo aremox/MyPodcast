@@ -42,7 +42,7 @@ self.addEventListener('fetch', (event) => {
   // Offline audio — served from Cache API (downloaded by OfflineStorageService)
   if (url.pathname.startsWith('/api/proxy/audio/')) {
     // Bypass service worker caching for direct USB exports to prevent memory exhaustion or channel closing
-    if (url.searchParams.has('export')) {
+    if (url.searchParams.has('export') || url.searchParams.has('bypass-sw')) {
       return;
     }
     // Tesla browser media player does not play nice with SW media interception (causes seeking to reset to 0)

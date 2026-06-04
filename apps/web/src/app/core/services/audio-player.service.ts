@@ -18,6 +18,14 @@ export interface PlayerEpisode {
 
 export type PlaybackSpeed = 0.5 | 0.75 | 1 | 1.25 | 1.3 | 1.5 | 1.75 | 2;
 
+export function isTeslaBrowser(): boolean {
+  if (typeof navigator === 'undefined') return false;
+  const ua = navigator.userAgent || '';
+  const autoTesla = /Tesla/i.test(ua) || /TeslaBrowser/i.test(ua);
+  const forcedTesla = typeof localStorage !== 'undefined' && localStorage.getItem('forcedTeslaMode') === 'true';
+  return autoTesla || forcedTesla;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AudioPlayerService {
   private audio = new Audio();
@@ -188,7 +196,12 @@ export class AudioPlayerService {
     // This allows the native <audio> element to stream audio with auth
     const proxyUrl = this.api.getAudioProxyUrl(episodeId);
     const token = this.auth.token();
-    const url = token ? `${proxyUrl}?token=${encodeURIComponent(token)}` : proxyUrl;
+    let url = token ? `${proxyUrl}?token=${encodeURIComponent(token)}` : proxyUrl;
+
+    if (isTeslaBrowser()) {
+      url += (url.includes('?') ? '&' : '?') + 'bypass-sw=true';
+    }
+
     this.audio.src = url;
   }
 
