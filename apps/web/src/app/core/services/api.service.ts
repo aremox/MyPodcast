@@ -151,10 +151,10 @@ export class ApiService {
   }
 
   getSyncConfig() {
-    return firstValueFrom(this.http.get<any>(`${this.BASE_URL}/sync-config`));
+    return firstValueFrom(this.http.get<any>(`${this.BASE_URL}/library/sync-config`));
   }
 
   updateSyncConfig(payload: any) {
-    return firstValueFrom(this.http.post<any>(`${this.BASE_URL}/sync-config`, payload));
+    return firstValueFrom(this.http.post<any>(`${this.BASE_URL}/library/sync-config`, payload));
   }
 }

@@ -31,7 +31,7 @@ import { isTeslaBrowser } from '../../../core/services/audio-player.service';
           [title]="fullUserAgent"
           (click)="toggleTeslaMode($event)"
         >
-          v1.13.13-stable | {{ teslaStatus }}
+          v1.13.14-stable | {{ teslaStatus }}
         </div>
       </div>
 
