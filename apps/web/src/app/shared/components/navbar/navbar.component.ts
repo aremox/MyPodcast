@@ -12,8 +12,8 @@ import { PlaylistService } from '../../../core/services/playlist.service';
   template: `
     <nav class="navbar">
       <div class="nav-brand">
-        <a routerLink="/library" class="brand" (click)="mobileMenuOpen.set(false)">
-          <span class="brand-icon">🎧</span>
+        <a routerLink="/library" class="brand" (click)="onBrandClick($event)">
+          <span class="brand-icon" [class.rotate-active]="showVersion()">🎧</span>
           <span class="brand-text">MyPodcast</span>
           <span class="tesla-mode-icon" title="Modo Tesla Activado">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -24,6 +24,14 @@ import { PlaylistService } from '../../../core/services/playlist.service';
             </svg>
           </span>
         </a>
+        <div 
+          class="version-subtext" 
+          [class.is-visible]="showVersion()" 
+          [title]="fullUserAgent"
+          (click)="toggleTeslaMode($event)"
+        >
+          v1.13.8-stable | {{ teslaStatus }}
+        </div>
       </div>
 
       <button class="menu-toggle" (click)="mobileMenuOpen.set(!mobileMenuOpen())" [attr.aria-expanded]="mobileMenuOpen()">
@@ -110,6 +118,60 @@ import { PlaylistService } from '../../../core/services/playlist.service';
     </nav>
   `,
   styles: `
+    .nav-brand {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: center;
+      position: relative;
+    }
+    .brand-icon {
+      font-size: 1.5rem;
+      transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+      display: inline-block;
+    }
+    .brand-icon.rotate-active {
+      transform: rotate(360deg);
+    }
+    .version-subtext {
+      font-size: 9px;
+      font-family: monospace;
+      color: rgba(255, 255, 255, 0.4);
+      cursor: pointer;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 180px;
+      transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      opacity: 1;
+      transform: none;
+      height: auto;
+      margin-top: 2px;
+      user-select: none;
+    }
+    .version-subtext:hover {
+      color: var(--accent);
+    }
+
+    /* On mobile/medium screens (< 1280px), hide by default and show on click with 3D rotation flip */
+    @media (max-width: 1279px) {
+      .version-subtext {
+        opacity: 0;
+        transform: translateY(-6px) rotateX(-90deg);
+        height: 0;
+        margin-top: 0;
+        pointer-events: none;
+        transform-origin: top center;
+      }
+      .version-subtext.is-visible {
+        opacity: 1;
+        transform: translateY(0) rotateX(0);
+        height: 12px;
+        margin-top: 2px;
+        pointer-events: auto;
+      }
+    }
+
     .navbar {
       display: flex;
       align-items: center;
@@ -133,7 +195,6 @@ import { PlaylistService } from '../../../core/services/playlist.service';
       font-size: var(--font-xl);
       flex-shrink: 0;
     }
-    .brand-icon { font-size: 1.5rem; }
     .brand:hover { color: var(--accent); }
 
     .nav-content {
@@ -456,10 +517,53 @@ import { PlaylistService } from '../../../core/services/playlist.service';
 export class NavbarComponent {
   mobileMenuOpen = signal(false);
   adminMenuOpen = signal(false);
+  showVersion = signal(false);
 
   private router = inject(Router);
 
   constructor(public auth: AuthService, public pl: PlaylistService) {}
+
+  onBrandClick(event: MouseEvent): void {
+    this.mobileMenuOpen.set(false);
+    // On small/medium screens, toggle the version display instead of navigating
+    if (window.innerWidth < 1279) {
+      event.preventDefault();
+      this.showVersion.update(v => !v);
+    } else {
+      // Toggle it but allow navigation
+      this.showVersion.update(v => !v);
+    }
+  }
+
+  get teslaStatus(): string {
+    if (typeof navigator === 'undefined') return 'Tesla: N/D';
+    const ua = navigator.userAgent || '';
+    const autoTesla = /Tesla/i.test(ua) || /TeslaBrowser/i.test(ua);
+    const forcedTesla = typeof localStorage !== 'undefined' && localStorage.getItem('forcedTeslaMode') === 'true';
+    if (forcedTesla) {
+      return 'Tesla: SÍ (Forzado)';
+    }
+    return `Tesla: ${autoTesla ? 'SÍ (Auto)' : 'NO'}`;
+  }
+
+  get fullUserAgent(): string {
+    if (typeof navigator === 'undefined') return 'Entorno sin navigator';
+    return `${navigator.userAgent} (Haz clic para alternar forzado de Modo Tesla)`;
+  }
+
+  toggleTeslaMode(event: MouseEvent): void {
+    event.stopPropagation();
+    if (typeof localStorage === 'undefined') return;
+    const current = localStorage.getItem('forcedTeslaMode') === 'true';
+    if (current) {
+      localStorage.removeItem('forcedTeslaMode');
+      alert('Modo Tesla forzado desactivado. Recargando...');
+    } else {
+      localStorage.setItem('forcedTeslaMode', 'true');
+      alert('Modo Tesla forzado activado. Recargando para aplicar cambios...');
+    }
+    window.location.reload();
+  }
 
   isAdminRouteActive(): boolean {
     return this.router.url.includes('/users') || this.router.url.includes('/desktop-sync');
