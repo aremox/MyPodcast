@@ -31,7 +31,7 @@ import { isTeslaBrowser } from '../../../core/services/audio-player.service';
           [title]="fullUserAgent"
           (click)="toggleTeslaMode($event)"
         >
-          v1.13.12-stable | {{ teslaStatus }}
+          v1.13.13-stable | {{ teslaStatus }}
         </div>
       </div>
 
@@ -117,6 +117,26 @@ import { isTeslaBrowser } from '../../../core/services/audio-player.service';
         </div>
       </div>
     </nav>
+
+    @if (showTeslaModal()) {
+      <div class="tesla-modal-overlay" (click)="closeTeslaModal($event)">
+        <div class="tesla-modal-content" (click)="$event.stopPropagation()">
+          <h3 class="tesla-modal-title">¿Alternar Modo Tesla?</h3>
+          <p class="tesla-modal-text">
+            @if (isForcedTeslaActive()) {
+              ¿Estás seguro de que quieres <strong>desactivar</strong> el Modo Tesla forzado?
+            } @else {
+              ¿Estás seguro de que quieres <strong>activar</strong> el Modo Tesla forzado? Esto forzará el bypass del Service Worker para streaming de audio.
+            }
+          </p>
+          <p class="tesla-modal-warning">La página se recargará para aplicar los cambios.</p>
+          <div class="tesla-modal-actions">
+            <button class="tesla-btn tesla-btn-cancel" (click)="showTeslaModal.set(false)">Cancelar</button>
+            <button class="tesla-btn tesla-btn-confirm" (click)="confirmTeslaMode()">Aceptar</button>
+          </div>
+        </div>
+      </div>
+    }
   `,
   styles: `
     .nav-brand {
@@ -513,12 +533,95 @@ import { isTeslaBrowser } from '../../../core/services/audio-player.service';
         font-size: var(--font-md);
       }
     }
+
+    /* Tesla Confirmation Modal */
+    .tesla-modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      animation: modalFadeIn 0.25s ease-out;
+    }
+    .tesla-modal-content {
+      background: var(--bg-elevated, #1c1c1e);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-lg, 12px);
+      padding: var(--space-xl, 24px);
+      width: 90%;
+      max-width: 400px;
+      box-shadow: var(--shadow-xl), 0 0 30px rgba(0, 212, 170, 0.15);
+      animation: modalScaleIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    .tesla-modal-title {
+      font-size: var(--font-lg, 18px);
+      font-weight: 700;
+      color: var(--text-primary, #ffffff);
+      margin-top: 0;
+      margin-bottom: var(--space-md, 12px);
+    }
+    .tesla-modal-text {
+      font-size: var(--font-sm, 14px);
+      color: var(--text-secondary, #ebebf5);
+      line-height: 1.5;
+      margin-bottom: var(--space-md, 12px);
+    }
+    .tesla-modal-warning {
+      font-size: var(--font-xs, 12px);
+      color: var(--accent, #00d4aa);
+      font-weight: 600;
+      margin-bottom: var(--space-xl, 20px);
+    }
+    .tesla-modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--space-md, 12px);
+    }
+    .tesla-btn {
+      padding: 10px 20px;
+      border-radius: var(--radius-full, 9999px);
+      font-size: var(--font-sm, 14px);
+      font-weight: 700;
+      cursor: pointer;
+      transition: all var(--transition-fast, 0.2s);
+      border: none;
+    }
+    .tesla-btn-cancel {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-secondary, #ebebf5);
+    }
+    .tesla-btn-cancel:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--text-primary, #ffffff);
+    }
+    .tesla-btn-confirm {
+      background: var(--accent, #00d4aa);
+      color: var(--bg-primary, #121214);
+      box-shadow: 0 4px 12px rgba(0, 212, 170, 0.2);
+    }
+    .tesla-btn-confirm:hover {
+      background: var(--accent-hover, #00bfa0);
+      transform: scale(1.02);
+      box-shadow: 0 4px 16px rgba(0, 212, 170, 0.3);
+    }
+    @keyframes modalFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes modalScaleIn {
+      from { transform: scale(0.95); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
   `,
 })
 export class NavbarComponent {
   mobileMenuOpen = signal(false);
   adminMenuOpen = signal(false);
   showVersion = signal(isTeslaBrowser());
+  showTeslaModal = signal(false);
 
   private router = inject(Router);
 
@@ -559,16 +662,29 @@ export class NavbarComponent {
 
   toggleTeslaMode(event: MouseEvent): void {
     event.stopPropagation();
+    this.showTeslaModal.set(true);
+  }
+
+  isForcedTeslaActive(): boolean {
+    if (typeof localStorage === 'undefined') return false;
+    return localStorage.getItem('forcedTeslaMode') === 'true';
+  }
+
+  confirmTeslaMode(): void {
     if (typeof localStorage === 'undefined') return;
-    const current = localStorage.getItem('forcedTeslaMode') === 'true';
+    const current = this.isForcedTeslaActive();
     if (current) {
       localStorage.removeItem('forcedTeslaMode');
-      alert('Modo Tesla forzado desactivado. Recargando...');
     } else {
       localStorage.setItem('forcedTeslaMode', 'true');
-      alert('Modo Tesla forzado activado. Recargando para aplicar cambios...');
     }
+    this.showTeslaModal.set(false);
     window.location.reload();
+  }
+
+  closeTeslaModal(event: MouseEvent): void {
+    event.stopPropagation();
+    this.showTeslaModal.set(false);
   }
 
   isAdminRouteActive(): boolean {
