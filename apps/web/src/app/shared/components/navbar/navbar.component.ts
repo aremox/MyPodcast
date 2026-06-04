@@ -30,7 +30,7 @@ import { PlaylistService } from '../../../core/services/playlist.service';
           [title]="fullUserAgent"
           (click)="toggleTeslaMode($event)"
         >
-          v1.13.9-stable | {{ teslaStatus }}
+          v1.13.10-stable | {{ teslaStatus }}
         </div>
       </div>
 
