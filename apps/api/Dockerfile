@@ -1,5 +1,5 @@
 # === BUILD STAGE ===
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 WORKDIR /app
 
 COPY package.json package-lock.json ./
@@ -13,6 +13,9 @@ RUN npx nx build api --configuration=production && \
 # === PRODUCTION STAGE ===
 FROM node:22-alpine AS runner
 WORKDIR /app
+
+# Upgrade all Alpine packages to fix known OS-level vulnerabilities
+RUN apk upgrade --no-cache
 
 # Update global npm to fix vulnerabilities in bundled npm dependencies (like picomatch)
 RUN npm install -g npm@latest
