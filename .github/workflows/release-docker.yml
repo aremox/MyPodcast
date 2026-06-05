@@ -40,7 +40,7 @@ jobs:
           tags: ${{ env.IMAGE_NAME_API }}:${{ github.ref_name }}
 
       - name: Run Trivy vulnerability scanner on API
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: '${{ env.IMAGE_NAME_API }}:${{ github.ref_name }}'
           format: 'table'
@@ -58,7 +58,7 @@ jobs:
           tags: ${{ env.IMAGE_NAME_WEB }}:${{ github.ref_name }}
 
       - name: Run Trivy vulnerability scanner on Web
-        uses: aquasecurity/trivy-action@0.36.0
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: '${{ env.IMAGE_NAME_WEB }}:${{ github.ref_name }}'
           format: 'table'
@@ -68,13 +68,17 @@ jobs:
           severity: 'CRITICAL,HIGH'
 
       - name: Push API image
-        run: |
-          docker tag ${{ env.IMAGE_NAME_API }}:${{ github.ref_name }} ${{ env.IMAGE_NAME_API }}:latest
-          docker push ${{ env.IMAGE_NAME_API }}:${{ github.ref_name }}
-          docker push ${{ env.IMAGE_NAME_API }}:latest
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_NAME_API }}:${{ github.ref_name }},${{ env.IMAGE_NAME_API }}:latest
 
       - name: Push Web image
-        run: |
-          docker tag ${{ env.IMAGE_NAME_WEB }}:${{ github.ref_name }} ${{ env.IMAGE_NAME_WEB }}:latest
-          docker push ${{ env.IMAGE_NAME_WEB }}:${{ github.ref_name }}
-          docker push ${{ env.IMAGE_NAME_WEB }}:latest
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: apps/web/Dockerfile
+          push: true
+          tags: ${{ env.IMAGE_NAME_WEB }}:${{ github.ref_name }},${{ env.IMAGE_NAME_WEB }}:latest
