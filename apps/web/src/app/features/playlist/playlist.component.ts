@@ -201,6 +201,34 @@ import { OfflineStorageService } from '../../core/services/offline-storage.servi
                     </label>
                   </div>
                 </div>
+
+                <!-- Rule 8: Detener reproducción fuera de cola -->
+                <div class="rule-card" [class.enabled]="isRuleEnabled('stop_outside_queue')">
+                  <div class="rule-main">
+                    <div class="rule-info">
+                      <span class="rule-name">Detener reproducción fuera de cola</span>
+                      <span class="rule-desc">Si reproduces un episodio que no está en la cola, la reproducción se detendrá al finalizar en lugar de pasar a reproducir la cola.</span>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" [checked]="isRuleEnabled('stop_outside_queue')" (change)="toggleRule('stop_outside_queue')">
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                </div>
+
+                <!-- Rule 9: Auto-añadir a la cola al reproducir -->
+                <div class="rule-card" [class.enabled]="isRuleEnabled('auto_add_on_play')">
+                  <div class="rule-main">
+                    <div class="rule-info">
+                      <span class="rule-name">Auto-añadir a la cola al reproducir</span>
+                      <span class="rule-desc">Al reproducir directamente un episodio que no está en la cola, este se añade automáticamente al final de la misma.</span>
+                    </div>
+                    <label class="switch">
+                      <input type="checkbox" [checked]="isRuleEnabled('auto_add_on_play')" (change)="toggleRule('auto_add_on_play')">
+                      <span class="slider"></span>
+                    </label>
+                  </div>
+                </div>
               </div>
 
               <div class="filters-footer">

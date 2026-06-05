@@ -87,6 +87,14 @@ export class AudioPlayerService {
     const isSameEpisode = this.currentEpisode()?._id === episode._id;
 
     if (!isSameEpisode) {
+      if (this.playlist) {
+        const autoAddRule = this.playlist.rules().find(r => r.id === 'auto_add_on_play' && r.enabled);
+        if (autoAddRule && !this.playlist.isInQueue(episode._id)) {
+          this.playlist.addToQueue(episode);
+        }
+        this.playlist.setCurrentById(episode._id);
+      }
+
       this.currentEpisode.set(episode);
       this.isLoading.set(true);
       this.pendingSeek = null;
@@ -240,11 +248,49 @@ export class AudioPlayerService {
       this.stopProgressTracking();
       const completedEp = this.currentEpisode();
       this.markCompleted();
-      // Auto-play next episode in playlist
-      const next = this.playlist?.next();
-      if (completedEp) {
-        this.playlist?.remove(completedEp._id);
+
+      let next: PlayerEpisode | null = null;
+      if (this.playlist) {
+        const queue = this.playlist.queue();
+        const idx = completedEp ? queue.findIndex(e => e._id === completedEp._id) : -1;
+
+        // Check if stop_outside_queue rule is enabled, and the episode was outside the queue
+        const stopRule = this.playlist.rules().find(r => r.id === 'stop_outside_queue' && r.enabled);
+        if (stopRule && idx === -1) {
+          console.log('[Player] Episode completed outside of queue and stop_outside_queue rule is enabled — stopping');
+          this.playlist.currentIndex.set(-1);
+          // Just stop here, leaving next = null
+        } else {
+          // 1. Remove the completed episode from the queue first
+          if (completedEp && idx !== -1) {
+            this.playlist.remove(completedEp._id);
+          }
+
+          const updatedQueue = this.playlist.queue();
+          // 2. Determine the next episode
+          if (idx !== -1) {
+            if (idx < updatedQueue.length) {
+              // Play the one that took its place
+              next = updatedQueue[idx];
+            } else {
+              // If the completed episode was the last one, and there are episodes left, start from the beginning of the queue
+              next = updatedQueue.length > 0 ? updatedQueue[0] : null;
+            }
+          } else {
+            // If the episode was not in the queue, play the first one in the queue
+            next = updatedQueue.length > 0 ? updatedQueue[0] : null;
+          }
+
+          // 3. Update the current playlist index
+          if (next) {
+            this.playlist.setCurrentById(next._id);
+          } else {
+            this.playlist.currentIndex.set(-1);
+          }
+        }
       }
+
+      // 4. Play the next episode
       if (next) {
         this.play(next);
       }

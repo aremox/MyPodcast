@@ -11,7 +11,7 @@ export interface SmartRule {
   name: string;
   description: string;
   enabled: boolean;
-  type: 'prepend_short' | 'prioritize_unplayed' | 'group_by_podcast' | 'round_robin' | 'sort_by_duration' | 'sort_by_date' | 'auto_download_browser';
+  type: 'prepend_short' | 'prioritize_unplayed' | 'group_by_podcast' | 'round_robin' | 'sort_by_duration' | 'sort_by_date' | 'auto_download_browser' | 'stop_outside_queue' | 'auto_add_on_play';
   config?: any;
 }
 
@@ -356,6 +356,20 @@ export class PlaylistService {
         description: 'Descarga automáticamente todos los episodios de la cola al almacenamiento local del navegador para escucharlos sin conexión.',
         enabled: false,
         type: 'auto_download_browser'
+      },
+      {
+        id: 'stop_outside_queue',
+        name: 'Detener reproducción fuera de cola',
+        description: 'Si reproduces un episodio que no está en la cola, la reproducción se detendrá al finalizar en lugar de pasar a reproducir la cola.',
+        enabled: false,
+        type: 'stop_outside_queue'
+      },
+      {
+        id: 'auto_add_on_play',
+        name: 'Auto-añadir a la cola al reproducir',
+        description: 'Al reproducir directamente un episodio que no está en la cola, este se añade automáticamente al final de la misma.',
+        enabled: false,
+        type: 'auto_add_on_play'
       }
     ];
   }
