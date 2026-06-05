@@ -55,9 +55,7 @@ export class AudioPlayerService {
     if (!resume) return;
     this.crossDeviceResume.set(null);
     this.pendingSeek = resume.progress;
-    this.currentEpisode.set(resume.episode);
-    this.isLoading.set(true);
-    this.loadAudioWithAuth(resume.episode._id);
+    this.play(resume.episode);
   }
 
   /** Injected after construction to avoid circular dependency */
@@ -84,34 +82,38 @@ export class AudioPlayerService {
   }
 
   async play(episode: PlayerEpisode): Promise<void> {
+    if (this.playlist) {
+      const autoAddRule = this.playlist.rules().find(r => r.id === 'auto_add_on_play' && r.enabled);
+      if (autoAddRule && !this.playlist.isInQueue(episode._id)) {
+        this.playlist.addToQueue(episode);
+      }
+      this.playlist.setCurrentById(episode._id);
+    }
+
     const isSameEpisode = this.currentEpisode()?._id === episode._id;
 
     if (!isSameEpisode) {
-      if (this.playlist) {
-        const autoAddRule = this.playlist.rules().find(r => r.id === 'auto_add_on_play' && r.enabled);
-        if (autoAddRule && !this.playlist.isInQueue(episode._id)) {
-          this.playlist.addToQueue(episode);
-        }
-        this.playlist.setCurrentById(episode._id);
-      }
-
       this.currentEpisode.set(episode);
       this.isLoading.set(true);
-      this.pendingSeek = null;
 
-      // Fetch saved position BEFORE loading audio to avoid race condition:
-      // if we set audio.src first, loadedmetadata can fire before the API
-      // responds and pendingSeek would still be null → seek would be lost.
-      try {
-        const res = await this.api.getEpisodeProgress(episode._id);
-        if (res?.data?.progress && !res.data.completed) {
-          this.pendingSeek = res.data.progress;
-        }
-      } catch {}
+      // Fetch saved position only if we don't have a pending seek set (e.g. from cross-device resume)
+      if (this.pendingSeek === null) {
+        try {
+          const res = await this.api.getEpisodeProgress(episode._id);
+          if (res?.data?.progress && !res.data.completed) {
+            this.pendingSeek = res.data.progress;
+          }
+        } catch {}
+      }
 
-      // Now load audio — loadedmetadata will fire AFTER pendingSeek is set
-      // (applies to direct play, queue playback, and cross-device resume)
+      // Now load audio
       this.loadAudioWithAuth(episode._id);
+    } else {
+      // If same episode but we have a pending seek (e.g. synced from cross-device), seek to it
+      if (this.pendingSeek !== null) {
+        this.seek(this.pendingSeek);
+        this.pendingSeek = null;
+      }
     }
 
     try {
