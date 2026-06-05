@@ -372,9 +372,10 @@ export class AudioPlayerService {
     }
 
     // Sync playback speed from server config in background
-    this.api.getSyncConfig().then(config => {
-      if (config && config.playbackSpeed) {
-        const speed = config.playbackSpeed as PlaybackSpeed;
+    this.api.getSyncConfig().then(res => {
+      const serverSpeed = res?.data?.playbackSpeed;
+      if (serverSpeed != null && serverSpeed > 0) {
+        const speed = serverSpeed as PlaybackSpeed;
         if (this.speed() !== speed) {
           console.log('[Player] Syncing playback speed from server:', speed);
           this.speed.set(speed);
