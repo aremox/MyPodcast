@@ -21,7 +21,8 @@ export class EpisodesService implements OnModuleInit {
         },
         [
           { $set: { podcastId: { $toObjectId: '$podcastId' } } }
-        ]
+        ],
+        { updatePipeline: true }
       ).exec();
       this.logger.log(`BSON types migration completed for episodes! Matched & modified: ${result.modifiedCount || 0} documents.`);
     } catch (err: any) {
