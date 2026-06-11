@@ -118,6 +118,7 @@ export class AudioPlayerService {
 
     try {
       await this.audio.play();
+      this.audio.playbackRate = this.speed();
       this.isPlaying.set(true);
       this.startProgressTracking();
     } catch (error) {
@@ -219,6 +220,7 @@ export class AudioPlayerService {
     this.audio.addEventListener('loadedmetadata', () => {
       this.duration.set(this.audio.duration);
       this.isLoading.set(false);
+      this.audio.playbackRate = this.speed();
       // Apply pending seek (race-condition-safe position restore)
       if (this.pendingSeek !== null && this.pendingSeek > 0) {
         this.audio.currentTime = this.pendingSeek;
@@ -229,6 +231,7 @@ export class AudioPlayerService {
 
     this.audio.addEventListener('canplay', () => {
       this.isLoading.set(false);
+      this.audio.playbackRate = this.speed();
       // Apply pending seek (race-condition-safe position restore)
       if (this.pendingSeek !== null && this.pendingSeek > 0) {
         this.audio.currentTime = this.pendingSeek;
@@ -243,6 +246,7 @@ export class AudioPlayerService {
 
     this.audio.addEventListener('playing', () => {
       this.isLoading.set(false);
+      this.audio.playbackRate = this.speed();
     });
 
     this.audio.addEventListener('ended', () => {
