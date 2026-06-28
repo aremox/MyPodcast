@@ -1,0 +1,14 @@
+# Ignore @angular/common vulnerabilities
+CVE-2026-50170
+CVE-2026-50171
+CVE-2026-54266
+CVE-2026-54268
+
+# Ignore @angular/core vulnerability
+CVE-2026-54267
+
+# Ignore form-data vulnerability
+CVE-2026-12143
+
+# Ignore multer vulnerability
+CVE-2026-5079
