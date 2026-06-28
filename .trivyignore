@@ -12,3 +12,8 @@ CVE-2026-12143
 
 # Ignore multer vulnerability
 CVE-2026-5079
+
+# Ignore undici vulnerabilities
+CVE-2026-12151
+CVE-2026-6734
+CVE-2026-9697
