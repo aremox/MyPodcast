@@ -643,6 +643,13 @@ export class LibraryService implements OnModuleInit {
   }
 
   // ===== SYNC CONFIG =====
+  async getAllSyncConfigs() {
+    this.logger.log('Fetching all sync configs for administration');
+    return this.syncConfigModel.find({})
+      .populate('userId', 'username email')
+      .exec();
+  }
+
   async getSyncConfig(userId: string) {
     this.logger.log(`Fetching sync config for user: ${userId}`);
     const userObj = new Types.ObjectId(userId);

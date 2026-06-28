@@ -1,224 +1,357 @@
 <div class="sync-container animate-fade-in">
   <header class="page-header">
-    <h1>🖥️ Sincronización de Escritorio</h1>
-    <p class="subtitle">Gestiona la conexión con tu agente de escritorio y el volcado al USB.</p>
+    <div class="header-main">
+      <div>
+        <h1>🖥️ Sincronización de Escritorio</h1>
+        <p class="subtitle">Gestiona la conexión con tus agentes de escritorio y el volcado al USB.</p>
+      </div>
+      @if (!selectedUserId()) {
+        <button class="btn-primary" (click)="openPairingModal()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Vincular Dispositivo
+        </button>
+      }
+    </div>
   </header>
 
-  @if (loading()) {
+  @if (loading() && !selectedUserId()) {
     <div class="loading-state">
       <div class="spinner"></div>
-      <p>Cargando configuración...</p>
+      <p>Cargando dispositivos...</p>
     </div>
   } @else {
-    <div class="sync-grid">
-      <!-- Card: Estado del Agente -->
-      <section class="sync-card" [class.editing]="isEditing()">
-        <div class="card-header">
-          <div class="icon-circle">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-          </div>
-          <h2>Estado del Agente</h2>
-          @if (syncConfig()) {
-            <button class="btn-icon" (click)="toggleEdit()" [title]="isEditing() ? 'Cancelar' : 'Editar'">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    <!-- VIEW 1: List of Synchronized Devices -->
+    @if (!selectedUserId()) {
+      <div class="devices-list-section animate-fade-in-up">
+        @if (syncConfigs().length === 0) {
+          <div class="empty-devices-card">
+            <div class="empty-icon">🔌</div>
+            <h3>No hay dispositivos sincronizados</h3>
+            <p>Descarga el agente de sincronización de escritorio y vincula tu primer dispositivo para empezar a transferir audios.</p>
+            <button class="btn-primary btn-centered" (click)="openPairingModal()">
+              Vincular Primer Dispositivo
             </button>
-          }
-        </div>
-        
-        <div class="card-content">
-          @if (syncConfig(); as config) {
-            <div class="status-indicator" [class.connected]="config.targetUsbSerial" [class.disconnected]="!config.targetUsbSerial">
-              <span class="dot"></span>
-              <span class="label">{{ config.targetUsbSerial ? 'Agente Configurado' : 'Pendiente de Configurar' }}</span>
-            </div>
+          </div>
+        } @else {
+          <div class="devices-grid">
+            @for (config of syncConfigs(); track config.userId?._id) {
+              <div class="device-list-card" (click)="selectDevice(config.userId?._id)">
+                <div class="device-card-header">
+                  <div class="user-info">
+                    <div class="user-avatar">{{ (config.userId?.username || 'U').substring(0, 2).toUpperCase() }}</div>
+                    <div>
+                      <h3 class="user-name">{{ config.userId?.username || 'Usuario Desconocido' }}</h3>
+                      <span class="user-email">{{ config.userId?.email || 'Sin email' }}</span>
+                    </div>
+                  </div>
+                  <span class="status-badge" [class.badge-active]="config.targetUsbSerial" [class.badge-inactive]="!config.targetUsbSerial">
+                    {{ config.targetUsbSerial ? 'Vinculado' : 'Sin USB' }}
+                  </span>
+                </div>
+                
+                <div class="device-card-body">
+                  <div class="device-info-row">
+                    <span class="info-label">USB Serial:</span>
+                    <span class="info-value">{{ config.targetUsbSerial || 'No establecido' }}</span>
+                  </div>
+                  <div class="device-info-row">
+                    <span class="info-label">Ruta Destino:</span>
+                    <span class="info-value">/{{ config.targetFolder || 'Podcasts' }}</span>
+                  </div>
+                  <div class="device-info-row">
+                    <span class="info-label">Frecuencia:</span>
+                    <span class="info-value">{{ getIntervalLabel(config.syncInterval) }}</span>
+                  </div>
+                  <div class="device-info-row">
+                    <span class="info-label">Última Sincronización:</span>
+                    <span class="info-value">{{ config.lastSyncAt ? (config.lastSyncAt | date:'dd/MM/yy, HH:mm') : 'Nunca' }}</span>
+                  </div>
 
-            <div class="info-list">
-              <div class="info-item">
-                <span class="key">USB Destino:</span>
-                @if (isEditing()) {
-                  <input type="text" [(ngModel)]="editSerial" class="edit-input" placeholder="ID del USB">
-                } @else {
-                  <span class="value">{{ config.targetUsbSerial || 'No establecido' }}</span>
-                }
-              </div>
-              <div class="info-item">
-                <span class="key">Carpeta:</span>
-                @if (isEditing()) {
-                  <input type="text" [(ngModel)]="editFolder" class="edit-input" placeholder="Carpeta destino">
-                } @else {
-                  <span class="value">/{{ config.targetFolder }}</span>
-                }
-              </div>
-              <div class="info-item">
-                <span class="key">Última sincronización:</span>
-                <span class="value">{{ config.lastSyncAt ? (config.lastSyncAt | date:'dd/MM/yy, HH:mm') : 'Nunca' }}</span>
-              </div>
-            </div>
-
-            @if (isEditing()) {
-              <div class="edit-actions">
-                <button class="btn-save" (click)="saveConfig()" [disabled]="saving()">
-                  @if (saving()) { <div class="mini-spinner"></div> }
-                  Guardar Cambios
-                </button>
+                  <!-- Mini Storage Info if present -->
+                  @if (config.usbTotalSpace) {
+                    <div class="mini-storage-section">
+                      <div class="mini-storage-text">
+                        <span>Almacenamiento USB</span>
+                        <span>{{ formatBytes(config.usbFreeSpace) }} libres de {{ formatBytes(config.usbTotalSpace) }}</span>
+                      </div>
+                      <div class="mini-progress-bar">
+                        <div class="progress podcasts-bar" [style.width.%]="getPercentage(config.usbPodcastsSpace, config.usbTotalSpace)"></div>
+                        <div class="progress other-bar" [style.width.%]="getPercentage(config.usbOtherSpace, config.usbTotalSpace)"></div>
+                        <div class="progress free-bar" [style.width.%]="getPercentage(config.usbFreeSpace, config.usbTotalSpace)"></div>
+                      </div>
+                    </div>
+                  }
+                </div>
+                
+                <div class="device-card-footer">
+                  <button class="btn-card-action" (click)="$event.stopPropagation(); selectDevice(config.userId?._id)">
+                    Administrar Dispositivo &rarr;
+                  </button>
+                </div>
               </div>
             }
-            
-            <div class="pairing-action-mini" style="display: flex; gap: 1rem; margin-top: 1rem; align-items: center; flex-wrap: wrap;">
-              <button class="btn-text" (click)="generatePairingCode()">
-                Vincular otro dispositivo
-              </button>
-              <button class="btn-text" style="color: var(--danger, #ef4444);" (click)="unlinkDevice()">
-                Desvincular Dispositivo
-              </button>
-            </div>
-          } @else {
-            <div class="status-indicator disconnected">
-              <span class="dot"></span>
-              <span class="label">Sin vincular</span>
-            </div>
-            <p class="description">Descarga el agente de escritorio y vincúlalo para empezar a sincronizar tus podcasts automáticamente.</p>
-            <button class="btn-primary" (click)="generatePairingCode()">
-              Vincular nuevo dispositivo
-            </button>
-          }
+          </div>
+        }
+      </div>
+    } @else {
+      <!-- VIEW 2: Detailed Dashboard for Selected Device -->
+      <div class="detail-back-container animate-fade-in">
+        <button class="btn-back" (click)="goBack()">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 6px;"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Volver a dispositivos
+        </button>
+
+        <div class="device-owner-banner">
+          Dispositivo de: <strong>{{ syncConfig()?.userId?.username }}</strong> ({{ syncConfig()?.userId?.email }})
         </div>
-      </section>
+      </div>
 
-      <!-- Card: Configuración de Intervalo -->
-      @if (syncConfig(); as config) {
-        <section class="sync-card">
-          <div class="card-header">
-            <div class="icon-circle">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
-            </div>
-            <h2>Frecuencia de Sincronización</h2>
-          </div>
-          
-          <div class="card-content">
-            <p class="description">¿Cada cuánto tiempo debe el agente comprobar si hay nuevos episodios? (Actual: <b>{{ getIntervalLabel(config.syncInterval) }}</b>)</p>
-            
-            <div class="interval-selector">
-              @for (item of intervals; track item.value) {
-                <button 
-                  class="interval-chip" 
-                  [class.active]="config.syncInterval === item.value"
-                  [disabled]="saving() || isEditing()"
-                  (click)="updateInterval(item.value)">
-                  {{ item.label }}
-                </button>
-              }
-            </div>
-          </div>
-        </section>
-      }
-
-      <!-- Card: Código de Vinculación -->
-      @if (pairingCode()) {
-        <section class="sync-card pairing-card animate-slide-up">
-          <div class="card-header">
-            <h2>Código de Vinculación</h2>
-          </div>
-          <div class="card-content centered">
-            <div class="code-display">{{ pairingCode() }}</div>
-            <p class="help-text">Introduce este código en el agente de escritorio. Válido por 10 minutos.</p>
-          </div>
-        </section>
-      }
-
-      <!-- Card: Mapa de Almacenamiento USB -->
-      @if (syncConfig(); as config) {
-        @if (config.usbTotalSpace) {
-          <section class="sync-card storage-card animate-slide-up">
+      @if (loading()) {
+        <div class="loading-state">
+          <div class="spinner"></div>
+          <p>Cargando información del dispositivo...</p>
+        </div>
+      } @else {
+        <div class="sync-grid">
+          <!-- Card: Estado del Agente -->
+          <section class="sync-card" [class.editing]="isEditing()">
             <div class="card-header">
-              <div class="icon-circle storage-icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12H2v10h20V12z"/><path d="M6 12V6a6 6 0 0 1 12 0v6"/></svg>
+              <div class="icon-circle">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
               </div>
-              <h2>Almacenamiento USB</h2>
-              @if (config.usbFormat) {
-                <span class="fs-badge">{{ config.usbFormat }}</span>
+              <h2>Estado del Agente</h2>
+              @if (syncConfig()) {
+                <button class="btn-icon" (click)="toggleEdit()" [title]="isEditing() ? 'Cancelar' : 'Editar'">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                </button>
               }
             </div>
             
             <div class="card-content">
-              <!-- Partition Bar -->
-              <div class="storage-bar-container">
-                <div class="storage-bar">
-                  <div class="partition podcasts" 
-                       [style.width.%]="getPercentage(config.usbPodcastsSpace, config.usbTotalSpace)"
-                       [title]="'Podcasts: ' + formatBytes(config.usbPodcastsSpace)">
-                    <span class="pct-tooltip">{{ getPercentage(config.usbPodcastsSpace, config.usbTotalSpace) }}%</span>
+              @if (syncConfig(); as config) {
+                <div class="status-indicator" [class.connected]="config.targetUsbSerial" [class.disconnected]="!config.targetUsbSerial">
+                  <span class="dot"></span>
+                  <span class="label">{{ config.targetUsbSerial ? 'Agente Configurado' : 'Pendiente de Configurar' }}</span>
+                </div>
+
+                <div class="info-list">
+                  <div class="info-item">
+                    <span class="key">USB Destino:</span>
+                    @if (isEditing()) {
+                      <input type="text" [(ngModel)]="editSerial" class="edit-input" placeholder="ID del USB">
+                    } @else {
+                      <span class="value">{{ config.targetUsbSerial || 'No establecido' }}</span>
+                    }
                   </div>
-                  <div class="partition other" 
-                       [style.width.%]="getPercentage(config.usbOtherSpace, config.usbTotalSpace)"
-                       [title]="'Otros Archivos: ' + formatBytes(config.usbOtherSpace)">
-                    <span class="pct-tooltip">{{ getPercentage(config.usbOtherSpace, config.usbTotalSpace) }}%</span>
+                  <div class="info-item">
+                    <span class="key">Carpeta:</span>
+                    @if (isEditing()) {
+                      <input type="text" [(ngModel)]="editFolder" class="edit-input" placeholder="Carpeta destino">
+                    } @else {
+                      <span class="value">/{{ config.targetFolder }}</span>
+                    }
                   </div>
-                  <div class="partition free" 
-                       [style.width.%]="getPercentage(config.usbFreeSpace, config.usbTotalSpace)"
-                       [title]="'Libre: ' + formatBytes(config.usbFreeSpace)">
-                    <span class="pct-tooltip">{{ getPercentage(config.usbFreeSpace, config.usbTotalSpace) }}%</span>
+                  <div class="info-item">
+                    <span class="key">Última sincronización:</span>
+                    <span class="value">{{ config.lastSyncAt ? (config.lastSyncAt | date:'dd/MM/yy, HH:mm') : 'Nunca' }}</span>
                   </div>
                 </div>
-              </div>
 
-              <!-- Disk Details & Warnings -->
-              @if (isDiskSpaceLow()) {
-                <div class="space-warning-banner">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="warning-icon"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                  <span>¡Espacio casi agotado! Quedan menos de 1 GB libres en el USB.</span>
+                @if (isEditing()) {
+                  <div class="edit-actions">
+                    <button class="btn-save" (click)="saveConfig()" [disabled]="saving()">
+                      @if (saving()) { <div class="mini-spinner"></div> }
+                      Guardar Cambios
+                    </button>
+                  </div>
+                }
+                
+                <div class="pairing-action-mini" style="display: flex; gap: 1rem; margin-top: 1rem; align-items: center; flex-wrap: wrap;">
+                  <button class="btn-text" (click)="generatePairingCode()">
+                    Re-vincular dispositivo
+                  </button>
+                  <button class="btn-text" style="color: var(--danger, #ef4444);" (click)="unlinkDevice()">
+                    Desvincular Dispositivo
+                  </button>
                 </div>
               }
-
-              <!-- Legend -->
-              <div class="storage-legend">
-                <div class="legend-item">
-                  <span class="legend-dot podcasts-dot"></span>
-                  <div class="legend-info">
-                    <span class="legend-name">Podcasts</span>
-                    <span class="legend-value">{{ formatBytes(config.usbPodcastsSpace) }}</span>
-                  </div>
-                </div>
-                <div class="legend-item">
-                  <span class="legend-dot other-dot"></span>
-                  <div class="legend-info">
-                    <span class="legend-name">Otros Archivos</span>
-                    <span class="legend-value">{{ formatBytes(config.usbOtherSpace) }}</span>
-                  </div>
-                </div>
-                <div class="legend-item">
-                  <span class="legend-dot free-dot"></span>
-                  <div class="legend-info">
-                    <span class="legend-name">Espacio Libre</span>
-                    <span class="legend-value">{{ formatBytes(config.usbFreeSpace) }}</span>
-                  </div>
-                </div>
-              </div>
-
-              <div class="storage-footer">
-                <span>Capacidad: <b>{{ formatBytes(config.usbTotalSpace) }}</b></span>
-                <span>Usado: <b>{{ formatBytes(getUsedSpace(config)) }}</b> ({{ getPercentage(getUsedSpace(config), config.usbTotalSpace) }}%)</span>
-              </div>
             </div>
           </section>
-        } @else {
-          <!-- Card: USB Esperando Sincronización -->
-          <section class="sync-card storage-card disabled-card animate-slide-up">
-            <div class="card-header">
-              <div class="icon-circle storage-icon dimmed">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12H2v10h20V12z"/><path d="M6 12V6a6 6 0 0 1 12 0v6"/></svg>
+
+          <!-- Card: Configuración de Intervalo -->
+          @if (syncConfig(); as config) {
+            <section class="sync-card">
+              <div class="card-header">
+                <div class="icon-circle">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <h2>Frecuencia de Sincronización</h2>
               </div>
-              <h2>Almacenamiento USB</h2>
-            </div>
-            <div class="card-content centered-content">
-              <div class="dimmed-graphic">
-                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12H2v10h20V12z"/><path d="M6 12V6a6 6 0 0 1 12 0v6"/><circle cx="12" cy="17" r="1"/></svg>
+              
+              <div class="card-content">
+                <p class="description">¿Cada cuánto tiempo debe el agente comprobar si hay nuevos episodios? (Actual: <b>{{ getIntervalLabel(config.syncInterval) }}</b>)</p>
+                
+                <div class="interval-selector">
+                  @for (item of intervals; track item.value) {
+                    <button 
+                      class="interval-chip" 
+                      [class.active]="config.syncInterval === item.value"
+                      [disabled]="saving() || isEditing()"
+                      (click)="updateInterval(item.value)">
+                      {{ item.label }}
+                    </button>
+                  }
+                </div>
               </div>
-              <p class="description compact">Conecta tu dispositivo USB y activa el agente de sincronización para ver el mapa de almacenamiento en tiempo real.</p>
-            </div>
-          </section>
-        }
+            </section>
+          }
+
+          <!-- Card: Código de Vinculación -->
+          @if (pairingCode()) {
+            <section class="sync-card pairing-card animate-slide-up">
+              <div class="card-header">
+                <h2>Código de Vinculación</h2>
+              </div>
+              <div class="card-content centered">
+                <div class="code-display">{{ pairingCode() }}</div>
+                <p class="help-text">Introduce este código en el agente de escritorio. Válido por 10 minutos.</p>
+              </div>
+            </section>
+          }
+
+          <!-- Card: Mapa de Almacenamiento USB -->
+          @if (syncConfig(); as config) {
+            @if (config.usbTotalSpace) {
+              <section class="sync-card storage-card animate-slide-up">
+                <div class="card-header">
+                  <div class="icon-circle storage-icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12H2v10h20V12z"/><path d="M6 12V6a6 6 0 0 1 12 0v6"/></svg>
+                  </div>
+                  <h2>Almacenamiento USB</h2>
+                  @if (config.usbFormat) {
+                    <span class="fs-badge">{{ config.usbFormat }}</span>
+                  }
+                </div>
+                
+                <div class="card-content">
+                  <!-- Partition Bar -->
+                  <div class="storage-bar-container">
+                    <div class="storage-bar">
+                      <div class="partition podcasts" 
+                           [style.width.%]="getPercentage(config.usbPodcastsSpace, config.usbTotalSpace)"
+                           [title]="'Podcasts: ' + formatBytes(config.usbPodcastsSpace)">
+                        <span class="pct-tooltip">{{ getPercentage(config.usbPodcastsSpace, config.usbTotalSpace) }}%</span>
+                      </div>
+                      <div class="partition other" 
+                           [style.width.%]="getPercentage(config.usbOtherSpace, config.usbTotalSpace)"
+                           [title]="'Otros Archivos: ' + formatBytes(config.usbOtherSpace)">
+                        <span class="pct-tooltip">{{ getPercentage(config.usbOtherSpace, config.usbTotalSpace) }}%</span>
+                      </div>
+                      <div class="partition free" 
+                           [style.width.%]="getPercentage(config.usbFreeSpace, config.usbTotalSpace)"
+                           [title]="'Libre: ' + formatBytes(config.usbFreeSpace)">
+                        <span class="pct-tooltip">{{ getPercentage(config.usbFreeSpace, config.usbTotalSpace) }}%</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Disk Details & Warnings -->
+                  @if (isDiskSpaceLow()) {
+                    <div class="space-warning-banner">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="warning-icon"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                      <span>¡Espacio casi agotado! Quedan menos de 1 GB libres en el USB.</span>
+                    </div>
+                  }
+
+                  <!-- Legend -->
+                  <div class="storage-legend">
+                    <div class="legend-item">
+                      <span class="legend-dot podcasts-dot"></span>
+                      <div class="legend-info">
+                        <span class="legend-name">Podcasts</span>
+                        <span class="legend-value">{{ formatBytes(config.usbPodcastsSpace) }}</span>
+                      </div>
+                    </div>
+                    <div class="legend-item">
+                      <span class="legend-dot other-dot"></span>
+                      <div class="legend-info">
+                        <span class="legend-name">Otros Archivos</span>
+                        <span class="legend-value">{{ formatBytes(config.usbOtherSpace) }}</span>
+                      </div>
+                    </div>
+                    <div class="legend-item">
+                      <span class="legend-dot free-dot"></span>
+                      <div class="legend-info">
+                        <span class="legend-name">Espacio Libre</span>
+                        <span class="legend-value">{{ formatBytes(config.usbFreeSpace) }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="storage-footer">
+                    <span>Capacidad: <b>{{ formatBytes(config.usbTotalSpace) }}</b></span>
+                    <span>Usado: <b>{{ formatBytes(getUsedSpace(config)) }}</b> ({{ getPercentage(getUsedSpace(config), config.usbTotalSpace) }}%)</span>
+                  </div>
+                </div>
+              </section>
+            } @else {
+              <!-- Card: USB Esperando Sincronización -->
+              <section class="sync-card storage-card disabled-card animate-slide-up">
+                <div class="card-header">
+                  <div class="icon-circle storage-icon dimmed">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12H2v10h20V12z"/><path d="M6 12V6a6 6 0 0 1 12 0v6"/></svg>
+                  </div>
+                  <h2>Almacenamiento USB</h2>
+                </div>
+                <div class="card-content centered-content">
+                  <div class="dimmed-graphic">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 12H2v10h20V12z"/><path d="M6 12V6a6 6 0 0 1 12 0v6"/><circle cx="12" cy="17" r="1"/></svg>
+                  </div>
+                  <p class="description compact">Conecta tu dispositivo USB y activa el agente de sincronización para ver el mapa de almacenamiento en tiempo real.</p>
+                </div>
+              </section>
+            }
+          }
+        </div>
       }
+    }
+  }
+
+  <!-- Pairing Modal BackDrop -->
+  @if (showPairingModal()) {
+    <div class="modal-backdrop-sync" (click)="showPairingModal.set(false)">
+      <div class="pairing-modal-content" (click)="$event.stopPropagation()">
+        <h2>Vincular Nuevo Dispositivo</h2>
+        <p class="modal-desc">Selecciona un usuario activo del sistema para generar su código de vinculación para el agente de escritorio.</p>
+        
+        <div class="form-group">
+          <label for="userSelect">Usuario:</label>
+          <select id="userSelect" [(ngModel)]="selectedPairingUserId" class="modal-select">
+            @for (user of usersList(); track user._id) {
+              <option [value]="user._id">{{ user.username }} ({{ user.email }})</option>
+            }
+          </select>
+        </div>
+
+        @if (pairingCode()) {
+          <div class="modal-code-section">
+            <span class="code-lbl">Código Generado:</span>
+            <div class="modal-code">{{ pairingCode() }}</div>
+            <p class="code-info">Introduce este código de 6 dígitos en el agente de escritorio iniciado por este usuario. Esta pantalla se cerrará automáticamente al vincularse.</p>
+          </div>
+        }
+
+        <div class="modal-actions-sync">
+          <button class="btn-modal-cancel" (click)="showPairingModal.set(false)">
+            {{ pairingCode() ? 'Cerrar' : 'Cancelar' }}
+          </button>
+          @if (!pairingCode()) {
+            <button class="btn-modal-confirm" (click)="pairNewDeviceForUser()">
+              Generar Código
+            </button>
+          }
+        </div>
+      </div>
     </div>
   }
 </div>

@@ -1,8 +1,10 @@
-import { Controller, Get, Post, Delete, Param, Body, Query, Request, UseGuards, Inject, forwardRef, Logger } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, Query, Request, UseGuards, Inject, forwardRef, Logger, ForbiddenException } from '@nestjs/common';
 import { LibraryService } from './library.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { AuthService } from '../auth/auth.service';
 import { EpisodesService } from '../episodes/episodes.service';
+import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../auth/decorators/roles.decorator';
 
 @Controller('library')
 export class LibraryController {
@@ -185,6 +187,47 @@ export class LibraryController {
     }
     await this.libraryService.markAllAsCompleted(req.user.userId, podcastId, body.completed, episodeIds);
     return { success: true, message: body.completed ? 'Marcados como escuchados' : 'Desmarcados' };
+  }
+
+  // ===== ADMIN MULTI-DEVICE SYNC CONFIGS =====
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('administrador')
+  @Get('sync-configs')
+  async getAllSyncConfigs() {
+    const configs = await this.libraryService.getAllSyncConfigs();
+    return { success: true, data: configs };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('administrador')
+  @Get('sync-config/user/:userId')
+  async getSyncConfigForUser(@Param('userId') userId: string) {
+    const config = await this.libraryService.getSyncConfig(userId);
+    return { success: true, data: config };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('administrador')
+  @Post('sync-config/user/:userId')
+  async saveSyncConfigForUser(@Param('userId') userId: string, @Body() body: any) {
+    const config = await this.libraryService.updateSyncConfig(userId, body);
+    return config;
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('administrador')
+  @Delete('sync-config/device/user/:userId')
+  async unlinkDeviceForUser(@Param('userId') userId: string) {
+    const config = await this.libraryService.unlinkDevice(userId);
+    return { success: true, data: config };
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('administrador')
+  @Post('pair/generate/user/:userId')
+  async generatePairingCodeForUser(@Param('userId') userId: string) {
+    const code = await this.libraryService.generatePairingCode(userId);
+    return { success: true, code };
   }
 
   // ===== SYNC CONFIG =====
