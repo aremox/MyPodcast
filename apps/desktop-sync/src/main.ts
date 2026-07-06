@@ -189,6 +189,7 @@ ipcMain.handle('unpair-account', async () => {
   try {
     saveLocalConfig({
       jwtToken: null,
+      desktopRefreshToken: null,
       targetUsbSerial: null,
       targetFolder: null,
       syncInterval: null
@@ -226,8 +227,11 @@ ipcMain.handle('pair-account', async (_, code: string) => {
     const token = data.accessToken || data.token;
 
     if (token) {
-      saveLocalConfig({ jwtToken: token });
-      log('[Pairing] Token JWT recibido y guardado. Vinculación EXITOSA.');
+      saveLocalConfig({
+        jwtToken: token,
+        desktopRefreshToken: data.desktopRefreshToken || null
+      });
+      log('[Pairing] Token JWT y refresh token recibidos y guardados. Vinculación EXITOSA.');
       notify('MyPodcast Sync', '¡Dispositivo vinculado con éxito!');
       sendConfigUpdate();
       setTimeout(fetchConfigAndSync, 1000);
@@ -408,6 +412,79 @@ async function reportUsbStorageSpace(driveSerialNumber: string, targetFolder: st
   }
 }
 
+// --- Desktop Token Refresh ---
+async function refreshDesktopTokens(): Promise<boolean> {
+  const localConfig = getLocalConfig();
+  if (!localConfig.desktopRefreshToken) {
+    log('[Auth] No hay refresh token guardado. No se puede renovar.', 'ERROR');
+    return false;
+  }
+
+  try {
+    const serverUrl = getServerUrl();
+    log('[Auth] Intentando renovar tokens con refresh token...');
+    const response = await fetch(`${serverUrl}/api/library/pair/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: localConfig.desktopRefreshToken })
+    });
+
+    if (!response.ok) {
+      log(`[Auth] El servidor rechazó la renovación (HTTP ${response.status})`, 'ERROR');
+      return false;
+    }
+
+    const data = await response.json();
+    if (data.success && data.accessToken) {
+      saveLocalConfig({
+        jwtToken: data.accessToken,
+        desktopRefreshToken: data.desktopRefreshToken || localConfig.desktopRefreshToken
+      });
+      log('[Auth] Tokens renovados correctamente.');
+      return true;
+    }
+
+    log(`[Auth] Renovación fallida: ${data.message || 'Respuesta inesperada'}`, 'ERROR');
+    return false;
+  } catch (err) {
+    log(`[Auth] Error de red al renovar tokens: ${err}`, 'ERROR');
+    return false;
+  }
+}
+
+/**
+ * Proactively check if access token expires within 24h and renew it.
+ * This prevents 401 errors by refreshing before expiry.
+ */
+async function checkAndRefreshTokenProactively(): Promise<void> {
+  const localConfig = getLocalConfig();
+  if (!localConfig.jwtToken || !localConfig.desktopRefreshToken) return;
+
+  try {
+    // Decode the JWT payload (base64) without verification
+    const parts = localConfig.jwtToken.split('.');
+    if (parts.length !== 3) return;
+    const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+    const exp = payload.exp;
+    if (!exp) return;
+
+    const now = Math.floor(Date.now() / 1000);
+    const hoursUntilExpiry = (exp - now) / 3600;
+
+    if (hoursUntilExpiry < 24) {
+      log(`[Auth] Token expira en ${hoursUntilExpiry.toFixed(1)}h. Renovando proactivamente...`);
+      const refreshed = await refreshDesktopTokens();
+      if (refreshed) {
+        log('[Auth] Renovación proactiva completada con éxito.');
+      } else {
+        log('[Auth] Renovación proactiva fallida. Se intentará de nuevo en el próximo ciclo.', 'ERROR');
+      }
+    }
+  } catch (err) {
+    log(`[Auth] Error al comprobar expiración del token: ${err}`, 'ERROR');
+  }
+}
+
 // --- Sync Coordination Core ---
 async function fetchConfigAndSync() {
   const localConfig = getLocalConfig();
@@ -419,19 +496,37 @@ async function fetchConfigAndSync() {
 
   if (isSyncing) return;
   isSyncing = true;
+
+  // Proactively renew tokens before they expire
+  await checkAndRefreshTokenProactively();
+
   sendSyncStatus(true, 'Obteniendo lista del servidor...');
 
   try {
     const serverUrl = getServerUrl();
+    // Re-read config after potential token refresh
+    const currentConfig = getLocalConfig();
     const response = await fetch(`${serverUrl}/api/library/sync-config`, {
-      headers: { 'Authorization': `Bearer ${localConfig.jwtToken}` }
+      headers: { 'Authorization': `Bearer ${currentConfig.jwtToken}` }
     });
     
     if (response.status === 401) {
-      log('Sesión expirada o no autorizada (HTTP 401). Desvinculando automáticamente...', 'ERROR');
-      notify('Sesión Expirada', 'La vinculación con el servidor ha caducado. Por favor, vuelve a vincular el dispositivo.');
+      log('[Auth] HTTP 401 recibido. Intentando renovar tokens...', 'ERROR');
+      const refreshed = await refreshDesktopTokens();
+      if (refreshed) {
+        log('[Auth] Tokens renovados tras 401. Reintentando sincronización...');
+        isSyncing = false;
+        sendSyncStatus(false);
+        // Retry sync with new token
+        fetchConfigAndSync();
+        return;
+      }
+      // Refresh failed — truly expired, unpair
+      log('[Auth] No se pudo renovar. Desvinculando automáticamente...', 'ERROR');
+      notify('Sesión Expirada', 'La vinculación con el servidor ha caducado (más de 90 días sin conexión). Por favor, vuelve a vincular el dispositivo.');
       saveLocalConfig({
         jwtToken: null,
+        desktopRefreshToken: null,
         targetUsbSerial: null,
         targetFolder: null,
         syncInterval: null
@@ -468,11 +563,11 @@ async function fetchConfigAndSync() {
         log(`USB emparejado detectado en unidad ${drive.deviceId}. Iniciando descarga...`);
         
         // Report initial USB space
-        await reportUsbStorageSpace(config.targetUsbSerial, config.targetFolder, localConfig.jwtToken);
+        await reportUsbStorageSpace(config.targetUsbSerial, config.targetFolder, currentConfig.jwtToken);
 
         const serverUrl = getServerUrl();
-        const speedLimit = Number(localConfig.downloadSpeedLimit || 0);
-        const stats = await Syncer.startSync(drive.deviceId, config.targetFolder, localConfig.jwtToken, (msg) => {
+        const speedLimit = Number(currentConfig.downloadSpeedLimit || 0);
+        const stats = await Syncer.startSync(drive.deviceId, config.targetFolder, currentConfig.jwtToken, (msg) => {
           log(msg, 'SYNC');
           
           let pct = 0;
@@ -510,7 +605,7 @@ async function fetchConfigAndSync() {
         }
 
         // Report final USB space (after downloads) and update lastSyncAt
-        await reportUsbStorageSpace(config.targetUsbSerial, config.targetFolder, localConfig.jwtToken, true);
+        await reportUsbStorageSpace(config.targetUsbSerial, config.targetFolder, currentConfig.jwtToken, true);
       } else {
         log(`El USB configurado (${config.targetUsbSerial}) no se encuentra conectado.`, 'ERROR');
         sendSyncStatus(false, 'USB no conectado');

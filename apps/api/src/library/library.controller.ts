@@ -283,11 +283,33 @@ export class LibraryController {
     if (!userId) {
       return { success: false, message: 'Código inválido o expirado' };
     }
+    // Get user info via normal login (also updates web refresh token)
     const authData = await this.authService.loginById(userId);
+    // Generate dedicated desktop tokens (independent from web session)
+    const desktopTokens = await this.libraryService.generateDesktopTokens(
+      userId,
+      authData.user.email,
+      authData.user.role,
+    );
     return { 
       success: true, 
-      token: authData.accessToken, // Alias for compatibility
-      ...authData 
+      token: desktopTokens.accessToken, // Alias for legacy compatibility
+      accessToken: desktopTokens.accessToken,
+      desktopRefreshToken: desktopTokens.desktopRefreshToken,
+      user: authData.user,
+    };
+  }
+
+  @Post('pair/refresh')
+  async refreshDesktopTokens(@Body() body: { refreshToken: string }) {
+    const tokens = await this.libraryService.refreshDesktopTokens(body.refreshToken);
+    if (!tokens) {
+      return { success: false, message: 'Refresh token inválido o expirado' };
+    }
+    return {
+      success: true,
+      accessToken: tokens.accessToken,
+      desktopRefreshToken: tokens.desktopRefreshToken,
     };
   }
 }

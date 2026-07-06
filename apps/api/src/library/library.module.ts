@@ -1,5 +1,7 @@
 import { Module, forwardRef } from '@nestjs/common';
 import { MongooseModule } from '@nestjs/mongoose';
+import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { PlayHistory, PlayHistorySchema } from './schemas/play-history.schema';
 import { Favorite, FavoriteSchema } from './schemas/favorite.schema';
 import { Subscription, SubscriptionSchema } from './schemas/subscription.schema';
@@ -17,6 +19,15 @@ import { AuthModule } from '../auth/auth.module';
       { name: Subscription.name, schema: SubscriptionSchema },
       { name: SyncConfig.name, schema: SyncConfigSchema },
     ]),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (configService: ConfigService) => ({
+        secret: configService.get<string>('JWT_SECRET') || 'mypodcast-secret-dev',
+        signOptions: { expiresIn: '7d' },
+      }),
+      inject: [ConfigService],
+    }),
+    ConfigModule,
     forwardRef(() => EpisodesModule),
     forwardRef(() => AuthModule),
   ],

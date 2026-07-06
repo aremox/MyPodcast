@@ -52,6 +52,12 @@ export class SyncConfig {
 
   @Prop({ type: Number, default: 1 })
   playbackSpeed?: number;
+
+  @Prop()
+  desktopRefreshToken?: string;
+
+  @Prop()
+  desktopTokenExpires?: Date;
 }
 
 

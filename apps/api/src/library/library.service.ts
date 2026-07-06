@@ -1,6 +1,9 @@
 import { Injectable, Logger, OnModuleInit, Inject, forwardRef } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
 import { Model, Types } from 'mongoose';
+import { JwtService } from '@nestjs/jwt';
+import { ConfigService } from '@nestjs/config';
+import * as bcrypt from 'bcryptjs';
 import { Subscription, SubscriptionDocument } from './schemas/subscription.schema';
 import { Favorite, FavoriteDocument } from './schemas/favorite.schema';
 import { PlayHistory, PlayHistoryDocument } from './schemas/play-history.schema';
@@ -20,6 +23,8 @@ export class LibraryService implements OnModuleInit {
     @InjectModel(SyncConfig.name) private syncConfigModel: Model<SyncConfigDocument>,
     private episodeDownloaderService: EpisodeDownloaderService,
     @Inject(forwardRef(() => EpisodesService)) private episodesService: EpisodesService,
+    private jwtService: JwtService,
+    private configService: ConfigService,
   ) {}
 
   async onModuleInit() {
@@ -824,6 +829,105 @@ export class LibraryService implements OnModuleInit {
     ).exec();
 
     return config.userId.toString();
+  }
+
+  // ===== DESKTOP TOKEN MANAGEMENT =====
+
+  /**
+   * Generate a dedicated pair of tokens for the desktop client.
+   * The refresh token is stored (hashed) on SyncConfig, completely independent
+   * from the web user's session stored on the User document.
+   */
+  async generateDesktopTokens(userId: string, email: string, role: string) {
+    const payload = { sub: userId, email, role };
+
+    const accessToken = await this.jwtService.signAsync(payload);
+
+    const refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET') || 'mypodcast-refresh-secret-dev';
+    const desktopRefreshToken = await this.jwtService.signAsync(
+      { sub: userId, type: 'desktop_refresh' },
+      { secret: refreshSecret, expiresIn: '90d' },
+    );
+
+    // Store hashed refresh token and expiry on SyncConfig
+    const hashed = await bcrypt.hash(desktopRefreshToken, 10);
+    const expires = new Date();
+    expires.setDate(expires.getDate() + 90);
+
+    await this.syncConfigModel.findOneAndUpdate(
+      { userId: new Types.ObjectId(userId) },
+      { desktopRefreshToken: hashed, desktopTokenExpires: expires },
+      { upsert: true },
+    ).exec();
+
+    this.logger.log(`[DesktopAuth] Tokens generated for user ${userId}`);
+    return { accessToken, desktopRefreshToken };
+  }
+
+  /**
+   * Validate a desktop refresh token and issue fresh access + refresh tokens.
+   * Returns null if the token is invalid or expired.
+   */
+  async refreshDesktopTokens(refreshToken: string) {
+    // Decode the refresh token to get the userId
+    const refreshSecret = this.configService.get<string>('JWT_REFRESH_SECRET') || 'mypodcast-refresh-secret-dev';
+    let decoded: any;
+    try {
+      decoded = this.jwtService.verify(refreshToken, { secret: refreshSecret });
+    } catch (err) {
+      this.logger.warn(`[DesktopAuth] Invalid or expired refresh token: ${err.message}`);
+      return null;
+    }
+
+    const userId = decoded.sub;
+    if (!userId) return null;
+
+    // Find the SyncConfig and compare the hashed token
+    const config = await this.syncConfigModel.findOne({ userId: new Types.ObjectId(userId) }).exec();
+    if (!config || !config.desktopRefreshToken) {
+      this.logger.warn(`[DesktopAuth] No desktop refresh token found for user ${userId}`);
+      return null;
+    }
+
+    // Check expiry date
+    if (config.desktopTokenExpires && config.desktopTokenExpires < new Date()) {
+      this.logger.warn(`[DesktopAuth] Desktop refresh token expired for user ${userId}`);
+      // Clear expired token
+      await this.syncConfigModel.updateOne(
+        { _id: config._id },
+        { $unset: { desktopRefreshToken: 1, desktopTokenExpires: 1 } },
+      ).exec();
+      return null;
+    }
+
+    const matches = await bcrypt.compare(refreshToken, config.desktopRefreshToken);
+    if (!matches) {
+      this.logger.warn(`[DesktopAuth] Desktop refresh token mismatch for user ${userId}`);
+      return null;
+    }
+
+    // Retrieve user info for new token payload
+    // We use the decoded payload to regenerate, but need fresh user data
+    const payload = { sub: userId, email: decoded.email, role: decoded.role };
+
+    const accessToken = await this.jwtService.signAsync(payload);
+    const newRefreshToken = await this.jwtService.signAsync(
+      { sub: userId, email: decoded.email, role: decoded.role, type: 'desktop_refresh' },
+      { secret: refreshSecret, expiresIn: '90d' },
+    );
+
+    // Update the stored hash and extend expiry
+    const newHashed = await bcrypt.hash(newRefreshToken, 10);
+    const newExpires = new Date();
+    newExpires.setDate(newExpires.getDate() + 90);
+
+    await this.syncConfigModel.updateOne(
+      { _id: config._id },
+      { desktopRefreshToken: newHashed, desktopTokenExpires: newExpires },
+    ).exec();
+
+    this.logger.log(`[DesktopAuth] Tokens refreshed for user ${userId}`);
+    return { accessToken, desktopRefreshToken: newRefreshToken };
   }
 
   // ===== AUTO-QUEUE LOGIC =====
