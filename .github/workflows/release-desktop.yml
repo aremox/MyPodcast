@@ -41,7 +41,10 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm install --legacy-peer-deps
+
+      - name: Run Test Suite
+        run: npx nx run-many -t test --skip-nx-cache
 
       - name: Build and Package
         env:
