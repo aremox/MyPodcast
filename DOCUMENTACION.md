@@ -19,10 +19,21 @@ graph TD
 ```
 
 1. **Frontend Web (PWA)** (`apps/web`):
-   * Desarrollado en **Angular 21** con diseño moderno en **Vanilla CSS + tokens HSL** (Glassmorphism, gradientes suaves y layout responsivo optimizado para pantallas Tesla y móviles).
-   * Funciona como una Aplicación Web Progresiva (PWA) con Service Workers para escucha online/offline.
-   * Permite a los usuarios explorar episodios, gestionar la cola activa de reproducción, controlar la reproducción multimedia y administrar dispositivos sincronizados en el panel `Sync USB` (`/desktop-sync`).
-   * Visualización discreta de versión (`v1.13.27-stable`) en la barra de navegación superior.
+   * Desarrollado en **Angular 21** con diseño moderno basado en **Vanilla CSS y tokens HSL** (Glassmorphism, gradientes suaves y layout responsivo optimizado para pantallas táctiles de vehículos Tesla, tablets y smartphones).
+   * **Modo Tesla Integrado**:
+     * Detección automática por User Agent y toggle manual de forzado almacenado en `localStorage`.
+     * Bypass inteligente del Service Worker para peticiones de audio streaming en navegadores integrados de vehículos.
+   * **Servicios Clave**:
+     * `AudioPlayerService`: Gestión centralizada de reproductor HTML5, control de velocidad, peticiones de rango y persistencia del progreso de escucha.
+     * `PlaylistService`: Gestión reactiva de la cola de reproducción del usuario (`signals`), sincronización con la API NestJS y reordenamiento interactivo.
+     * `OfflineStorageService`: Almacenamiento local para escuchas sin conexión y soporte PWA.
+   * **Módulos de la Aplicación (`apps/web/src/app/features`)**:
+     * `/library`: Biblioteca principal de suscripciones y podcasts.
+     * `/podcast-detail`: Listado detallado de episodios y búsqueda por palabra clave.
+     * `/playlist`: Cola de reproducción sincronizada con controles de reordenación.
+     * `/desktop-sync`: Panel de administración de dispositivos sincronizados USB, generación de códigos de 6 dígitos e inspección de espacio.
+     * `/downloads`, `/history`, `/search`, `/users`: Descargas locales, historial de escucha, explorador RSS y gestión de usuarios (solo admin).
+   * **Visualización de Versión**: Indicador discreto en el logo/subtexto de la barra de navegación (`NavbarComponent`) que muestra la versión activa (`v1.13.27-stable`).
 
 2. **Backend API REST** (`apps/api`):
    * Desarrollado con **NestJS** y **Mongoose** (MongoDB).
