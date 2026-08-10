@@ -26,6 +26,11 @@ Este archivo proporciona contexto técnico inmediato y reglas operativas para ag
   npx nx run desktop-sync:package
   ```
 
+### Pruebas de Regresión y Validación
+- **Ejecutar Pruebas de la API**: `npx nx test api`
+- **Ejecutar Pruebas de la Web**: `npx nx test web`
+- **Ejecutar Todas las Pruebas del Monorepo**: `npx nx run-many -t test`
+
 ---
 
 ## 🏗️ Arquitectura del Sistema
