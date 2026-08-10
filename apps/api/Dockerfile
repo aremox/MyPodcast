@@ -7,8 +7,7 @@ RUN apk add --no-cache python3 make g++ libc6-compat && \
     npm install --ignore-scripts --legacy-peer-deps
 
 COPY . .
-RUN npx nx build api --configuration=production && \
-    node -e "const fs=require('fs'); const root=JSON.parse(fs.readFileSync('./package.json')); const dist=JSON.parse(fs.readFileSync('./dist/apps/api/package.json')); dist.overrides=root.overrides; fs.writeFileSync('./dist/apps/api/package.json', JSON.stringify(dist, null, 2));"
+RUN npx nx build api --configuration=production
 
 # === PRODUCTION STAGE ===
 FROM node:22-alpine AS runner
