@@ -121,17 +121,17 @@ mypodcast/
 └── package.json             # Dependencias del proyecto y overrides de seguridad
 ```
 
-## 📋 Matriz de Verificación de Requisitos Funcionales
+## 📋 Matriz Completa de Capacidades y Requisitos Auditados
 
-| Requisito Funcional | Implementación en Código | Estado |
-|---|---|---|
-| **1. Vinculación Persistente de Escritorio** | `LibraryService.generateDesktopTokens()` en API genera `desktopRefreshToken` a 30 días. `main.ts` en Electron renueva automáticamente sin pedir PIN de 6 cifras. | ✅ Cumplido |
-| **2. Protección de Sesión Web** | `LibraryController.validatePairingCode()` utiliza `authService.getUserById()` evitando la rotación del token web. | ✅ Cumplido |
-| **3. Resiliencia de Desvinculación** | `main.ts` de Electron maneja respuestas `'NETWORK_ERROR'` y `'SERVER_ERROR'` reintentando en el siguiente ciclo sin limpiar `jwtToken`. | ✅ Cumplido |
-| **4. Integridad BSON y Deduplicación** | `LibraryService.onModuleInit()` migra y consolida `SyncConfig` duplicados preservando tokens de dispositivos activos. | ✅ Cumplido |
-| **5. Sincronización Automática USB** | `syncer.ts` realiza ordenación por índice (`1. Titulo.mp3`), elimina episodios quitados de la cola y renombra existentes si cambia la posición. | ✅ Cumplido |
-| **6. Streaming y Proxy de Audio** | `ProxyController.streamAudio()` soporta peticiones HTTP `Range` (206 Partial Content) e iVoox URLs sanitizadas. | ✅ Cumplido |
-| **7. Notificaciones Interactivas Windows** | `syncer.ts` genera notificaciones Toast con acciones nativas "Abrir Carpeta" y "Reproducir". | ✅ Cumplido |
-| **8. Despliegue y Auto-Updates** | `electron-builder` empaqueta con `-p always` publicando ejecutable e instalador junto al manifiesto `latest.yml` en GitHub Releases. | ✅ Cumplido |
-| **9. Visualización de Versión en UI** | `NavbarComponent` (Web) e `index.html` (Desktop) muestran dinámicamente la versión (`v1.13.27-stable`). | ✅ Cumplido |
-| **10. Limpieza de Vulnerabilidades** | `package.json` incluye overrides explícitos para `axios`, `mongoose`, `tar`, `brace-expansion`, `body-parser`, `adm-zip`, `tmp` y `undici`. | ✅ Cumplido |
+| Funcionalidad / Requisito | Módulo y Archivo Implementado | Detalle de Comportamiento y Código | Estado |
+|---|---|---|---|
+| **1. Búsqueda de Podcasts** | `ScraperService.searchPodcasts()` (`podcasts/scraper.service.ts`) & `SearchComponent` (`web/features/search`) | Realiza scraping en tiempo real de iVoox (`{query}_sw_1_1.html`), extrae portadas, autores y URLs de programas, permitiendo previsualizar y suscribirse en 1 clic. | ✅ Implementado |
+| **2. Suscripción y Scrape Dinámico** | `PodcastsService.subscribe()` (`podcasts/podcasts.service.ts`) | Soporta URLs directas de iVoox o feeds RSS. Scrapea con Cheerio para resolver el feed XML oficial, descarga metadatos e inserta los episodios iniciales en MongoDB. | ✅ Implementado |
+| **3. Auto-Añadido de Nuevos Episodios** | `CronService` (`podcasts/cron.service.ts`) & `PodcastsService.refreshFeed()` | Revisa los feeds RSS cada 30 min. Detecta episodios nuevos e invoca `LibraryService.addEpisodesToUserQueues()` para insertarlos **automáticamente** en la cola activa del usuario. | ✅ Implementado |
+| **4. Filtros y Reglas Automatizadas en Cola** | `PlaylistComponent` (`web/features/playlist/playlist.component.ts`) & `PlaylistService` | Motor de 9 reglas configurables: priorizar episodios en progreso, auto-insertar episodios cortos (<X min), agrupar maratón por podcast, alternado round-robin, ordenar por duración o fecha cronológica. | ✅ Implementado |
+| **5. Gestión de Reproducción & Progreso** | `AudioPlayerService` (`web/core/services/audio-player.service.ts`) | Reproductor HTML5 con control de velocidad (0.75x-2x), barra de progreso fluida, reanudación automática por minuto exacto y sincronización continua con el backend (`updateProgress`). | ✅ Implementado |
+| **6. Auto-Eliminación al Finalizar** | `LibraryService.updateProgress()` (`library/library.service.ts`) | Al llegar al 100% o marcar un episodio como completado, el backend ejecuta `$pull` en la cola (`queue`) del usuario y registra la entrada en `PlayHistory`. | ✅ Implementado |
+| **7. Histórico de Reproducción** | `LibraryService.getHistory()` (`library/library.service.ts`) & `/history` | Mantiene el registro cronológico completo de episodios escuchados (`PlayHistory`), progreso porcentual y fecha de última reproducción con paginación. | ✅ Implementado |
+| **8. Modo Tesla Integrado** | `AudioPlayerService` & `app.config.ts` | Detecta navegadores integrados de vehículos Tesla, ajusta el buffer de reproducción, omite interceptores rígidos de Service Worker y adapta la interfaz a pantallas táctiles de gran tamaño. | ✅ Implementado |
+| **9. Vinculación Persistente de Escritorio** | `LibraryService.generateDesktopTokens()` & `main.ts` | Emisión de `desktopRefreshToken` a 30 días con renovación silenciosa de accesos cada 60s sin requerir volver a ingresar el PIN de 6 cifras. | ✅ Implementado |
+| **10. Sincronización Física USB** | `syncer.ts` (`apps/desktop-sync/src/syncer.ts`) | Escanea pendrives USB vía PowerShell, descarga episodios en paralelo con límites de velocidad opcionales, limpia episodios leídos y renombra con índices (`1. Titulo.mp3`). | ✅ Implementado |
