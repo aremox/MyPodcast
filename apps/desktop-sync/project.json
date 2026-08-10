@@ -53,6 +53,14 @@
       "options": {
         "command": "node apps/desktop-sync/package-prep.js && npx electron-builder build --projectDir dist/apps/desktop-sync --win -p always"
       }
+    },
+    "test": {
+      "executor": "@nx/jest:jest",
+      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
+      "options": {
+        "jestConfig": "apps/desktop-sync/jest.config.ts",
+        "passWithNoTests": true
+      }
     }
   },
   "tags": []
