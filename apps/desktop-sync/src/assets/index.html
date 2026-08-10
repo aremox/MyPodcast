@@ -494,6 +494,17 @@
       color: #f5f5f7;
     }
 
+    .app-version-badge {
+      font-size: 0.7rem;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-muted);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid var(--card-border);
+      padding: 2px 6px;
+      border-radius: 6px;
+      margin-left: 4px;
+    }
+
     /* Hidden utilities */
     .hidden {
       display: none !important;
@@ -510,6 +521,7 @@
         </svg>
       </div>
       <h1>MyPodcast Sync</h1>
+      <span id="app-version-text" class="app-version-badge">v1.13.25</span>
     </div>
     <div id="status-badge" class="status-badge disconnected">
       <div class="status-dot"></div>
@@ -680,7 +692,11 @@
 
     // Refresh configurations on screen
     function updateUI(config) {
-      // Sync Server URL fields
+      // Sync Server URL & Version fields
+      if (config.version) {
+        const appVersionText = document.getElementById('app-version-text');
+        if (appVersionText) appVersionText.textContent = config.version;
+      }
       if (config.serverUrl) {
         serverUrlInput.value = config.serverUrl;
         serverUrlText.textContent = config.serverUrl;

@@ -172,7 +172,8 @@ ipcMain.handle('get-config', async () => {
     syncInterval: local.syncInterval || 60,
     serverUrl: local.serverUrl || 'https://podcast.aremox.com',
     downloadSpeedLimit: local.downloadSpeedLimit || 0,
-    autostart
+    autostart,
+    version: `v${app.getVersion()}`
   };
 });
 
@@ -362,7 +363,8 @@ function sendConfigUpdate() {
       syncInterval: local.syncInterval || 60,
       serverUrl: local.serverUrl || 'https://podcast.aremox.com',
       downloadSpeedLimit: local.downloadSpeedLimit || 0,
-      autostart
+      autostart,
+      version: `v${app.getVersion()}`
     });
   }
 }
