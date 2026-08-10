@@ -21,10 +21,10 @@ RUN npm install -g npm@latest
 
 ENV NODE_ENV=production
 
-# Copy built output and generated package.json
+# Copy built output and node_modules
+COPY --from=builder /app/package.json ./package.json
+COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist/apps/api ./
-
-RUN npm install --omit=dev --ignore-scripts --legacy-peer-deps && npm cache clean --force
 
 # Create non-root user
 RUN addgroup -g 1001 -S appgroup && \
