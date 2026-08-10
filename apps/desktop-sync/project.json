@@ -51,7 +51,7 @@
       "dependsOn": ["build"],
       "executor": "nx:run-commands",
       "options": {
-        "command": "node apps/desktop-sync/package-prep.js && npx electron-builder build --projectDir dist/apps/desktop-sync --win"
+        "command": "node apps/desktop-sync/package-prep.js && npx electron-builder build --projectDir dist/apps/desktop-sync --win -p always"
       }
     }
   },
