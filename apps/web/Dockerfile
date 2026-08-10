@@ -4,7 +4,7 @@ WORKDIR /app
 
 COPY package.json package-lock.json ./
 RUN apk add --no-cache python3 make g++ libc6-compat && \
-    npm install --ignore-scripts
+    npm install --ignore-scripts --legacy-peer-deps
 
 COPY . .
 RUN npx nx build web --configuration=production
