@@ -120,3 +120,18 @@ mypodcast/
 ├── docker-compose.portainer.yml # Despliegue en producción con imágenes GHCR
 └── package.json             # Dependencias del proyecto y overrides de seguridad
 ```
+
+## 📋 Matriz de Verificación de Requisitos Funcionales
+
+| Requisito Funcional | Implementación en Código | Estado |
+|---|---|---|
+| **1. Vinculación Persistente de Escritorio** | `LibraryService.generateDesktopTokens()` en API genera `desktopRefreshToken` a 30 días. `main.ts` en Electron renueva automáticamente sin pedir PIN de 6 cifras. | ✅ Cumplido |
+| **2. Protección de Sesión Web** | `LibraryController.validatePairingCode()` utiliza `authService.getUserById()` evitando la rotación del token web. | ✅ Cumplido |
+| **3. Resiliencia de Desvinculación** | `main.ts` de Electron maneja respuestas `'NETWORK_ERROR'` y `'SERVER_ERROR'` reintentando en el siguiente ciclo sin limpiar `jwtToken`. | ✅ Cumplido |
+| **4. Integridad BSON y Deduplicación** | `LibraryService.onModuleInit()` migra y consolida `SyncConfig` duplicados preservando tokens de dispositivos activos. | ✅ Cumplido |
+| **5. Sincronización Automática USB** | `syncer.ts` realiza ordenación por índice (`1. Titulo.mp3`), elimina episodios quitados de la cola y renombra existentes si cambia la posición. | ✅ Cumplido |
+| **6. Streaming y Proxy de Audio** | `ProxyController.streamAudio()` soporta peticiones HTTP `Range` (206 Partial Content) e iVoox URLs sanitizadas. | ✅ Cumplido |
+| **7. Notificaciones Interactivas Windows** | `syncer.ts` genera notificaciones Toast con acciones nativas "Abrir Carpeta" y "Reproducir". | ✅ Cumplido |
+| **8. Despliegue y Auto-Updates** | `electron-builder` empaqueta con `-p always` publicando ejecutable e instalador junto al manifiesto `latest.yml` en GitHub Releases. | ✅ Cumplido |
+| **9. Visualización de Versión en UI** | `NavbarComponent` (Web) e `index.html` (Desktop) muestran dinámicamente la versión (`v1.13.27-stable`). | ✅ Cumplido |
+| **10. Limpieza de Vulnerabilidades** | `package.json` incluye overrides explícitos para `axios`, `mongoose`, `tar`, `brace-expansion`, `body-parser`, `adm-zip`, `tmp` y `undici`. | ✅ Cumplido |
