@@ -48,6 +48,22 @@ export class AuthService {
     return this.login(user);
   }
 
+  /**
+   * Get user info without generating or rotating tokens.
+   * Used by desktop pairing to avoid invalidating the user's web session.
+   */
+  async getUserById(userId: string) {
+    const user = await this.usersService.findById(userId);
+    if (!user) throw new UnauthorizedException('Usuario no encontrado');
+    return {
+      _id: user._id,
+      email: user.email,
+      username: user.username,
+      avatarUrl: user.avatarUrl,
+      role: user.role,
+    };
+  }
+
   async register(email: string, username: string, password: string) {
     const user = await this.usersService.create(email, username, password);
     if (user.role === 'bloqueado') {

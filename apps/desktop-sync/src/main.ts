@@ -144,7 +144,16 @@ function getLocalConfig() {
 
 function saveLocalConfig(config: any) {
   const current = getLocalConfig();
-  fs.writeFileSync(CONFIG_FILE, JSON.stringify({ ...current, ...config }, null, 2));
+  const merged = { ...current, ...config };
+  const tmpFile = CONFIG_FILE + '.tmp';
+  try {
+    fs.writeFileSync(tmpFile, JSON.stringify(merged, null, 2));
+    fs.renameSync(tmpFile, CONFIG_FILE);
+  } catch (err) {
+    log(`[Config] Error al guardar configuración: ${err}`, 'ERROR');
+    // Clean up temp file if rename failed
+    try { if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile); } catch (_) {}
+  }
 }
 
 function getServerUrl(): string {
@@ -413,11 +422,11 @@ async function reportUsbStorageSpace(driveSerialNumber: string, targetFolder: st
 }
 
 // --- Desktop Token Refresh ---
-async function refreshDesktopTokens(): Promise<boolean> {
+async function refreshDesktopTokens(): Promise<'SUCCESS' | 'INVALID_TOKEN' | 'NETWORK_ERROR' | 'SERVER_ERROR'> {
   const localConfig = getLocalConfig();
   if (!localConfig.desktopRefreshToken) {
     log('[Auth] No hay refresh token guardado. No se puede renovar.', 'ERROR');
-    return false;
+    return 'INVALID_TOKEN';
   }
 
   try {
@@ -431,7 +440,7 @@ async function refreshDesktopTokens(): Promise<boolean> {
 
     if (!response.ok) {
       log(`[Auth] El servidor rechazó la renovación (HTTP ${response.status})`, 'ERROR');
-      return false;
+      return 'SERVER_ERROR';
     }
 
     const data = await response.json();
@@ -441,14 +450,14 @@ async function refreshDesktopTokens(): Promise<boolean> {
         desktopRefreshToken: data.desktopRefreshToken || localConfig.desktopRefreshToken
       });
       log('[Auth] Tokens renovados correctamente.');
-      return true;
+      return 'SUCCESS';
     }
 
     log(`[Auth] Renovación fallida: ${data.message || 'Respuesta inesperada'}`, 'ERROR');
-    return false;
+    return 'INVALID_TOKEN';
   } catch (err) {
     log(`[Auth] Error de red al renovar tokens: ${err}`, 'ERROR');
-    return false;
+    return 'NETWORK_ERROR';
   }
 }
 
@@ -473,11 +482,11 @@ async function checkAndRefreshTokenProactively(): Promise<void> {
 
     if (hoursUntilExpiry < 24) {
       log(`[Auth] Token expira en ${hoursUntilExpiry.toFixed(1)}h. Renovando proactivamente...`);
-      const refreshed = await refreshDesktopTokens();
-      if (refreshed) {
+      const status = await refreshDesktopTokens();
+      if (status === 'SUCCESS') {
         log('[Auth] Renovación proactiva completada con éxito.');
       } else {
-        log('[Auth] Renovación proactiva fallida. Se intentará de nuevo en el próximo ciclo.', 'ERROR');
+        log(`[Auth] Renovación proactiva fallida (${status}). Se intentará de nuevo en el próximo ciclo.`, 'ERROR');
       }
     }
   } catch (err) {
@@ -512,8 +521,8 @@ async function fetchConfigAndSync() {
     
     if (response.status === 401) {
       log('[Auth] HTTP 401 recibido. Intentando renovar tokens...', 'ERROR');
-      const refreshed = await refreshDesktopTokens();
-      if (refreshed) {
+      const status = await refreshDesktopTokens();
+      if (status === 'SUCCESS') {
         log('[Auth] Tokens renovados tras 401. Reintentando sincronización...');
         isSyncing = false;
         sendSyncStatus(false);
@@ -521,9 +530,17 @@ async function fetchConfigAndSync() {
         fetchConfigAndSync();
         return;
       }
+      
+      if (status === 'NETWORK_ERROR' || status === 'SERVER_ERROR') {
+        log('[Auth] Error de red o servidor al intentar renovar. Se reintentará más tarde.', 'ERROR');
+        isSyncing = false;
+        sendSyncStatus(false);
+        return;
+      }
+
       // Refresh failed — truly expired, unpair
-      log('[Auth] No se pudo renovar. Desvinculando automáticamente...', 'ERROR');
-      notify('Sesión Expirada', 'La vinculación con el servidor ha caducado (más de 90 días sin conexión). Por favor, vuelve a vincular el dispositivo.');
+      log('[Auth] No se pudo renovar (Token Inválido). Desvinculando automáticamente...', 'ERROR');
+      notify('Sesión Expirada', 'La vinculación con el servidor ha caducado. Por favor, vuelve a vincular el dispositivo.');
       saveLocalConfig({
         jwtToken: null,
         desktopRefreshToken: null,
@@ -548,11 +565,17 @@ async function fetchConfigAndSync() {
 
     log(`Configuración: USB=${config.targetUsbSerial}, Carpeta=${config.targetFolder}, Intervalo=${config.syncInterval}s`);
     
-    saveLocalConfig({
-      targetUsbSerial: config.targetUsbSerial,
-      targetFolder: config.targetFolder,
-      syncInterval: config.syncInterval
-    });
+    // Only save if values actually changed to avoid unnecessary writes
+    const localNow = getLocalConfig();
+    if (localNow.targetUsbSerial !== config.targetUsbSerial ||
+        localNow.targetFolder !== config.targetFolder ||
+        localNow.syncInterval !== config.syncInterval) {
+      saveLocalConfig({
+        targetUsbSerial: config.targetUsbSerial,
+        targetFolder: config.targetFolder,
+        syncInterval: config.syncInterval
+      });
+    }
     sendConfigUpdate();
 
     if (config.targetUsbSerial) {
@@ -639,7 +662,10 @@ function updateLoopInterval(seconds: number) {
 
 async function startSyncLoop() {
   await fetchConfigAndSync();
-  if (!syncTimer) syncTimer = setInterval(fetchConfigAndSync, currentInterval);
+  const localConfig = getLocalConfig();
+  if (localConfig.jwtToken && !syncTimer) {
+    syncTimer = setInterval(fetchConfigAndSync, currentInterval);
+  }
 }
 
 // --- Window and Tray Creation ---

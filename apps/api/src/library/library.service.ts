@@ -319,6 +319,8 @@ export class LibraryService implements OnModuleInit {
         let usbFormat: string | undefined = undefined;
         let pairingCode: string | undefined = undefined;
         let pairingCodeExpires: Date | undefined = undefined;
+        let desktopRefreshToken: string | undefined = undefined;
+        let desktopTokenExpires: Date | undefined = undefined;
 
         for (const doc of docs) {
           if (doc.queue && Array.isArray(doc.queue)) {
@@ -346,32 +348,43 @@ export class LibraryService implements OnModuleInit {
             pairingCode = doc.pairingCode;
             pairingCodeExpires = doc.pairingCodeExpires;
           }
+          // Preserve desktop tokens (take latest expiry)
+          if (doc.desktopRefreshToken) {
+            if (!desktopTokenExpires || (doc.desktopTokenExpires && doc.desktopTokenExpires > desktopTokenExpires)) {
+              desktopRefreshToken = doc.desktopRefreshToken;
+              desktopTokenExpires = doc.desktopTokenExpires;
+            }
+          }
         }
 
         const mergedQueue = Array.from(mergedQueueSet).map(id => new Types.ObjectId(id));
 
         this.logger.log(`[Migration] User ${userIdStr} merged queue size: ${mergedQueue.length} (previous docs had lengths: ${docs.map(d => d.queue?.length || 0).join(', ')})`);
 
-        // Update the primary document
+        // Update the primary document (preserving desktop tokens)
+        const mergeUpdate: any = {
+          userId: userObj,
+          queue: mergedQueue,
+          targetUsbSerial,
+          targetFolder,
+          syncInterval,
+          lastSyncAt,
+          usbTotalSpace,
+          usbFreeSpace,
+          usbPodcastsSpace,
+          usbOtherSpace,
+          usbFormat,
+          pairingCode,
+          pairingCodeExpires
+        };
+        if (desktopRefreshToken) {
+          mergeUpdate.desktopRefreshToken = desktopRefreshToken;
+          mergeUpdate.desktopTokenExpires = desktopTokenExpires;
+        }
+
         await this.syncConfigModel.updateOne(
           { _id: primaryDoc._id },
-          {
-            $set: {
-              userId: userObj,
-              queue: mergedQueue,
-              targetUsbSerial,
-              targetFolder,
-              syncInterval,
-              lastSyncAt,
-              usbTotalSpace,
-              usbFreeSpace,
-              usbPodcastsSpace,
-              usbOtherSpace,
-              usbFormat,
-              pairingCode,
-              pairingCodeExpires
-            }
-          }
+          { $set: mergeUpdate }
         ).exec();
 
         // Delete all OTHER duplicate documents
@@ -911,23 +924,20 @@ export class LibraryService implements OnModuleInit {
     const payload = { sub: userId, email: decoded.email, role: decoded.role };
 
     const accessToken = await this.jwtService.signAsync(payload);
-    const newRefreshToken = await this.jwtService.signAsync(
-      { sub: userId, email: decoded.email, role: decoded.role, type: 'desktop_refresh' },
-      { secret: refreshSecret, expiresIn: '90d' },
-    );
 
-    // Update the stored hash and extend expiry
-    const newHashed = await bcrypt.hash(newRefreshToken, 10);
+    // Extend expiry of the existing refresh token instead of generating a new one
+    // to prevent rotation race conditions that cause permanent unpairing.
     const newExpires = new Date();
     newExpires.setDate(newExpires.getDate() + 90);
 
     await this.syncConfigModel.updateOne(
       { _id: config._id },
-      { desktopRefreshToken: newHashed, desktopTokenExpires: newExpires },
+      { desktopTokenExpires: newExpires },
     ).exec();
 
-    this.logger.log(`[DesktopAuth] Tokens refreshed for user ${userId}`);
-    return { accessToken, desktopRefreshToken: newRefreshToken };
+    this.logger.log(`[DesktopAuth] Tokens refreshed for user ${userId} (reusing refresh token)`);
+    // Return null for desktopRefreshToken so the client keeps its current one
+    return { accessToken, desktopRefreshToken: null };
   }
 
   // ===== AUTO-QUEUE LOGIC =====
