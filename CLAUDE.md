@@ -68,5 +68,9 @@ El proyecto es un **Monorepositorio Nx**:
 3. **Referencias a Base de Datos (Mongoose)**:
    - `SyncConfig.queue` almacena referencias a episodios mediante `Types.ObjectId`. Asegurar siempre la conversión/casting desde string al interactuar con MongoDB.
 
-4. **Compatibilidad de Despliegue**:
+4. **Creación Obligatoria de Pruebas (TDD / Test Coverage)**:
+   - **REGLA OBLIGATORIA:** Siempre que se añada una nueva funcionalidad, endpoint o servicio, se **DEBE** crear su archivo de pruebas unitarias correspondiente (`*.spec.ts`) en el proyecto respectivo (`apps/api`, `apps/web` o `apps/desktop-sync`).
+   - Las pruebas deben ejecutarse y validarse con `npx nx run-many -t test` antes de realizar un commit o abrir un PR.
+
+5. **Compatibilidad de Despliegue**:
    - Al publicar una versión en GitHub con tags `v*` (ej. `v1.13.27-stable`), se debe actualizar también la referencia de versión del `docker-compose.portainer.yml`.
